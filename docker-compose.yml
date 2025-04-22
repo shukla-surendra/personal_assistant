@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app  # Mount current directory to /app in container
+    environment:
+      - ENVIRONMENT=dev
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/productify
+      - STORAGE_TYPE=postgresql
+      - AUTH_TYPE=jwt
+      - JWT_SECRET=your-secret-key
+    depends_on:
+      - db
+
+  db:
+    image: postgres:15
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=productify
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+
+volumes:
+  postgres_data: 
