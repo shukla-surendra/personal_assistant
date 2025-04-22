@@ -51,9 +51,9 @@ class BoardDtoMapper:
                 labels=board_object.get('labels', []),
                 status=str(board_object.get('status')),
                 owner=str(board_object.get('owner')),
-                is_deleted=board_object.get('is_deleted', False),
-                created_at=datetime_to_str(board_object.get('created_at')),
-                updated_at=datetime_to_str(board_object.get('updated_at'))
+                # is_deleted=board_object.get('is_deleted', False),
+                created_at=board_object.get('created_at'),
+                updated_at=board_object.get('updated_at')
             )
         # Handle object input
         return BoardDto(

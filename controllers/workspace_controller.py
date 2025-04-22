@@ -149,7 +149,7 @@ async def get_workspace_boards(
         logger.error(f"Error getting workspace boards: {e}")
         raise HTTPException(status_code=500, detail="Failed to get workspace boards")
 
-@router.get("/{workspace_id}/tasks", status_code=status.HTTP_200_OK)
+@router.get("/{workspace_id}/task_list", status_code=status.HTTP_200_OK)
 async def get_workspace_tasks(
     workspace_id: str,
     user: dict = Depends(get_auth_details),

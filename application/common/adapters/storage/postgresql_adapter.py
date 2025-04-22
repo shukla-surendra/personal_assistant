@@ -1,6 +1,5 @@
 from typing import Dict, List, Optional
 from datetime import datetime
-import uuid
 import json
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
@@ -8,9 +7,34 @@ from .base import StorageAdapter
 from config import get_config
 from passlib.hash import pbkdf2_sha256
 import logging
+import datetime
+import uuid
 from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)
+
+
+logging.basicConfig()
+logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+
+
+def make_json_serializable(data: dict):
+    def convert(value):
+        if isinstance(value, datetime.datetime):
+            return value.isoformat()
+        elif isinstance(value, datetime.date):
+            return value.isoformat()
+        elif isinstance(value, uuid.UUID):
+            return str(value)
+        elif isinstance(value, list):
+            return [convert(v) for v in value]
+        elif isinstance(value, dict):
+            return {k: convert(v) for k, v in value.items()}
+        else:
+            return value  # Leave strings and all other JSON-safe types as-is
+
+    return {k: convert(v) for k, v in data.items()}
+
 
 class PostgreSQLAdapter(StorageAdapter):
     def __init__(self):
@@ -262,19 +286,25 @@ class PostgreSQLAdapter(StorageAdapter):
                 GROUP BY w.workspace_id
             """)
             results = session.execute(query, {"user_id": user_id}).fetchall()
-            return [dict(row) for row in results]
+            return [make_json_serializable(dict(row._mapping)) for row in results]
 
     def create_board(self, board_data: Dict) -> Dict:
         with self.Session() as session:
             board_data['board_id'] = str(uuid.uuid4())
+            # Convert labels and users to JSON string if they are lists
+            if isinstance(board_data.get('labels'), list):
+                board_data['labels'] = json.dumps(board_data['labels'])
+            if isinstance(board_data.get('users'), list):
+                board_data['users'] = json.dumps(board_data['users'])
+            
             query = text("""
                 INSERT INTO boards (
                     board_id, workspace_id, name, description,
-                    owner_id, labels, status
+                    owner_id, labels, status, users, settings, meta_data
                 )
                 VALUES (
                     :board_id, :workspace_id, :name, :description,
-                    :owner_id, :labels, :status
+                    :owner_id, :labels, :status, :users, :settings, :meta_data
                 )
                 RETURNING *
             """)
@@ -291,7 +321,8 @@ class PostgreSQLAdapter(StorageAdapter):
             })
             
             session.commit()
-            return dict(result)
+            row_dict = dict(result._mapping)
+            return make_json_serializable(row_dict)
 
     def create_task(self, task_data: Dict) -> Dict:
         with self.Session() as session:
@@ -315,5 +346,47 @@ class PostgreSQLAdapter(StorageAdapter):
             session.commit()
             return dict(result)
 
-    # ... implement other methods 
-    # ... implement other methods 
+    def list_boards_by_workspace(self, workspace_id: str, user_id: str) -> List[Dict]:
+        """List all boards in a workspace that the user has access to"""
+        with self.Session() as session:
+            query = text("""
+                SELECT 
+                    b.board_id,
+                    b.workspace_id,
+                    b.name,
+                    b.description,
+                    b.owner_id,
+                    b.labels,
+                    b.users,
+                    b.settings,
+                    b.meta_data,
+                    b.status,
+                    b.is_deleted,
+                    b.created_at,
+                    b.updated_at,
+                    array_agg(bu.user_id) as board_users
+                FROM boards b
+                LEFT JOIN board_users bu ON b.board_id = bu.board_id
+                WHERE b.workspace_id = :workspace_id 
+                AND (b.owner_id = :user_id OR bu.user_id = :user_id)
+                AND b.is_deleted = FALSE
+                GROUP BY 
+                    b.board_id,
+                    b.workspace_id,
+                    b.name,
+                    b.description,
+                    b.owner_id,
+                    b.labels,
+                    b.users,
+                    b.settings,
+                    b.meta_data,
+                    b.status,
+                    b.is_deleted,
+                    b.created_at,
+                    b.updated_at
+            """)
+            results = session.execute(query, {
+                "workspace_id": workspace_id,
+                "user_id": user_id
+            }).fetchall()
+            return [make_json_serializable(dict(row._mapping)) for row in results]

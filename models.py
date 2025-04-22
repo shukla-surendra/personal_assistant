@@ -1,10 +1,10 @@
-from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Integer, JSON, Enum as SQLEnum, Table
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Integer, Enum as SQLEnum, Table
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 import uuid
 from database import Base
-from constants import TaskStatus, TaskType, UserStatus, UserRoles, UserType, TaskPriority
+from constants import TaskStatus, TaskType, UserStatus, UserRoles, UserType
 
 class User(Base):
     __tablename__ = "users"
@@ -21,7 +21,7 @@ class User(Base):
     status = Column(SQLEnum(UserStatus), nullable=False, default=UserStatus.ACTIVE)
     role = Column(SQLEnum(UserRoles), nullable=False, default=UserRoles.USER)
     user_type = Column(SQLEnum(UserType), nullable=False, default=UserType.FREE)
-    preferences = Column(JSON, default={})
+    preferences = Column(JSONB, default={})
     is_deleted = Column(Boolean, default=False)
     is_email_verified = Column(Boolean, default=False)
     is_phone_verified = Column(Boolean, default=False)
@@ -57,10 +57,10 @@ class Task(Base):
     end_time = Column(DateTime(timezone=True))
     assignee_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id"))
     reporter_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id"))
-    watchers = Column(JSON, default=[])
-    labels = Column(JSON, default=[])
-    meta_data = Column(JSON, default={})
-    settings = Column(JSON, default={})
+    watchers = Column(JSONB, default=[])
+    labels = Column(JSONB, default=[])
+    meta_data = Column(JSONB, default={})
+    settings = Column(JSONB, default={})
     published = Column(Boolean, default=False)
     public = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -82,6 +82,18 @@ workspace_users = Table(
     Column('updated_at', DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 )
 
+# Define the board_users association table
+board_users = Table(
+    'board_users',
+    Base.metadata,
+    Column('board_id', UUID(as_uuid=True), ForeignKey('boards.board_id'), primary_key=True),
+    Column('user_id', UUID(as_uuid=True), ForeignKey('users.user_id'), primary_key=True),
+    Column('role', String(50), default='member'),
+    Column('permissions', JSONB, default={}),
+    Column('created_at', DateTime(timezone=True), server_default=func.now()),
+    Column('updated_at', DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+)
+
 class Workspace(Base):
     __tablename__ = "workspaces"
 
@@ -89,8 +101,8 @@ class Workspace(Base):
     name = Column(String, nullable=False)
     description = Column(String)
     owner_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id"), nullable=False)
-    settings = Column(JSON, default={})
-    meta_data = Column(JSON, default={})
+    settings = Column(JSONB, default={})
+    meta_data = Column(JSONB, default={})
     system_default = Column(Boolean, default=False)
     is_default = Column(Boolean, default=False)
     is_deleted = Column(Boolean, default=False)
@@ -109,13 +121,15 @@ class Board(Base):
     name = Column(String, nullable=False)
     description = Column(String)
     owner_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id"), nullable=False)
-    labels = Column(JSON, default=[])
-    settings = Column(JSON, default={})
-    meta_data = Column(JSON, default={})
+    labels = Column(JSONB, default=[])
+    users = Column(JSONB, default=[])
+    settings = Column(JSONB, default={})
+    meta_data = Column(JSONB, default={})
     status = Column(String, default="active")
     is_deleted = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     tasks = relationship("Task", back_populates="board")
-    owner = relationship("User") 
+    owner = relationship("User")
+    board_users = relationship("User", secondary=board_users, backref="boards")

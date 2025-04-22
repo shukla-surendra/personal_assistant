@@ -7,7 +7,7 @@ from main import app
 from database import Base, get_db
 
 # Test database URL
-TEST_DATABASE_URL = "postgresql+asyncpg://postgres:postgres@localhost:5432/focustonic_test"
+TEST_DATABASE_URL = "postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/postgres"
 
 # Create async engine for testing
 engine = create_async_engine(TEST_DATABASE_URL, echo=True)

@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     app_name: str = "Cluster0"
     host_name: str = "cluster0.aljvnng.mongodb.net"
     storage_type: str = "postgresql"
-    database_url: str = "postgresql://postgres:postgres@db:5432/productify"
+    database_url: str = "postgresql://postgres:postgres@localhost:5432/productify"
     
     # Auth settings
     auth_type: str = "jwt"

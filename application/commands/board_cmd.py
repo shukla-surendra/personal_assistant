@@ -4,6 +4,7 @@ from typing import List, Optional
 
 class BoardCommand(BaseModel):
     name: str
+    workspace_id: Optional[str] # workspace id from path params
     description: str
     users: List
     labels: List
