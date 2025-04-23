@@ -1,5 +1,5 @@
 from typing import Dict, List, Optional
-from datetime import datetime
+from datetime import datetime, date, UTC
 import json
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
@@ -7,7 +7,6 @@ from .base import StorageAdapter
 from config import get_config
 from passlib.hash import pbkdf2_sha256
 import logging
-import datetime
 import uuid
 from fastapi import HTTPException
 
@@ -20,9 +19,9 @@ logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
 def make_json_serializable(data: dict):
     def convert(value):
-        if isinstance(value, datetime.datetime):
+        if isinstance(value, datetime):
             return value.isoformat()
-        elif isinstance(value, datetime.date):
+        elif isinstance(value, date):
             return value.isoformat()
         elif isinstance(value, uuid.UUID):
             return str(value)
@@ -55,7 +54,7 @@ class PostgreSQLAdapter(StorageAdapter):
 
             # Set default values for required fields
             user_id = str(uuid.uuid4())
-            now = datetime.utcnow()
+            now = datetime.now(UTC)
             
             user_data.setdefault('user_id', user_id)
             user_data.setdefault('country_code', None)
@@ -296,6 +295,8 @@ class PostgreSQLAdapter(StorageAdapter):
                 board_data['labels'] = json.dumps(board_data['labels'])
             if isinstance(board_data.get('users'), list):
                 board_data['users'] = json.dumps(board_data['users'])
+            board_data['settings'] = json.dumps({"name":"productify"})
+            board_data['meta_data'] = json.dumps({"name":"productify"})
             
             query = text("""
                 INSERT INTO boards (
@@ -369,7 +370,6 @@ class PostgreSQLAdapter(StorageAdapter):
                 LEFT JOIN board_users bu ON b.board_id = bu.board_id
                 WHERE b.workspace_id = :workspace_id 
                 AND (b.owner_id = :user_id OR bu.user_id = :user_id)
-                AND b.is_deleted = FALSE
                 GROUP BY 
                     b.board_id,
                     b.workspace_id,
