@@ -3,9 +3,9 @@ from pydantic import BaseModel
 
 
 class WorkspaceCreateCommand(BaseModel):
-    workspace_name: str
+    name: str
     description: Optional[str] = None
-    user: Dict
+    owner_id: str
     settings: Optional[Dict] = None
     is_default: bool = False
 

@@ -24,7 +24,7 @@ async def create_workspace(
 ):
     """Create a new workspace"""
     try:
-        workspace_cmd.user = user
+        workspace_cmd.owner_id = user.get("user_id")
         return WorkspaceHandler().create_workspace(workspace_cmd)
     except HTTPException as he:
         raise he
@@ -45,7 +45,7 @@ async def list_workspaces(
         logger.error(f"Error listing workspaces: {e}")
         raise HTTPException(status_code=500, detail="Failed to list workspaces")
 
-@router.get("/member", status_code=status.HTTP_200_OK)
+@router.get("/member-workspaces", status_code=status.HTTP_200_OK)
 async def list_member_workspaces(
     user: dict = Depends(get_auth_details)
 ):

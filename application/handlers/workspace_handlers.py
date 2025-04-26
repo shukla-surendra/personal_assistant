@@ -3,7 +3,7 @@ from starlette import status
 from fastapi import HTTPException
 from application.commands.workspace_cmd import WorkspaceCreateCommand
 from application.dto.workspace_dto import WorkspaceDtoMapper
-from models import Workspace
+from models import Workspace, workspace_users
 from config import logger
 from sqlalchemy.orm import Session
 from database import get_db
@@ -16,11 +16,10 @@ class WorkspaceHandler:
     def create_workspace(self, workspace: WorkspaceCreateCommand):
         """ Create a new workspace in PostgreSQL """
         try:
-            owner = workspace.user.get("user_id")
             new_workspace = Workspace(
-                name=workspace.workspace_name,
+                name=workspace.name,
                 description=workspace.description,
-                owner_id=owner,
+                owner_id=workspace.owner_id,
                 is_default=workspace.is_default,
                 settings={}
             )
@@ -99,8 +98,10 @@ class WorkspaceHandler:
         """ Find workspaces where user is a member """
         try:
             logger.info(f"Finding workspaces for member user_id: {user_id}")
-            workspaces = self.db.query(Workspace).filter(
-                Workspace.users.contains([user_id]),
+            workspaces = self.db.query(Workspace).join(
+                workspace_users
+            ).filter(
+                workspace_users.c.user_id == user_id,
                 Workspace.is_deleted == False
             ).all()
             

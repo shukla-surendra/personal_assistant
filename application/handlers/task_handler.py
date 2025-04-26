@@ -8,6 +8,7 @@ from application.dto.task_dto import TaskDtoMapper
 from config import logger
 from sqlalchemy.orm import Session
 from database import get_db
+import traceback
 
 class TaskHandler:
     def __init__(self):
@@ -91,6 +92,8 @@ class TaskHandler:
     def update_task(self, task_cmd: TaskUpdateCommand):
         """Update an existing task in PostgreSQL"""
         try:
+            logger.info(f"Starting task update for task_id: {task_cmd.task_id}, user_id: {task_cmd.user_id}")
+            
             task = self.db.query(Task).filter(
                 Task.task_id == task_cmd.task_id,
                 Task.user_id == task_cmd.user_id,
@@ -98,33 +101,77 @@ class TaskHandler:
             ).first()
 
             if not task:
+                logger.error(f"Task not found - task_id: {task_cmd.task_id}, user_id: {task_cmd.user_id}")
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
 
+            logger.info(f"Found existing task: {task.task_id}")
+            logger.info(f"Current task state: {task.__dict__}")
+            logger.info(f"Update command data: {task_cmd.dict(exclude_none=True)}")
+
             # Update fields if provided
-            if task_cmd.title:
+            if task_cmd.title is not None:
+                logger.info(f"Updating title from '{task.title}' to '{task_cmd.title}'")
                 task.title = task_cmd.title
-            if task_cmd.description:
+            if task_cmd.description is not None:
+                logger.info(f"Updating description")
                 task.description = task_cmd.description
-            if task_cmd.priority:
-                task.priority = task_cmd.priority
-            if task_cmd.status:
-                task.status = task_cmd.status
+            if task_cmd.priority is not None:
+                priority_map = {
+                    'low': 1,
+                    'medium': 2,
+                    'high': 3
+                }
+                new_priority = priority_map.get(task_cmd.priority.lower(), 2)
+                logger.info(f"Updating priority from {task.priority} to {new_priority}")
+                task.priority = new_priority
+            if task_cmd.status is not None:
+                try:
+                    new_status = TaskStatus(task_cmd.status.lower())
+                    logger.info(f"Updating status from {task.status} to {new_status}")
+                    task.status = new_status
+                except ValueError:
+                    logger.warning(f"Invalid status: {task_cmd.status}. Keeping existing status")
             if task_cmd.completed is not None:
+                logger.info(f"Updating completed from {task.completed} to {task_cmd.completed}")
                 task.completed = task_cmd.completed
             if task_cmd.published is not None:
+                logger.info(f"Updating published from {task.published} to {task_cmd.published}")
                 task.published = task_cmd.published
+            if task_cmd.task_type is not None:
+                try:
+                    new_task_type = TaskType(task_cmd.task_type.lower())
+                    logger.info(f"Updating task_type from {task.task_type} to {new_task_type}")
+                    task.task_type = new_task_type
+                except ValueError:
+                    logger.warning(f"Invalid task type: {task_cmd.task_type}. Keeping existing task type")
+            if task_cmd.due_on is not None:
+                logger.info(f"Updating due_on from {task.due_on} to {task_cmd.due_on}")
+                task.due_on = task_cmd.due_on
+            if task_cmd.start_time is not None:
+                logger.info(f"Updating start_time from {task.start_time} to {task_cmd.start_time}")
+                task.start_time = task_cmd.start_time
+            if task_cmd.end_time is not None:
+                logger.info(f"Updating end_time from {task.end_time} to {task_cmd.end_time}")
+                task.end_time = task_cmd.end_time
+            if task_cmd.is_deleted is not None:
+                logger.info(f"Updating is_deleted from {task.is_deleted} to {task_cmd.is_deleted}")
+                task.is_deleted = task_cmd.is_deleted
 
             task.updated_at = datetime.utcnow()
+            logger.info("Committing changes to database")
             self.db.commit()
             self.db.refresh(task)
+            logger.info(f"Successfully updated task: {task.task_id}")
             return TaskDtoMapper.map_to_task_dto_mapper(task)
 
         except HTTPException as he:
             self.db.rollback()
+            logger.error(f"HTTP Exception during task update: {str(he)}")
             raise he
         except Exception as e:
             self.db.rollback()
-            logger.error(f"Error updating task: {e}")
+            logger.error(f"Error updating task: {str(e)}")
+            logger.error(f"Stack trace: {traceback.format_exc()}")
             raise HTTPException(status_code=500, detail="Failed to update task")
 
     def list_tasks(self, user_id: str, workspace_id: str = None, skip: int = 0, limit: int = 10, 
