@@ -103,6 +103,11 @@ class UserHandler:
                     detail="Invalid credentials"
                 )
 
+            # Get default workspace
+            from application.handlers.workspace_handlers import WorkspaceHandler
+            workspace_handler = WorkspaceHandler()
+            default_workspace = workspace_handler.get_default_workspace(user['user_id'])
+
             # Generate JWT token
             token = self.auth.generate_token(user)
             return {
@@ -113,7 +118,11 @@ class UserHandler:
                     "email": user['email'],
                     "first_name": user['first_name'],
                     "last_name": user['last_name'],
-                    "role": user['role']
+                    "role": user['role'],
+                    "default_workspace": {
+                        "workspace_id": default_workspace.workspace_id if default_workspace else None,
+                        "name": default_workspace.name if default_workspace else None
+                    }
                 }
             }
         except HTTPException as he:
@@ -159,7 +168,8 @@ class UserHandler:
                     default_workspace = WorkspaceCreateCommand(
                         workspace_name=f"{cmd.first_name}'s Workspace",
                         description="My default workspace",
-                        user={"user_id": user['user_id']}
+                        user={"user_id": user['user_id']},
+                        is_default=True
                     )
                     workspace = workspace_handler.create_workspace(default_workspace)
                     logger.info(f"Default workspace created successfully: {workspace}")

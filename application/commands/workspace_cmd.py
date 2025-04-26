@@ -7,6 +7,7 @@ class WorkspaceCreateCommand(BaseModel):
     description: Optional[str] = None
     user: Dict
     settings: Optional[Dict] = None
+    is_default: bool = False
 
 
 class WorkspaceUpdateCommand(BaseModel):

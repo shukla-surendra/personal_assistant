@@ -21,6 +21,7 @@ class WorkspaceHandler:
                 name=workspace.workspace_name,
                 description=workspace.description,
                 owner_id=owner,
+                is_default=workspace.is_default,
                 settings={}
             )
             self.db.add(new_workspace)
@@ -204,3 +205,65 @@ class WorkspaceHandler:
             self.db.rollback()
             logger.error(f"Error removing user from workspace: {e}")
             raise HTTPException(status_code=500, detail="Failed to remove user from workspace")
+
+    def get_default_workspace(self, user_id: str):
+        """Get the default workspace for a user"""
+        logger.info(f"######################## Getting default workspace for user_id: {user_id}")
+        try:
+            workspace = self.db.query(Workspace).filter(
+                Workspace.owner_id == user_id,
+                Workspace.is_default == True,
+                Workspace.is_deleted == False
+            ).first()
+            
+            logger.info(f"Default workspace: {workspace}")
+            if not workspace:
+                # If no default workspace is set, get the first workspace
+                workspace = self.db.query(Workspace).filter(
+                    Workspace.owner_id == user_id,
+                    Workspace.is_deleted == False
+                ).first()
+                
+                if workspace:
+                    # Set it as default
+                    workspace.is_default = True
+                    self.db.commit()
+                    self.db.refresh(workspace)
+            
+            return WorkspaceDtoMapper.map_to_workspace_dto_mapper(workspace) if workspace else None
+        except Exception as e:
+            logger.error(f"Error getting default workspace: {e}")
+            raise HTTPException(status_code=500, detail="Failed to get default workspace")
+
+    def set_default_workspace(self, workspace_id: str, user_id: str):
+        """Set a workspace as default for a user"""
+        try:
+            # First, unset any existing default workspace
+            self.db.query(Workspace).filter(
+                Workspace.owner_id == user_id,
+                Workspace.is_default == True
+            ).update({"is_default": False})
+            
+            # Then set the new default workspace
+            workspace = self.db.query(Workspace).filter(
+                Workspace.workspace_id == workspace_id,
+                Workspace.owner_id == user_id,
+                Workspace.is_deleted == False
+            ).first()
+            
+            if not workspace:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
+                                 detail="Workspace not found")
+            
+            workspace.is_default = True
+            self.db.commit()
+            self.db.refresh(workspace)
+            
+            return WorkspaceDtoMapper.map_to_workspace_dto_mapper(workspace)
+        except HTTPException as he:
+            self.db.rollback()
+            raise he
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"Error setting default workspace: {e}")
+            raise HTTPException(status_code=500, detail="Failed to set default workspace")

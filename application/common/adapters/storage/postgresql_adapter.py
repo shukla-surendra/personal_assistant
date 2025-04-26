@@ -390,3 +390,44 @@ class PostgreSQLAdapter(StorageAdapter):
                 "user_id": user_id
             }).fetchall()
             return [make_json_serializable(dict(row._mapping)) for row in results]
+
+    def get_default_workspace(self, user_id: str) -> Optional[Dict]:
+        """Get the default workspace for a user"""
+        with self.Session() as session:
+            query = text("""
+                SELECT w.*, array_agg(wu.user_id) as users
+                FROM workspaces w
+                LEFT JOIN workspace_users wu ON w.workspace_id = wu.workspace_id
+                WHERE w.owner_id = :user_id 
+                AND w.is_default = TRUE 
+                AND NOT w.is_deleted
+                GROUP BY w.workspace_id
+            """)
+            result = session.execute(query, {"user_id": user_id}).fetchone()
+            return dict(result) if result else None
+
+    def set_default_workspace(self, user_id: str, workspace_id: str) -> bool:
+        """Set a workspace as default for a user"""
+        with self.Session() as session:
+            # First, unset any existing default workspace
+            unset_query = text("""
+                UPDATE workspaces 
+                SET is_default = FALSE 
+                WHERE owner_id = :user_id 
+                AND is_default = TRUE
+            """)
+            session.execute(unset_query, {"user_id": user_id})
+            
+            # Then set the new default workspace
+            set_query = text("""
+                UPDATE workspaces 
+                SET is_default = TRUE 
+                WHERE workspace_id = :workspace_id 
+                AND owner_id = :user_id
+            """)
+            result = session.execute(set_query, {
+                "workspace_id": workspace_id,
+                "user_id": user_id
+            })
+            session.commit()
+            return result.rowcount > 0

@@ -58,7 +58,7 @@ async def list_member_workspaces(
         logger.error(f"Error listing member workspaces: {e}")
         raise HTTPException(status_code=500, detail="Failed to list member workspaces")
 
-@router.get("/{workspace_id}", status_code=status.HTTP_200_OK)
+@router.get("/workspace/{workspace_id}", status_code=status.HTTP_200_OK)
 async def get_workspace(
     workspace_id: str,
     user: dict = Depends(get_auth_details)
@@ -72,7 +72,7 @@ async def get_workspace(
         logger.error(f"Error getting workspace: {e}")
         raise HTTPException(status_code=500, detail="Failed to get workspace")
 
-@router.put("/{workspace_id}", status_code=status.HTTP_200_OK)
+@router.put("/workspace/{workspace_id}", status_code=status.HTTP_200_OK)
 async def update_workspace(
     workspace_id: str,
     workspace_cmd: WorkspaceUpdateCommand,
@@ -169,3 +169,31 @@ async def get_workspace_tasks(
     except Exception as e:
         logger.error(f"Error getting workspace tasks: {e}")
         raise HTTPException(status_code=500, detail="Failed to get workspace tasks")
+
+@router.get("/default", status_code=status.HTTP_200_OK)
+async def get_default_workspace(
+    user: dict = Depends(get_auth_details)
+):
+    """Get the default workspace for the user"""
+    try:
+        logger.info(f"######################## Getting default workspace for user_id: {user.get('user_id')}")
+        return WorkspaceHandler().get_default_workspace(user.get("user_id"))
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logger.error(f"Error getting default workspace: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get default workspace")
+
+@router.put("/{workspace_id}/default", status_code=status.HTTP_200_OK)
+async def set_default_workspace(
+    workspace_id: str,
+    user: dict = Depends(get_auth_details)
+):
+    """Set a workspace as default for the user"""
+    try:
+        return WorkspaceHandler().set_default_workspace(workspace_id, user.get("user_id"))
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logger.error(f"Error setting default workspace: {e}")
+        raise HTTPException(status_code=500, detail="Failed to set default workspace")
