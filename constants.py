@@ -20,6 +20,7 @@ class TaskType(Enum):
     TASK = "task"
     TODO = "todo"
     NOTE = "note"
+    QUICK_NOTE = "quick_note"
     BUG = "bug"
     FEATURE = "feature"
     ENHANCEMENT = "enhancement"
