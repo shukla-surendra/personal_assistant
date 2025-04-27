@@ -8,6 +8,7 @@ from config import get_config
 from passlib.hash import pbkdf2_sha256
 import logging
 import uuid
+from uuid import UUID
 from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)
@@ -431,3 +432,110 @@ class PostgreSQLAdapter(StorageAdapter):
             })
             session.commit()
             return result.rowcount > 0
+
+    def create_time_block(self, time_block_data: Dict) -> Dict:
+        with self.Session() as session:
+            time_block_data['id'] = str(uuid.uuid4())
+            query = text("""
+                INSERT INTO time_blocks (
+                    id, workspace_id, user_id, start_time,
+                    end_time, description, status
+                )
+                VALUES (
+                    :id, :workspace_id, :user_id, :start_time,
+                    :end_time, :description, :status
+                )
+                RETURNING *
+            """)
+            result = session.execute(query, time_block_data).fetchone()
+            session.commit()
+            return make_json_serializable(dict(result))
+
+    def get_time_blocks(self, workspace_id: str, user_id: str) -> List[Dict]:
+        with self.Session() as session:
+            query = text("""
+                SELECT * FROM time_blocks
+                WHERE workspace_id = :workspace_id AND user_id = :user_id
+                ORDER BY start_time DESC
+            """)
+            results = session.execute(query, {
+                "workspace_id": workspace_id,
+                "user_id": user_id
+            }).fetchall()
+            return [make_json_serializable(dict(row)) for row in results]
+
+    def update_time_block(self, time_block_id: str, time_block_data: Dict) -> Dict:
+        with self.Session() as session:
+            update_fields = []
+            params = {"id": time_block_id}
+            
+            for field, value in time_block_data.items():
+                if value is not None:
+                    update_fields.append(f"{field} = :{field}")
+                    params[field] = value
+            
+            if not update_fields:
+                return None
+                
+            query = text(f"""
+                UPDATE time_blocks
+                SET {', '.join(update_fields)}
+                WHERE id = :id
+                RETURNING *
+            """)
+            result = session.execute(query, params).fetchone()
+            session.commit()
+            return make_json_serializable(dict(result)) if result else None
+
+    def delete_time_block(self, time_block_id: str) -> bool:
+        with self.Session() as session:
+            query = text("""
+                DELETE FROM time_blocks
+                WHERE id = :id
+                RETURNING id
+            """)
+            result = session.execute(query, {"id": time_block_id}).fetchone()
+            session.commit()
+            return result is not None
+
+    async def get_settings(self, user_id: UUID):
+        with self.adapter.Session() as session:
+            query = text("""
+                SELECT user_id, preferences, theme, language, timezone, 
+                       notification_settings, updated_at
+                FROM user_settings
+                WHERE user_id = :user_id
+            """)
+            result = session.execute(query, {"user_id": user_id}).fetchone()
+            return result
+
+    async def update_settings(self, user_id: UUID, settings: Dict):
+        with self.adapter.Session() as session:
+            # Build the update query dynamically
+            update_fields = []
+            params = {"user_id": user_id}
+            for key, value in settings.items():
+                update_fields.append(f"{key} = :{key}")
+                params[key] = value
+
+            if not update_fields:
+                raise ValueError("No valid fields to update")
+
+            query = text(f"""
+                INSERT INTO user_settings (user_id, {', '.join(settings.keys())}, updated_at)
+                VALUES (:user_id, {', '.join(f':{k}' for k in settings.keys())}, CURRENT_TIMESTAMP)
+                ON CONFLICT (user_id) DO UPDATE
+                SET {', '.join(f'{k} = EXCLUDED.{k}' for k in settings.keys())},
+                    updated_at = CURRENT_TIMESTAMP
+                RETURNING *
+            """)
+            result = session.execute(query, params).fetchone()
+            session.commit()
+
+            return result
+
+    async def update_preferences(self, user_id: UUID, preferences: Dict):
+        return await self.update_settings(user_id, {"preferences": preferences})
+
+    async def update_notification_settings(self, user_id: UUID, notification_settings: Dict):
+        return await self.update_settings(user_id, {"notification_settings": notification_settings})

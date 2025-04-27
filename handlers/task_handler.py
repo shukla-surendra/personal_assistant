@@ -1,12 +1,12 @@
 from datetime import datetime
-from application.commands.task_cmd import TaskCommand, TaskDeleteCommand, TaskUpdateCommand
+from commands.task_cmd import TaskCommand, TaskDeleteCommand, TaskUpdateCommand
 from starlette import status
 from fastapi import HTTPException
 from constants import TaskType, TaskStatus
-from application.adapters.orm.models.pg_models import Task
-from application.dto.task_dto import TaskDtoMapper
+from adapters.orm.models.pg_models import Task
+from dto.task_dto import TaskDtoMapper
 from config import logger
-from application.adapters.orm.models.database import get_db
+from adapters.orm.models.database import get_db
 import traceback
 import re
 

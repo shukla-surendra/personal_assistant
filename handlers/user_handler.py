@@ -1,11 +1,11 @@
 """"""
 from starlette import status
 from fastapi import HTTPException
-from application.commands.user_cmd import UserCommand, UserUpdateCommand
-from application.dto.user_dto import UserDtoMapper
+from commands.user_cmd import UserCommand, UserUpdateCommand
+from dto.user_dto import UserDtoMapper
 from config import logger, get_config
-from application.commands.user_cmd import EmailVerificationRequest, LoginCommand
-from application.adapters.factory import AdapterFactory, StorageType, AuthType
+from commands.user_cmd import EmailVerificationRequest, LoginCommand
+from adapters.factory import AdapterFactory, StorageType, AuthType
 
 config = get_config()
 
@@ -104,7 +104,7 @@ class UserHandler:
                 )
 
             # Get default workspace
-            from application.handlers.workspace_handlers import WorkspaceHandler
+            from handlers.workspace_handlers import WorkspaceHandler
             workspace_handler = WorkspaceHandler()
             default_workspace = workspace_handler.get_default_workspace(user['user_id'])
 
@@ -161,8 +161,8 @@ class UserHandler:
 
                 # Create default workspace for the user
                 try:
-                    from application.handlers.workspace_handlers import WorkspaceHandler
-                    from application.commands.workspace_cmd import WorkspaceCreateCommand
+                    from handlers.workspace_handlers import WorkspaceHandler
+                    from commands.workspace_cmd import WorkspaceCreateCommand
 
                     workspace_handler = WorkspaceHandler()
                     default_workspace = WorkspaceCreateCommand(
@@ -175,8 +175,8 @@ class UserHandler:
 
                     # Create default board for the workspace
                     try:
-                        from application.handlers.board_handler import BoardHandler
-                        from application.commands.board_cmd import BoardCommand
+                        from handlers.board_handler import BoardHandler
+                        from commands.board_cmd import BoardCommand
 
                         board_handler = BoardHandler()
                         default_board = BoardCommand(

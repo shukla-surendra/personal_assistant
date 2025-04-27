@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from starlette import status
 from starlette.responses import Response
-from application.authorization.auth import get_auth_details
-from application.handlers.board_handler import BoardHandler
-from application.commands.board_cmd import BoardCommand, BoardUpdateCommand, BoardDeleteCommand
+from authorization.auth import get_auth_details
+from handlers.board_handler import BoardHandler
+from commands.board_cmd import BoardCommand, BoardUpdateCommand, BoardDeleteCommand
 from config import logger
 
 

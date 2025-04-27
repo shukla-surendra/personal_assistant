@@ -1,11 +1,11 @@
 from datetime import datetime
 from starlette import status
 from fastapi import HTTPException
-from application.commands.workspace_cmd import WorkspaceCreateCommand
-from application.dto.workspace_dto import WorkspaceDtoMapper
-from application.adapters.orm.models.pg_models import Workspace, workspace_users
+from commands.workspace_cmd import WorkspaceCreateCommand
+from dto.workspace_dto import WorkspaceDtoMapper
+from adapters.orm.models.pg_models import Workspace, workspace_users
 from config import logger
-from application.adapters.orm.models.database import get_db
+from adapters.orm.models.database import get_db
 
 
 class WorkspaceHandler:

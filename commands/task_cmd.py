@@ -53,3 +53,30 @@ class TaskUpdateCommand(BaseModel):
             logger.error(f"Error validating TaskUpdateCommand: {str(e)}")
             logger.error(f"Invalid data received: {data}")
             raise
+
+
+class TimeBlockCommand(BaseModel):
+    workspace_id: str
+    user_id: str
+    start_time: datetime
+    end_time: datetime
+    description: str
+    status: str = "pending"
+
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat() if v else None
+        }
+
+
+class TimeBlockUpdateCommand(BaseModel):
+    id: str
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    description: Optional[str] = None
+    status: Optional[str] = None
+
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat() if v else None
+        }

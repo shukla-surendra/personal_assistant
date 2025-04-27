@@ -2,8 +2,28 @@
 from typing import Optional, List
 from pydantic import BaseModel
 from utils.datetime_utils import datetime_to_str
-from application.adapters.orm.models.pg_models import Task
+from adapters.orm.models.pg_models import Task, Comment, Tag
 from datetime import datetime
+
+class CommentDto(BaseModel):
+    id: str
+    task_id: str
+    user_id: str
+    content: str
+    parent_id: Optional[str] = None
+    is_deleted: bool
+    created_at: datetime
+    updated_at: datetime
+    user: Optional[dict] = None
+    replies: List['CommentDto'] = []
+
+class TagDto(BaseModel):
+    id: str
+    name: str
+    color: str
+    description: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
 
 
 class BoardDto(BaseModel):
@@ -46,6 +66,25 @@ class TaskDto(BaseModel):
     slug: Optional[str]
     created_at: datetime
     updated_at: datetime
+    comments: List[CommentDto] = []
+    tags: List[TagDto] = []
+
+
+class TimeBlockDto(BaseModel):
+    id: str
+    workspace_id: str
+    user_id: str
+    start_time: datetime
+    end_time: datetime
+    description: str
+    status: str
+    created_at: datetime
+    updated_at: datetime
+
+
+
+
+
 
 
 class BoardDtoMapper:
@@ -80,6 +119,40 @@ class BoardDtoMapper:
         )
 
 
+class CommentDtoMapper:
+    @staticmethod
+    def map_to_comment_dto(comment: Comment) -> CommentDto:
+        return CommentDto(
+            id=str(comment.id),
+            task_id=str(comment.task_id),
+            user_id=str(comment.user_id),
+            content=comment.content,
+            parent_id=str(comment.parent_id) if comment.parent_id else None,
+            is_deleted=comment.is_deleted,
+            created_at=comment.created_at,
+            updated_at=comment.updated_at,
+            user={
+                'user_id': str(comment.user.user_id),
+                'first_name': comment.user.first_name,
+                'last_name': comment.user.last_name
+            } if comment.user else None,
+            replies=[CommentDtoMapper.map_to_comment_dto(reply) for reply in comment.replies]
+        )
+
+
+class TagDtoMapper:
+    @staticmethod
+    def map_to_tag_dto(tag: Tag) -> TagDto:
+        return TagDto(
+            id=str(tag.id),
+            name=tag.name,
+            color=tag.color,
+            description=tag.description,
+            created_at=tag.created_at,
+            updated_at=tag.updated_at
+        )
+
+
 class TaskDtoMapper:
     """ Task Dto Mapper """
     @staticmethod
@@ -109,5 +182,7 @@ class TaskDtoMapper:
             public=task.public,
             slug=task.slug,
             created_at=task.created_at,
-            updated_at=task.updated_at
+            updated_at=task.updated_at,
+            comments=[CommentDtoMapper.map_to_comment_dto(comment) for comment in task.comments if not comment.is_deleted],
+            tags=[TagDtoMapper.map_to_tag_dto(tag) for tag in task.tags]
         )

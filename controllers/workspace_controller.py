@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from starlette import status
 from starlette.responses import Response
-from application.commands.workspace_cmd import WorkspaceCreateCommand, WorkspaceUpdateCommand
-from application.handlers.workspace_handlers import WorkspaceHandler
-from application.authorization.auth import get_auth_details
+from commands.workspace_cmd import WorkspaceCreateCommand, WorkspaceUpdateCommand
+from handlers.workspace_handlers import WorkspaceHandler
+from authorization.auth import get_auth_details
 from config import logger
 
 router = APIRouter(

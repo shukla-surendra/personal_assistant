@@ -2,14 +2,14 @@ from fastapi import APIRouter, Depends
 from starlette.responses import Response
 from starlette import status
 from fastapi import HTTPException
-from application.commands.user_cmd import (
+from commands.user_cmd import (
     UserCommand, 
     LoginCommand,
     EmailVerificationRequest,
     UserUpdateCommand
 )
-from application.handlers.user_handler import UserHandler
-from application.authorization.auth import get_auth_details
+from handlers.user_handler import UserHandler
+from authorization.auth import get_auth_details
 
 router = APIRouter(
     prefix="/api/v1/users",

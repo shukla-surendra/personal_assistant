@@ -10,4 +10,10 @@ def str_to_datetime(dt_str: str) -> datetime:
     """Convert string to datetime format."""
     if dt_str is None:
         return None
-    return datetime.fromisoformat(dt_str) 
+    return datetime.fromisoformat(dt_str)
+
+def datetime_to_str_iso(obj):
+    if isinstance(obj, datetime):
+        return obj.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+    else:
+        return None

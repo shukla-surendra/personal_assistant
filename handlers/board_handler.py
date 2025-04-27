@@ -1,9 +1,9 @@
 from starlette import status
 from fastapi import HTTPException
-from application.commands.board_cmd import BoardCommand, BoardUpdateCommand, BoardDeleteCommand
-from application.dto.task_dto import BoardDtoMapper
+from commands.board_cmd import BoardCommand, BoardUpdateCommand, BoardDeleteCommand
+from dto.task_dto import BoardDtoMapper
 from config import logger, get_config
-from application.adapters.factory import AdapterFactory, StorageType
+from adapters.factory import AdapterFactory, StorageType
 
 config = get_config()
 

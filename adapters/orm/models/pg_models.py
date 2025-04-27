@@ -3,7 +3,7 @@ from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 import uuid
-from application.adapters.orm.models.database import Base
+from adapters.orm.models.database import Base
 from constants import TaskStatus, TaskType, UserStatus, UserRoles, UserType
 
 class User(Base):
@@ -30,6 +30,22 @@ class User(Base):
     otp_time = Column(DateTime(timezone=True))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    settings = relationship("UserSettings", back_populates="user", uselist=False)
+
+class UserSettings(Base):
+    __tablename__ = "user_settings"
+
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id"), primary_key=True)
+    preferences = Column(JSONB, default={})
+    theme = Column(String, default="light")
+    language = Column(String, default="en")
+    timezone = Column(String, default="UTC")
+    notification_settings = Column(JSONB, default={})
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    user = relationship("User", back_populates="settings")
 
 class TaskPriority(SQLEnum):
     __tablename__ = "task_priority"
@@ -72,6 +88,8 @@ class Task(Base):
     user = relationship("User", foreign_keys=[user_id])
     assignee = relationship("User", foreign_keys=[assignee_id])
     reporter = relationship("User", foreign_keys=[reporter_id])
+    comments = relationship("Comment", back_populates="task")
+    tags = relationship("Tag", secondary="task_tags", backref="tasks")
 
 # Define the workspace_users association table
 workspace_users = Table(
@@ -134,3 +152,54 @@ class Board(Base):
     tasks = relationship("Task", back_populates="board")
     owner = relationship("User")
     board_users = relationship("User", secondary=board_users, backref="boards")
+
+class TimeBlock(Base):
+    __tablename__ = "time_blocks"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(UUID(as_uuid=True), ForeignKey("workspaces.workspace_id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id"), nullable=False)
+    start_time = Column(DateTime(timezone=True), nullable=False)
+    end_time = Column(DateTime(timezone=True), nullable=False)
+    description = Column(String, nullable=False)
+    status = Column(String, nullable=False, default="pending")
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    workspace = relationship("Workspace")
+    user = relationship("User")
+
+class Comment(Base):
+    __tablename__ = "comments"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    task_id = Column(UUID(as_uuid=True), ForeignKey("tasks.task_id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id"), nullable=False)
+    content = Column(String, nullable=False)
+    parent_id = Column(UUID(as_uuid=True), ForeignKey("comments.id"))
+    is_deleted = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    task = relationship("Task", back_populates="comments")
+    user = relationship("User")
+    parent = relationship("Comment", remote_side=[id], backref="replies")
+
+class Tag(Base):
+    __tablename__ = "tags"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String, nullable=False, unique=True)
+    color = Column(String, default="#808080")
+    description = Column(String)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+# Association table for task-tag relationship
+task_tags = Table(
+    'task_tags',
+    Base.metadata,
+    Column('task_id', UUID(as_uuid=True), ForeignKey('tasks.task_id'), primary_key=True),
+    Column('tag_id', UUID(as_uuid=True), ForeignKey('tags.id'), primary_key=True),
+    Column('created_at', DateTime(timezone=True), server_default=func.now())
+)
