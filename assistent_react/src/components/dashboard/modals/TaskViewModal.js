@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from 'react';
 import {
   Modal,
   ModalOverlay,
   ModalContent,
   ModalHeader,
+  ModalFooter,
   ModalBody,
   ModalCloseButton,
   Badge,
@@ -42,6 +43,7 @@ import {
   FaRegComment,
   FaEdit
 } from "react-icons/fa";
+import { formatLocalDateTime } from '../../../utils/locale';
 
 // Sample comments data
 const sampleComments = [
@@ -71,6 +73,7 @@ const sampleComments = [
 const TaskViewModal = ({ isOpen, onClose, task, onEdit }) => {
   const [newComment, setNewComment] = useState("");
   const [comments, setComments] = useState(sampleComments);
+  const [content, setContent] = useState('');
   
   const bg = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.700");
@@ -79,7 +82,35 @@ const TaskViewModal = ({ isOpen, onClose, task, onEdit }) => {
   const tagColor = useColorModeValue("blue.700", "blue.200");
   const commentBg = useColorModeValue("gray.50", "gray.700");
 
-  if (!task) return null;
+  useEffect(() => {
+    if (task?.description) {
+      try {
+        const jsonContent = typeof task.description === 'string' 
+          ? JSON.parse(task.description) 
+          : task.description;
+        
+        // Extract text content from the JSON structure
+        const textContent = extractTextFromLexicalJSON(jsonContent);
+        setContent(textContent);
+      } catch (error) {
+        console.error('Error parsing description:', error);
+        setContent(task.description);
+      }
+    }
+  }, [task?.description]);
+
+  const extractTextFromLexicalJSON = (json) => {
+    if (!json || !json.root || !json.root.children) return '';
+    
+    return json.root.children
+      .map(child => {
+        if (child.type === 'paragraph' && child.children) {
+          return child.children.map(text => text.text).join('');
+        }
+        return '';
+      })
+      .join('\n');
+  };
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -158,7 +189,7 @@ const TaskViewModal = ({ isOpen, onClose, task, onEdit }) => {
             <Box>
               <Text fontWeight="bold" mb={2}>Description</Text>
               <Box p={3} bg={infoBg} borderRadius="md">
-                <Text>{task.description || "No description provided."}</Text>
+                <Text>{content}</Text>
               </Box>
             </Box>
 
@@ -185,7 +216,7 @@ const TaskViewModal = ({ isOpen, onClose, task, onEdit }) => {
                     <Text fontWeight="medium">Due Date</Text>
                   </HStack>
                   <Text fontSize="lg" fontWeight="bold">
-                    {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "Not set"}
+                    {formatLocalDateTime(task.dueDate)}
                   </Text>
                 </VStack>
               </GridItem>
@@ -327,6 +358,11 @@ const TaskViewModal = ({ isOpen, onClose, task, onEdit }) => {
             </Box>
           </VStack>
         </ModalBody>
+        <ModalFooter>
+          <Button variant="ghost" mr={3} onClick={onClose}>
+            Close
+          </Button>
+        </ModalFooter>
       </ModalContent>
     </Modal>
   );
