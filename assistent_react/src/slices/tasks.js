@@ -95,12 +95,13 @@ const taskSlice = createSlice({
       state.notes = [...action.payload];
     },
     [updateTask.fulfilled]: (state, action) => {
-      // const index = state.findIndex(task => task.task_id === action.payload.task_id);
-      // state[index] = {
-      //   ...state[index],
-      //   ...action.payload,
-      // };
-      console.log("jo")
+      const index = state.notes.findIndex(note => note.task_id === action.payload.task_id);
+      if (index !== -1) {
+        state.notes[index] = {
+          ...state.notes[index],
+          ...action.payload,
+        };
+      }
     },
     [deleteTask.fulfilled]: (state, action) => {
       let index = state.findIndex(({ task_id }) => task_id === action.payload.task_id);

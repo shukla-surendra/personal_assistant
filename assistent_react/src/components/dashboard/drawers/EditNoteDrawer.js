@@ -1,30 +1,32 @@
 import React, { useState, useEffect } from "react";
-import { Flex, Drawer, DrawerOverlay, DrawerContent, DrawerCloseButton, DrawerHeader, DrawerBody, DrawerFooter } from "@chakra-ui/react";
-import { Box, Button, FormControl, Input, MenuButton, Menu, MenuItem, MenuList } from "@chakra-ui/react";
+import {
+  Flex, Drawer, DrawerOverlay, DrawerContent, DrawerCloseButton,
+  DrawerHeader, DrawerBody, DrawerFooter, Box, Button, FormControl,
+  Input, Menu, MenuButton, MenuItem, MenuList, Icon, Text, useColorModeValue,
+  Badge, Tooltip, useToast, IconButton, VStack, HStack, Divider
+} from "@chakra-ui/react";
 import { useDispatch } from "react-redux";
-import { useNavigate } from 'react-router-dom';
-import { updateTask, deleteTask } from "../../../slices/tasks";
+import { updateTask } from "../../../slices/tasks";
 import TaskDataService from "../../../services/taskservice";
-import { Icon } from "@chakra-ui/react";
-import { FaArrowLeft, FaSave } from "react-icons/fa";
-import {BiCommentDetail} from "react-icons/bi"
-import {BsGearFill} from "react-icons/bs"
+import { FaArrowLeft, FaSave, FaEye, FaEyeSlash, FaShare, FaDownload, FaFilePdf, FaFileWord, FaFileAlt } from "react-icons/fa";
+import { BiCommentDetail } from "react-icons/bi";
+import { BsGearFill } from "react-icons/bs";
 import FtTextEditor from "../sections/FtTextEditor";
-import { Spinner } from '@chakra-ui/react'
-import { ChevronDownIcon } from '@chakra-ui/icons';
-import { Text } from "@chakra-ui/react";
-import { Popover, PopoverTrigger, IconButton } from "@chakra-ui/react";
-import { HiChevronUpDown } from "react-icons/hi2";
+import { Spinner } from '@chakra-ui/react';
+import { formatLocalDateTime } from "../../../utils/locale";
 
 export default function EditNoteDrawer(props) {
   const [isLoading, setIsLoading] = useState(false);
   const { currentTask, setCurrentTask } = props;
   const [size] = useState('xl');
   const initialRef = React.useRef(null);
-  let navigate = useNavigate();
   const dispatch = useDispatch();
   const [message, setMessage] = useState("");
   const { isOpen, onOpen, onClose } = props.disclosures;
+  const toast = useToast();
+
+  const bgColor = useColorModeValue('white', 'gray.800');
+  const borderColor = useColorModeValue('gray.200', 'gray.600');
 
   const getTask = task_id => {
     setIsLoading(true);
@@ -37,6 +39,13 @@ export default function EditNoteDrawer(props) {
       .catch(e => {
         console.error('Error loading note:', e);
         setMessage("Error loading note");
+        toast({
+          title: "Error",
+          description: "Failed to load note",
+          status: "error",
+          duration: 3000,
+          isClosable: true,
+        });
       })
       .finally(() => {
         setIsLoading(false);
@@ -61,14 +70,48 @@ export default function EditNoteDrawer(props) {
       .unwrap()
       .then(response => {
         setMessage("Saved !");
+        toast({
+          title: "Success",
+          description: "Note saved successfully",
+          status: "success",
+          duration: 2000,
+          isClosable: true,
+        });
         setIsLoading(false);
         setTimeout(() => setMessage(""), 1000);
       })
       .catch(e => {
         setMessage("Error in Saving !");
+        toast({
+          title: "Error",
+          description: "Failed to save note",
+          status: "error",
+          duration: 3000,
+          isClosable: true,
+        });
         setIsLoading(false);
         setTimeout(() => setMessage(""), 2000);
       });
+  };
+
+  const handlePublishToggle = () => {
+    const updatedTask = {
+      ...currentTask,
+      published: !currentTask.published
+    };
+    setCurrentTask(updatedTask);
+    updateContent();
+  };
+
+  const handleExport = (format) => {
+    // Implement export functionality
+    toast({
+      title: "Export",
+      description: `Exporting to ${format}...`,
+      status: "info",
+      duration: 2000,
+      isClosable: true,
+    });
   };
 
   return (
@@ -82,17 +125,34 @@ export default function EditNoteDrawer(props) {
               Back
             </Button>
             <Flex gap={2} alignItems="center">
-              <Button leftIcon={<Icon as={BiCommentDetail} />} variant="ghost" size="sm">
-                Comments
-              </Button>
+              <Tooltip label="Comments">
+                <IconButton
+                  icon={<Icon as={BiCommentDetail} />}
+                  variant="ghost"
+                  size="sm"
+                  aria-label="Comments"
+                />
+              </Tooltip>
               <Menu>
-                <MenuButton as={Button} rightIcon={<ChevronDownIcon />} variant="ghost" size="sm">
-                  <Icon as={BsGearFill} />
-                </MenuButton>
+                <MenuButton as={IconButton} icon={<Icon as={BsGearFill} />} variant="ghost" size="sm" />
                 <MenuList>
-                  <MenuItem>Convert to blog</MenuItem>
-                  <MenuItem>Download as Pdf</MenuItem>
-                  <MenuItem>Share</MenuItem>
+                  <MenuItem 
+                    icon={<Icon as={currentTask?.published ? FaEyeSlash : FaEye} />} 
+                    onClick={handlePublishToggle}
+                  >
+                    {currentTask?.published ? "Unpublish" : "Publish"}
+                  </MenuItem>
+                  <MenuItem icon={<Icon as={FaShare} />}>Share</MenuItem>
+                  <Menu>
+                    <MenuButton as={MenuItem} icon={<Icon as={FaDownload} />}>
+                      Export
+                    </MenuButton>
+                    <MenuList>
+                      <MenuItem icon={<Icon as={FaFilePdf} />} onClick={() => handleExport('PDF')}>PDF</MenuItem>
+                      <MenuItem icon={<Icon as={FaFileWord} />} onClick={() => handleExport('Word')}>Word</MenuItem>
+                      <MenuItem icon={<Icon as={FaFileAlt} />} onClick={() => handleExport('Markdown')}>Markdown</MenuItem>
+                    </MenuList>
+                  </Menu>
                 </MenuList>
               </Menu>
             </Flex>
@@ -114,7 +174,16 @@ export default function EditNoteDrawer(props) {
                 fontWeight="bold"
                 borderColor="gray.300"
                 bg="gray.50"
+                mb={2}
               />
+              <Flex align="center" gap={2} mb={4}>
+                <Badge colorScheme={currentTask?.published ? "green" : "gray"}>
+                  {currentTask?.published ? "Published" : "Draft"}
+                </Badge>
+                <Text fontSize="sm" color="gray.500">
+                  Last updated: {formatLocalDateTime(currentTask?.updated_at)}
+                </Text>
+              </Flex>
             </FormControl>
             <FormControl>
               <FtTextEditor currentTask={currentTask} setCurrentTask={setCurrentTask} />
@@ -133,14 +202,22 @@ export default function EditNoteDrawer(props) {
               )}
               {!isLoading && message}
             </Box>
-            <Button
-              onClick={updateContent}
-              leftIcon={<Icon as={FaSave} />}
-              colorScheme="blue"
-              isLoading={isLoading}
-            >
-              Save
-            </Button>
+            <Flex gap={2}>
+              <Button
+                onClick={onClose}
+                variant="ghost"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={updateContent}
+                leftIcon={<Icon as={FaSave} />}
+                colorScheme="blue"
+                isLoading={isLoading}
+              >
+                Save
+              </Button>
+            </Flex>
           </Flex>
         </DrawerFooter>
       </DrawerContent>

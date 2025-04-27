@@ -78,19 +78,26 @@ export default function NotesScreen() {
 
     const renderNote = ({ item }: { item: Note }) => (
         <ThemedView type="card" style={styles.noteCard}>
-            <View style={styles.noteHeader}>
-                <ThemedText type="defaultSemiBold">{item.title}</ThemedText>
-                <TouchableOpacity onPress={() => handleDeleteNote(item.task_id)}>
-                    <Ionicons name="trash-outline" size={20} color="#FF3B30" />
-                </TouchableOpacity>
+            <View style={styles.noteContentContainer}>
+                <View style={styles.noteHeader}>
+                    <ThemedText type="defaultSemiBold" style={styles.noteTitle}>{item.title}</ThemedText>
+                    <TouchableOpacity 
+                        style={styles.deleteButton}
+                        onPress={() => handleDeleteNote(item.task_id)}
+                    >
+                        <Ionicons name="trash-outline" size={18} color="#FF3B30" />
+                    </TouchableOpacity>
+                </View>
+                <ThemedText style={styles.noteDescription}>{item.description}</ThemedText>
             </View>
-            <ThemedText style={styles.noteContent}>{item.description}</ThemedText>
             <View style={styles.noteFooter}>
-                <ThemedText style={styles.noteDate}>
-                    {new Date(item.updated_at).toLocaleDateString()}
-                </ThemedText>
-                <View style={styles.noteStatus}>
-                    <ThemedText style={styles.statusText}>{item.status}</ThemedText>
+                <View style={styles.noteMeta}>
+                    <View style={[styles.statusBadge, item.status === 'todo' ? styles.statusTodo : styles.statusDone]}>
+                        <ThemedText style={styles.statusText}>{item.status}</ThemedText>
+                    </View>
+                    <ThemedText style={styles.noteDate}>
+                        {new Date(item.updated_at).toLocaleDateString()}
+                    </ThemedText>
                 </View>
             </View>
         </ThemedView>
@@ -193,36 +200,68 @@ const styles = StyleSheet.create({
     },
     noteCard: {
         marginBottom: 16,
+        borderRadius: 16,
+        overflow: 'hidden',
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+    },
+    noteContentContainer: {
         padding: 16,
     },
     noteHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 8,
+        marginBottom: 12,
     },
-    noteContent: {
-        marginBottom: 8,
+    noteTitle: {
+        fontSize: 18,
+        flex: 1,
+        marginRight: 8,
     },
-    noteFooter: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginTop: 8,
+    deleteButton: {
+        padding: 4,
     },
-    noteDate: {
-        fontSize: 12,
+    noteDescription: {
+        fontSize: 15,
+        lineHeight: 22,
         color: '#666',
     },
-    noteStatus: {
-        backgroundColor: '#E5E5EA',
+    noteFooter: {
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(0,0,0,0.1)',
+        padding: 12,
+        backgroundColor: 'rgba(0,0,0,0.02)',
+    },
+    noteMeta: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    statusBadge: {
         paddingHorizontal: 8,
         paddingVertical: 4,
-        borderRadius: 4,
+        borderRadius: 12,
+        minWidth: 60,
+        alignItems: 'center',
+    },
+    statusTodo: {
+        backgroundColor: '#FFE4E4',
+    },
+    statusDone: {
+        backgroundColor: '#E4FFE4',
     },
     statusText: {
         fontSize: 12,
-        color: '#666',
+        fontWeight: '600',
+        textTransform: 'capitalize',
+    },
+    noteDate: {
+        fontSize: 12,
+        color: '#999',
     },
     addButton: {
         position: 'absolute',

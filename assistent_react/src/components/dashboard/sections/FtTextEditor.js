@@ -1,25 +1,11 @@
-import React, { useState } from 'react';
-import { Box, VStack, HStack, IconButton, useColorModeValue, Icon, Menu, MenuButton, MenuList, MenuItem, Divider } from '@chakra-ui/react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { Box, VStack, HStack, IconButton, useColorModeValue, Icon, Menu, MenuButton, MenuList, MenuItem, Divider, Tooltip, Select } from '@chakra-ui/react';
 import {
-  FiBold,
-  FiItalic,
-  FiUnderline,
-  FiList,
-  FiLink,
-  FiCode,
-  FiCheckSquare,
-  FiTable,
-  FiType,
-  FiMinus,
-  FiPlus,
-  FiAlignLeft,
-  FiAlignCenter,
-  FiAlignRight,
-  FiImage,
-  FiFileText,
-  FiColumns,
-  FiToggleLeft,
-  FiToggleRight,
+  FiBold, FiItalic, FiUnderline, FiList, FiLink, FiCode, FiCheckSquare,
+  FiTable, FiType, FiMinus, FiPlus, FiAlignLeft, FiAlignCenter, FiAlignRight,
+  FiImage, FiFileText, FiColumns, FiToggleLeft, FiToggleRight, FiMaximize,
+  FiMinimize, FiSearch, FiBookmark, FiTag, FiHash, FiCalendar, FiIndent,
+  FiOutdent, FiSubscript, FiSuperscript, FiText, FiMessageSquare
 } from 'react-icons/fi';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
@@ -39,6 +25,11 @@ import { TRANSFORMERS } from '@lexical/markdown';
 import { TablePlugin } from '@lexical/react/LexicalTablePlugin';
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin';
 import { $getRoot, $createParagraphNode, $createTextNode } from 'lexical';
+import { HorizontalRuleNode } from '@lexical/react/LexicalHorizontalRuleNode';
+import { HorizontalRulePlugin } from '@lexical/react/LexicalHorizontalRulePlugin';
+import { HashtagPlugin } from '@lexical/react/LexicalHashtagPlugin';
+import { HashtagNode } from '@lexical/hashtag';
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import './FtTextEditor.css';
 
 const theme = {
@@ -66,6 +57,16 @@ const MenuBar = ({ editor }) => {
     editor.dispatchCommand('FORMAT_TEXT', { format: 'heading', level });
   };
 
+  const handleInsert = (type) => {
+    switch (type) {
+      case 'table':
+        editor.dispatchCommand('INSERT_TABLE', { rows: 3, columns: 3 });
+        break;
+      default:
+        break;
+    }
+  };
+
   return (
     <VStack align="stretch" spacing={0}>
       <HStack spacing={1} p={2} borderBottomWidth="1px" borderColor={borderColor} bg={bgColor}>
@@ -80,6 +81,9 @@ const MenuBar = ({ editor }) => {
             <MenuItem onClick={() => handleFormat('bold')}>Bold</MenuItem>
             <MenuItem onClick={() => handleFormat('italic')}>Italic</MenuItem>
             <MenuItem onClick={() => handleFormat('underline')}>Underline</MenuItem>
+            <MenuItem onClick={() => handleFormat('strikethrough')}>Strikethrough</MenuItem>
+            <MenuItem onClick={() => handleFormat('subscript')}>Subscript</MenuItem>
+            <MenuItem onClick={() => handleFormat('superscript')}>Superscript</MenuItem>
           </MenuList>
         </Menu>
 
@@ -90,6 +94,9 @@ const MenuBar = ({ editor }) => {
             <MenuItem onClick={() => editor.dispatchCommand('INSERT_UNORDERED_LIST')}>Bullet List</MenuItem>
             <MenuItem onClick={() => editor.dispatchCommand('INSERT_ORDERED_LIST')}>Numbered List</MenuItem>
             <MenuItem onClick={() => editor.dispatchCommand('INSERT_CHECK_LIST')}>Check List</MenuItem>
+            <Divider />
+            <MenuItem onClick={() => editor.dispatchCommand('INDENT_LIST')}>Indent</MenuItem>
+            <MenuItem onClick={() => editor.dispatchCommand('OUTDENT_LIST')}>Outdent</MenuItem>
           </MenuList>
         </Menu>
 
@@ -100,6 +107,7 @@ const MenuBar = ({ editor }) => {
             <MenuItem onClick={() => handleFormat('left')}>Align Left</MenuItem>
             <MenuItem onClick={() => handleFormat('center')}>Align Center</MenuItem>
             <MenuItem onClick={() => handleFormat('right')}>Align Right</MenuItem>
+            <MenuItem onClick={() => handleFormat('justify')}>Justify</MenuItem>
           </MenuList>
         </Menu>
 
@@ -109,26 +117,54 @@ const MenuBar = ({ editor }) => {
           <MenuList>
             <MenuItem onClick={() => editor.dispatchCommand('INSERT_QUOTE')}>Quote</MenuItem>
             <MenuItem onClick={() => editor.dispatchCommand('INSERT_CODE')}>Code Block</MenuItem>
-            <MenuItem onClick={() => editor.dispatchCommand('INSERT_TABLE')}>Table</MenuItem>
-            <MenuItem onClick={() => editor.dispatchCommand('INSERT_IMAGE')}>Image</MenuItem>
+            <MenuItem onClick={() => handleInsert('table')}>Table</MenuItem>
             <MenuItem onClick={() => editor.dispatchCommand('INSERT_COLUMNS')}>Columns</MenuItem>
             <MenuItem onClick={() => editor.dispatchCommand('INSERT_TOGGLE')}>Toggle</MenuItem>
+            <MenuItem onClick={() => editor.dispatchCommand('INSERT_HORIZONTAL_RULE')}>Divider</MenuItem>
           </MenuList>
         </Menu>
 
         {/* Quick Actions */}
-        <IconButton
-          size="sm"
-          icon={<Icon as={FiLink} />}
-          onClick={() => editor.dispatchCommand('INSERT_LINK')}
-          variant="ghost"
-        />
-        <IconButton
-          size="sm"
-          icon={<Icon as={FiCode} />}
-          onClick={() => editor.dispatchCommand('INSERT_CODE')}
-          variant="ghost"
-        />
+        <Tooltip label="Link">
+          <IconButton
+            size="sm"
+            icon={<Icon as={FiLink} />}
+            onClick={() => editor.dispatchCommand('INSERT_LINK')}
+            variant="ghost"
+          />
+        </Tooltip>
+        <Tooltip label="Code">
+          <IconButton
+            size="sm"
+            icon={<Icon as={FiCode} />}
+            onClick={() => editor.dispatchCommand('INSERT_CODE')}
+            variant="ghost"
+          />
+        </Tooltip>
+        <Tooltip label="Tags">
+          <IconButton
+            size="sm"
+            icon={<Icon as={FiHash} />}
+            onClick={() => editor.dispatchCommand('INSERT_HASHTAG')}
+            variant="ghost"
+          />
+        </Tooltip>
+        <Tooltip label="Quote">
+          <IconButton
+            size="sm"
+            icon={<Icon as={FiMessageSquare} />}
+            onClick={() => editor.dispatchCommand('INSERT_QUOTE')}
+            variant="ghost"
+          />
+        </Tooltip>
+        <Tooltip label="Strikethrough">
+          <IconButton
+            size="sm"
+            icon={<Icon as={FiMinus} />}
+            onClick={() => handleFormat('strikethrough')}
+            variant="ghost"
+          />
+        </Tooltip>
       </HStack>
     </VStack>
   );
@@ -153,30 +189,9 @@ const FtTextEditor = ({ currentTask, setCurrentTask }) => {
       TableRowNode,
       AutoLinkNode,
       LinkNode,
+      HorizontalRuleNode,
+      HashtagNode,
     ],
-    onInit: (editor) => {
-      if (currentTask?.description) {
-        try {
-          const parsedState = JSON.parse(currentTask.description);
-          editor.setEditorState(editor.parseEditorState(parsedState));
-        } catch (e) {
-          console.error('Error parsing editor state:', e);
-          editor.update(() => {
-            const root = $getRoot();
-            const paragraph = $createParagraphNode();
-            const text = $createTextNode(currentTask.description || '');
-            paragraph.append(text);
-            root.append(paragraph);
-          });
-        }
-      } else {
-        editor.update(() => {
-          const root = $getRoot();
-          const paragraph = $createParagraphNode();
-          root.append(paragraph);
-        });
-      }
-    },
   };
 
   const bgColor = useColorModeValue('white', 'gray.800');
@@ -215,10 +230,46 @@ const FtTextEditor = ({ currentTask, setCurrentTask }) => {
           <ListPlugin />
           <TablePlugin />
           <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
+          <HorizontalRulePlugin />
+          <HashtagPlugin />
+          <EditorContentLoader currentTask={currentTask} />
         </Box>
       </LexicalComposer>
     </VStack>
   );
+};
+
+// Separate component to handle content loading
+const EditorContentLoader = ({ currentTask }) => {
+  const [editor] = useLexicalComposerContext();
+
+  useEffect(() => {
+    if (currentTask?.description) {
+      try {
+        const parsedState = JSON.parse(currentTask.description);
+        editor.setEditorState(editor.parseEditorState(parsedState));
+      } catch (e) {
+        console.error('Error parsing editor state:', e);
+        // If parsing fails, create a new paragraph with the raw text
+        editor.update(() => {
+          const root = $getRoot();
+          const paragraph = $createParagraphNode();
+          const text = $createTextNode(currentTask.description || '');
+          paragraph.append(text);
+          root.append(paragraph);
+        });
+      }
+    } else {
+      // Initialize with empty paragraph if no content
+      editor.update(() => {
+        const root = $getRoot();
+        const paragraph = $createParagraphNode();
+        root.append(paragraph);
+      });
+    }
+  }, [currentTask?.description, editor]);
+
+  return null;
 };
 
 export default FtTextEditor;

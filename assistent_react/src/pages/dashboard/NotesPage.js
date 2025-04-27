@@ -57,6 +57,20 @@ export default function DashboardResponsive() {
     initFetch()
   }, [initFetch])
 
+  // Refresh notes when edit drawer closes
+  useEffect(() => {
+    if (!edit_note_drawer.isOpen) {
+      initFetch();
+    }
+  }, [edit_note_drawer.isOpen, initFetch]);
+
+  // Refresh notes when new note drawer closes
+  useEffect(() => {
+    if (!new_note_drawer.isOpen) {
+      initFetch();
+    }
+  }, [new_note_drawer.isOpen, initFetch]);
+
   return (
     <>
       <Helmet>
@@ -128,46 +142,55 @@ export default function DashboardResponsive() {
                     key={task.task_id || index}
                     p={4}
                     bg={noteCardBg}
-                    borderRadius="md"
+                    borderRadius="lg"
                     boxShadow="sm"
+                    transition="all 0.2s"
+                    _hover={{
+                      transform: "translateY(-2px)",
+                      boxShadow: "md"
+                    }}
                   >
-                    <Table variant="simple">
-                      <Thead>
-                        <Tr fontSize={'14px'} fontWeight={'bold'}>
-                          <Th>Title</Th>
-                          <Th>Created At</Th>
-                          <Th>Actions</Th>
-                        </Tr>
-                      </Thead>
-                      <Tbody>
-                        <Tr fontSize={'14px'}>
-                          <Td onClick={() => handleUpdateItem(task)}>{task.title}</Td>
-                          <Td>{formatLocalDateTime(task.created_at)}</Td>
-                          <Td>
-                            <Flex justify="space-between">
-                              <Box flex={1} mr={2}>
-                                <IconButton
-                                  aria-label="Edit Task"
-                                  icon={<EditIcon />}
-                                  size="sm"
-                                  onClick={() => handleUpdateItem(task)}
-                                  variant="ghost"
-                                />
-                              </Box>
-                              <Box flex={1}>
-                                <IconButton
-                                  aria-label="Delete Task"
-                                  icon={<DeleteIcon />}
-                                  onClick={() => handleDeleteItem(task)}
-                                  size="sm"
-                                  variant="ghost"
-                                />
-                              </Box>
-                            </Flex>
-                          </Td>
-                        </Tr>
-                      </Tbody>
-                    </Table>
+                    <Flex direction="column" height="100%">
+                      <Box flex="1">
+                        <Text
+                          fontSize="lg"
+                          fontWeight="semibold"
+                          mb={2}
+                          color="blue.600"
+                          cursor="pointer"
+                          onClick={() => handleUpdateItem(task)}
+                          _hover={{ textDecoration: "underline" }}
+                        >
+                          {task.title}
+                        </Text>
+                        <Text
+                          fontSize="sm"
+                          color="gray.500"
+                          mb={4}
+                        >
+                          {formatLocalDateTime(task.created_at)}
+                        </Text>
+                      </Box>
+                      <Flex justify="flex-end" mt="auto">
+                        <IconButton
+                          aria-label="Edit Task"
+                          icon={<EditIcon />}
+                          size="sm"
+                          onClick={() => handleUpdateItem(task)}
+                          variant="ghost"
+                          colorScheme="blue"
+                          mr={2}
+                        />
+                        <IconButton
+                          aria-label="Delete Task"
+                          icon={<DeleteIcon />}
+                          onClick={() => handleDeleteItem(task)}
+                          size="sm"
+                          variant="ghost"
+                          colorScheme="red"
+                        />
+                      </Flex>
+                    </Flex>
                   </Box>
                 ))}
               </Grid>
