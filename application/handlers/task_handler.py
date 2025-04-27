@@ -206,10 +206,11 @@ class TaskHandler:
             logger.error(f"Error listing tasks: {e}")
             raise HTTPException(status_code=500, detail="Failed to list tasks")
 
-    def get_task(self, task_id: str, user_id: str):
+    def get_task(self, workspace_id: str, task_id: str, user_id: str):
         """Get a single task by ID"""
         try:
             task = self.db.query(Task).filter(
+                Task.workspace_id == workspace_id,
                 Task.task_id == task_id,
                 Task.user_id == user_id,
                 Task.is_deleted == False
