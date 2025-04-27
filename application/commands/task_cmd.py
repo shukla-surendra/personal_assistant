@@ -1,45 +1,43 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 from config import logger
+from uuid import UUID
 
 
 class TaskCommand(BaseModel):
-    workspace_id: Optional[str]
-    title: Optional[str]
-    description: Optional[str]
-    priority: Optional[str]
-    start_time: Optional[str]
-    end_time: Optional[str]
-    status: Optional[str]
-    task_type: Optional[str]
-    completed: Optional[bool]
-    published: Optional[bool]
-    user_id: Optional[str]
+    workspace_id: str
+    user_id: str
+    title: str
+    description: Optional[str] = None
+    priority: str = "medium"
+    task_type: Optional[str] = "todo"
+    status: Optional[str] = "todo"
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    published: bool = False
 
 
 class TaskDeleteCommand(BaseModel):
-    task_id: Optional[str]
-    user_id: Optional[str]
+    task_id: str
+    user_id: str
 
 
 class TaskUpdateCommand(BaseModel):
-    workspace_id: Optional[str] = None
-    task_id: Optional[str] = None
+    task_id: str
+    workspace_id: str
+    user_id: str
     title: Optional[str] = None
     description: Optional[str] = None
     priority: Optional[str] = None
+    task_type: Optional[str] = None
     status: Optional[str] = None
     completed: Optional[bool] = None
     published: Optional[bool] = None
-    user_id: Optional[str] = None
-    task_type: Optional[str] = None
-    is_deleted: Optional[bool] = None
-    due_on: Optional[datetime] = None
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    due_on: Optional[datetime] = None
+    is_deleted: Optional[bool] = None
 
     class Config:
         json_encoders = {

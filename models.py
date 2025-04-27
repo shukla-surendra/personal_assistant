@@ -63,6 +63,7 @@ class Task(Base):
     settings = Column(JSONB, default={})
     published = Column(Boolean, default=False)
     public = Column(Boolean, default=False)
+    slug = Column(String, unique=True, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

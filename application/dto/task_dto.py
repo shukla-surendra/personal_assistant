@@ -3,6 +3,9 @@ from typing import Optional, List
 from pydantic import BaseModel
 from utils.datetime_utils import datetime_to_str
 from domain.models.dynamo_models import Board
+from application.dto.base_dto import BaseDto
+from models import Task
+from datetime import datetime
 
 
 class BoardDto(BaseModel):
@@ -19,23 +22,32 @@ class BoardDto(BaseModel):
     updated_at: Optional[str] = None
 
 
-class TaskDto(BaseModel):
-    """ Task DTO """
+class TaskDto(BaseDto):
     task_id: str
+    workspace_id: str
+    board_id: Optional[str]
+    user_id: str
     title: str
-    description: Optional[str] = None
-    priority: Optional[str] = None
+    description: Optional[str]
+    priority: int
     task_type: str
     status: str
-    completed: bool = False
-    is_deleted: Optional[bool] = False
-    published: bool = False
-    due_on: Optional[str] = None
-    start_time: Optional[str] = None
-    end_time: Optional[str] = None
-    user_id: str
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    completed: bool
+    is_deleted: bool
+    due_on: Optional[datetime]
+    start_time: Optional[datetime]
+    end_time: Optional[datetime]
+    assignee_id: Optional[str]
+    reporter_id: Optional[str]
+    watchers: list
+    labels: list
+    meta_data: dict
+    settings: dict
+    published: bool
+    public: bool
+    slug: Optional[str]
+    created_at: datetime
+    updated_at: datetime
 
 
 class BoardDtoMapper:
@@ -73,59 +85,31 @@ class BoardDtoMapper:
 class TaskDtoMapper:
     """ Task Dto Mapper """
     @staticmethod
-    def map_to_task_dto_mapper(task_object):
-        # Priority mapping for converting between storage formats
-        priority_map = {
-            1: 'low',
-            2: 'medium',
-            3: 'high',
-            'low': 'low',
-            'medium': 'medium',
-            'high': 'high'
-        }
-
-        # Handle dictionary input
-        if isinstance(task_object, dict):
-            # Convert priority to string format
-            raw_priority = task_object.get('priority')
-            priority = priority_map.get(raw_priority, 'medium')
-
-            return TaskDto(
-                task_id=str(task_object.get('task_id')),
-                title=str(task_object.get('title')),
-                description=task_object.get('description'),
-                priority=priority,
-                task_type=str(task_object.get('task_type')),
-                status=str(task_object.get('status')),
-                completed=task_object.get('completed', False),
-                is_deleted=task_object.get('is_deleted', False),
-                published=task_object.get('published', False),
-                due_on=datetime_to_str(task_object.get('due_on')),
-                start_time=datetime_to_str(task_object.get('start_time')),
-                end_time=datetime_to_str(task_object.get('end_time')),
-                user_id=str(task_object.get('user_id')),
-                created_at=datetime_to_str(task_object.get('created_at')),
-                updated_at=datetime_to_str(task_object.get('updated_at'))
-            )
-        # Handle object input
-        # Convert priority to string format
-        raw_priority = task_object.priority
-        priority = priority_map.get(raw_priority, 'medium')
-
+    def map_to_task_dto_mapper(task: Task) -> TaskDto:
         return TaskDto(
-            task_id=str(task_object.task_id),
-            title=str(task_object.title),
-            description=task_object.description,
-            priority=priority,
-            task_type=str(task_object.task_type.value),
-            status=str(task_object.status.value),
-            completed=task_object.completed,
-            is_deleted=task_object.is_deleted,
-            published=task_object.published,
-            due_on=datetime_to_str(task_object.due_on),
-            start_time=datetime_to_str(task_object.start_time),
-            end_time=datetime_to_str(task_object.end_time),
-            user_id=str(task_object.user_id),
-            created_at=datetime_to_str(task_object.created_at),
-            updated_at=datetime_to_str(task_object.updated_at)
+            task_id=str(task.task_id),
+            workspace_id=str(task.workspace_id),
+            board_id=str(task.board_id) if task.board_id else None,
+            user_id=str(task.user_id),
+            title=task.title,
+            description=task.description,
+            priority=task.priority,
+            task_type=task.task_type.value,
+            status=task.status.value,
+            completed=task.completed,
+            is_deleted=task.is_deleted,
+            due_on=task.due_on,
+            start_time=task.start_time,
+            end_time=task.end_time,
+            assignee_id=str(task.assignee_id) if task.assignee_id else None,
+            reporter_id=str(task.reporter_id) if task.reporter_id else None,
+            watchers=task.watchers,
+            labels=task.labels,
+            meta_data=task.meta_data,
+            settings=task.settings,
+            published=task.published,
+            public=task.public,
+            slug=task.slug,
+            created_at=task.created_at,
+            updated_at=task.updated_at
         )

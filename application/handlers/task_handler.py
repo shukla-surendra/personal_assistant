@@ -9,10 +9,27 @@ from config import logger
 from sqlalchemy.orm import Session
 from database import get_db
 import traceback
+import re
+import uuid
 
 class TaskHandler:
     def __init__(self):
         self.db = next(get_db())
+
+    def _generate_slug(self, title: str) -> str:
+        """Generate a URL-friendly slug from the title"""
+        # Convert to lowercase and replace spaces with hyphens
+        slug = re.sub(r'[^\w\s-]', '', title.lower())
+        slug = re.sub(r'[-\s]+', '-', slug).strip('-')
+        
+        # Check if slug exists
+        base_slug = slug
+        counter = 1
+        while self.db.query(Task).filter(Task.slug == slug).first():
+            slug = f"{base_slug}-{counter}"
+            counter += 1
+            
+        return slug
 
     def create_task(self, task_cmd: TaskCommand):
         """Create a new task in PostgreSQL"""
@@ -43,17 +60,24 @@ class TaskHandler:
                 except ValueError:
                     logger.warning(f"Invalid status: {task_cmd.status}. Defaulting to TODO")
 
+            # Generate slug if task is being published
+            slug = None
+            if task_cmd.published:
+                slug = self._generate_slug(task_cmd.title)
+
             # Create task with proper enum values
             task = Task(
                 workspace_id=task_cmd.workspace_id,
                 user_id=task_cmd.user_id,
                 title=task_cmd.title,
                 description=task_cmd.description,
-                priority=priority,  # Use integer value for PostgreSQL
+                priority=priority,
                 task_type=task_type,
                 status=status,
                 start_time=task_cmd.start_time,
-                end_time=task_cmd.end_time
+                end_time=task_cmd.end_time,
+                published=task_cmd.published,
+                slug=slug
             )
 
             self.db.add(task)
@@ -104,9 +128,9 @@ class TaskHandler:
                 logger.error(f"Task not found - task_id: {task_cmd.task_id}, user_id: {task_cmd.user_id}")
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
 
-            logger.info(f"Found existing task: {task.task_id}")
-            logger.info(f"Current task state: {task.__dict__}")
-            logger.info(f"Update command data: {task_cmd.dict(exclude_none=True)}")
+            # Generate new slug if title changes and task is published
+            if task_cmd.title is not None and task.published:
+                task.slug = self._generate_slug(task_cmd.title)
 
             # Update fields if provided
             if task_cmd.title is not None:
@@ -137,6 +161,8 @@ class TaskHandler:
             if task_cmd.published is not None:
                 logger.info(f"Updating published from {task.published} to {task_cmd.published}")
                 task.published = task_cmd.published
+                if task_cmd.published and not task.slug:
+                    task.slug = self._generate_slug(task.title)
             if task_cmd.task_type is not None:
                 try:
                     new_task_type = TaskType(task_cmd.task_type.lower())
