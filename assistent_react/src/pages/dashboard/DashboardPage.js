@@ -117,6 +117,87 @@ export default function DashboardResponsive() {
   const borderColor = useColorModeValue('gray.200', 'gray.700');
   const textColor = useColorModeValue('gray.800', 'gray.200');
 
+  const extractTextFromLexicalJSON = (json) => {
+    if (!json || !json.root || !json.root.children) return '';
+    
+    return json.root.children
+      .map(child => {
+        if (child.type === 'paragraph' && child.children) {
+          return child.children.map(text => text.text).join('');
+        }
+        return '';
+      })
+      .join('\n');
+  };
+
+  const TaskCard = ({ task }) => {
+    const [content, setContent] = useState('');
+
+    useEffect(() => {
+      if (task?.description) {
+        try {
+          const jsonContent = typeof task.description === 'string' 
+            ? JSON.parse(task.description) 
+            : task.description;
+          
+          const textContent = extractTextFromLexicalJSON(jsonContent);
+          setContent(textContent);
+        } catch (error) {
+          console.error('Error parsing description:', error);
+          setContent(task.description);
+        }
+      }
+    }, [task?.description]);
+
+    return (
+      <Card key={task.task_id} bg={cardBg} borderWidth="1px" borderColor={borderColor}>
+        <CardHeader>
+          <Flex justify="space-between" align="center">
+            <Heading size="sm">{task.title}</Heading>
+            <Menu>
+              <MenuButton
+                as={IconButton}
+                icon={<FiMoreVertical />}
+                variant="ghost"
+                size="sm"
+              />
+              <MenuList>
+                <MenuItem icon={<FiEdit2 />} onClick={() => handleUpdateItem(task)}>
+                  Edit
+                </MenuItem>
+                <MenuItem icon={<FiTrash2 />} onClick={() => handleDeleteItem(task)}>
+                  Delete
+                </MenuItem>
+              </MenuList>
+            </Menu>
+          </Flex>
+        </CardHeader>
+        <CardBody>
+          <Stack divider={<StackDivider />} spacing="4">
+            <Box>
+              <Text fontSize="sm" color={textColor} noOfLines={3}>
+                {content}
+              </Text>
+            </Box>
+            <Flex wrap="wrap" gap={2}>
+              <Badge colorScheme={priorityColorMapping[task.priority] || 'gray'}>
+                {task.priority || 'No Priority'}
+              </Badge>
+              <Badge colorScheme="blue">
+                {task.status || 'No Status'}
+              </Badge>
+            </Flex>
+          </Stack>
+        </CardBody>
+        <CardFooter>
+          <Text fontSize="xs" color="gray.500">
+            Updated: {formatLocalDateTime(task.updated_at)}
+          </Text>
+        </CardFooter>
+      </Card>
+    );
+  };
+
   return (
     <>
       <Helmet>
@@ -161,52 +242,8 @@ export default function DashboardResponsive() {
 
             {/* Recent Items Grid */}
             <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6} mb={8}>
-              {tasks.slice(0, 6).map((task, index) => (
-                <Card key={task.task_id || index} bg={cardBg} borderWidth="1px" borderColor={borderColor}>
-                  <CardHeader>
-                    <Flex justify="space-between" align="center">
-                      <Heading size="sm">{task.title}</Heading>
-                      <Menu>
-                        <MenuButton
-                          as={IconButton}
-                          icon={<FiMoreVertical />}
-                          variant="ghost"
-                          size="sm"
-                        />
-                        <MenuList>
-                          <MenuItem icon={<FiEdit2 />} onClick={() => handleUpdateItem(task)}>
-                            Edit
-                          </MenuItem>
-                          <MenuItem icon={<FiTrash2 />} onClick={() => handleDeleteItem(task)}>
-                            Delete
-                          </MenuItem>
-                        </MenuList>
-                      </Menu>
-                    </Flex>
-                  </CardHeader>
-                  <CardBody>
-                    <Stack divider={<StackDivider />} spacing="4">
-                      <Box>
-                        <Text fontSize="sm" color={textColor} noOfLines={3}>
-                          {task.description}
-                        </Text>
-                      </Box>
-                      <Flex wrap="wrap" gap={2}>
-                        <Badge colorScheme={priorityColorMapping[task.priority] || 'gray'}>
-                          {task.priority || 'No Priority'}
-                        </Badge>
-                        <Badge colorScheme="blue">
-                          {task.status || 'No Status'}
-                        </Badge>
-                      </Flex>
-                    </Stack>
-                  </CardBody>
-                  <CardFooter>
-                    <Text fontSize="xs" color="gray.500">
-                      Updated: {formatLocalDateTime(task.updated_at)}
-                    </Text>
-                  </CardFooter>
-                </Card>
+              {tasks.slice(0, 6).map((task) => (
+                <TaskCard key={task.task_id} task={task} />
               ))}
             </SimpleGrid>
 
