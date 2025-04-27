@@ -1,75 +1,178 @@
 import React, { useState, useEffect } from "react";
-import { Box, Heading, Text, Stack } from '@chakra-ui/react';
+import {
+  Box,
+  Heading,
+  Text,
+  Container,
+  VStack,
+  HStack,
+  Avatar,
+  Divider,
+  useColorModeValue,
+  Skeleton,
+  SkeletonText,
+  Icon,
+  Center,
+} from '@chakra-ui/react';
+import { FaCalendarAlt, FaUser, FaExclamationTriangle } from 'react-icons/fa';
 import TaskDataService from '../../services/taskservice';
 import { useParams } from "react-router-dom";
 import Navbar from "../../components/landing/Nav/Navbar";
 import Footer from "../../components/landing/Footer";
-import { Node } from 'slate'
 import { formatLocalDateTime } from "../../utils/locale";
-
-
-
-// Define a serializing function that takes a value and returns a string.
-const serialize = value => {
-  return (
-    value
-      // Return the string content of each paragraph in the value's children.
-      .map(n => Node.string(n))
-      // Join them all with line breaks denoting paragraphs.
-      .join('\n')
-  )
-}
-
-// Define a deserializing function that takes a string and returns a value.
-const deserialize = string => {
-  // Return a value array of children derived by splitting the string.
-  return string.split('\n').map(line => {
-    return {
-      children: [{ text: line }],
-    }
-  })
-}
-
-
+import { LexicalComposer } from '@lexical/react/LexicalComposer';
+import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
+import { ContentEditable } from '@lexical/react/LexicalContentEditable';
+import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
+import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
+import { HeadingNode, QuoteNode } from '@lexical/rich-text';
+import { ListItemNode, ListNode } from '@lexical/list';
+import { CodeHighlightNode, CodeNode } from '@lexical/code';
+import { AutoLinkNode, LinkNode } from '@lexical/link';
+import { TableCellNode, TableNode, TableRowNode } from '@lexical/table';
+import { ListPlugin } from '@lexical/react/LexicalListPlugin';
+import { LinkPlugin } from '@lexical/react/LexicalLinkPlugin';
+import { TablePlugin } from '@lexical/react/LexicalTablePlugin';
 
 const BlogPage = () => {
+  const [blogPost, setBlogPost] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const { slug } = useParams();
 
-    const [blogPost, setBlogPost] = useState({description: "[{\"type\":\"paragraph\",\"children\":[{\"text\":\"Anopeningparagraph...\"}]}]"});
-    const { slug } = useParams();
+  const bgColor = useColorModeValue('white', 'gray.900');
+  const textColor = useColorModeValue('gray.800', 'gray.200');
+  const secondaryTextColor = useColorModeValue('gray.600', 'gray.400');
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
 
+  const getBlog = async (slug) => {
+    try {
+      setLoading(true);
+      const response = await TaskDataService.getPostBySlug(slug);
+      setBlogPost(response.data);
+    } catch (error) {
+      console.error('Error fetching blog post:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const getBlog = slug => {
-        TaskDataService.getPostBySlug(slug)
-          .then(response => {
-            setBlogPost(response.data);
-          })
-          .catch(e => {
-            console.log(e);
-          });
-      };
+  useEffect(() => {
+    getBlog(slug);
+  }, [slug]);
 
-    useEffect(() => {
-        getBlog(slug);
-      }, [slug]);
+  const initialConfig = {
+    namespace: 'BlogEditor',
+    onError: (error) => console.error(error),
+    editable: false,
+    editorState: blogPost?.description || null,
+    nodes: [
+      HeadingNode,
+      QuoteNode,
+      ListItemNode,
+      ListNode,
+      CodeNode,
+      CodeHighlightNode,
+      AutoLinkNode,
+      LinkNode,
+      TableCellNode,
+      TableNode,
+      TableRowNode,
+    ],
+  };
 
+  if (loading) {
+    return (
+      <>
+        <Navbar />
+        <Container maxW="container.md" py={10}>
+          <Skeleton height="40px" mb={4} />
+          <SkeletonText mt="4" noOfLines={4} spacing="4" />
+        </Container>
+        <Footer />
+      </>
+    );
+  }
+
+  if (!blogPost) {
+    return (
+      <>
+        <Navbar />
+        <Box bg={bgColor} minH="calc(100vh - 200px)" display="flex" alignItems="center">
+          <Container maxW="container.md">
+            <Center>
+              <VStack spacing={4} textAlign="center">
+                <Icon as={FaExclamationTriangle} w={12} h={12} color="yellow.500" />
+                <Heading size="xl" color={textColor}>
+                  Blog Post Not Found
+                </Heading>
+                <Text color={secondaryTextColor} fontSize="lg">
+                  The blog post you're looking for doesn't exist or has been removed.
+                </Text>
+              </VStack>
+            </Center>
+          </Container>
+        </Box>
+        <Footer />
+        <Container maxW="container.md" py={10}>
+          <Heading>Blog post not found</Heading>
+        </Container>
+        <Footer />
+      </>
+    );
+  }
 
   return (
     <>
-    <Navbar></Navbar>
+      <Navbar />
+      <Box bg={bgColor} minH="100vh">
+        <Container maxW="container.md" py={10}>
+          <VStack spacing={8} align="stretch">
+            {/* Header Section */}
+            <VStack spacing={4} align="center" textAlign="center">
+              <Heading
+                as="h1"
+                size="2xl"
+                color={textColor}
+                fontWeight="bold"
+                lineHeight="1.2"
+              >
+                {blogPost.title}
+              </Heading>
+              
+              <HStack spacing={4} color={secondaryTextColor}>
+                <HStack>
+                  <Icon as={FaUser} />
+                  <Text>{blogPost.author || 'Anonymous'}</Text>
+                </HStack>
+                <HStack>
+                  <Icon as={FaCalendarAlt} />
+                  <Text>{formatLocalDateTime(blogPost.created_at)}</Text>
+                </HStack>
+              </HStack>
+            </VStack>
 
-    <Box padding={10} margin={10}>
-      <Heading as="h1" fontSize="20px" textAlign={'center'}>
-        {blogPost.title}
-      </Heading>
-      <Text fontSize="lg" color="gray.500">
-        {formatLocalDateTime(blogPost.created_at)}
-      </Text>
-      <Box mt={4}>
-        {/* assuming the blog content is in HTML format */}
-        <div dangerouslySetInnerHTML={{ __html:serialize(JSON.parse(blogPost.description))}} />
+            <Divider borderColor={borderColor} />
+
+            {/* Content Section */}
+            <Box>
+              <LexicalComposer initialConfig={initialConfig}>
+                <div className="editor-container">
+                  <RichTextPlugin
+                    contentEditable={<ContentEditable className="editor-input" />}
+                    placeholder={null}
+                  />
+                  <HistoryPlugin />
+                  <AutoFocusPlugin />
+                  <ListPlugin />
+                  <LinkPlugin />
+                  <TablePlugin />
+                </div>
+              </LexicalComposer>
+            </Box>
+          </VStack>
+        </Container>
       </Box>
-    </Box>
-    <Footer></Footer>
+      <Footer />
     </>
   );
 };

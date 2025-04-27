@@ -24,7 +24,7 @@ import PrivacyPolicyPage from './pages/landing/PrivacyPolicyPage'
 import TermsOfUse from './pages/landing/TermsOfUse'
 import Blog from "./pages/landing/Blog";
 import Pomodoro from "./pages/landing/Pomodoro";
-import Test from "./pages/landing/Test";
+
 import BlogPage from "./pages/landing/BlogPage";
 import NewLogin from "./pages/landing/NewLogin"
 import NewSignup from "./pages/landing/NewSignup"
@@ -38,7 +38,6 @@ function App() {
       <ColorModeScript initialColorMode={theme.config.initialColorMode} />
       <Router>
         <Routes>
-          <Route path="/test" element={<Test/>}/>
           <Route path=":slug" element={<BlogPage/>}/>
           <Route path="/" element={<Home/>} />
           <Route path="/dashboard" element={<DashboardPage/>} />
