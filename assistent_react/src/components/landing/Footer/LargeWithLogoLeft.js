@@ -1,132 +1,122 @@
+import {
+  Box,
+  Container,
+  Stack,
+  SimpleGrid,
+  Text,
+  Link,
+  useColorModeValue,
+  Heading,
+  Image,
+  Icon,
+} from '@chakra-ui/react';
+import { FaTwitter, FaFacebook, FaInstagram, FaLinkedin } from 'react-icons/fa';
 import appData from '../../../config.json';
-import { Text } from '@chakra-ui/react';
 
+const ListHeader = ({ children }) => {
+  return (
+    <Text fontWeight="bold" fontSize="lg" mb={2}>
+      {children}
+    </Text>
+  );
+};
 
-export default function LargeWithLogoLeft() {
-    return (
-        <>
-            <footer className="footer">
-                <div className="container">
-                    <div className="row">
-                        <div className="col-md-4">
-                            <img src={appData.logo} />
-                            <p>
-                                {appData.office_address}
-                            </p>
-                            <a href="">{appData.support_email}</a>
-                        </div>
-                        <div className="col-md-8">
-                            <div className="row">
-                                <div className="col-md-3">
-                                    <h3> Product</h3>
-                                    <ul>
-                                        <li>
-                                            <a href="">Wikis</a>
-                                        </li>
-                                        <li>
-                                            <a href="">Projects</a>
-                                        </li>
-                                        <li>
-                                            <a href="">Docs</a>
-                                        </li>
-                                        <li>
-                                            <a href="">What's New</a>
-                                        </li>
-                                    </ul>
-                                </div>
-                                <div className="col-md-3">
-                                    <h3> Get Started</h3>
-                                    <ul>
-                                        <li>
-                                            <a href="">Sign Up</a>
-                                        </li>
-                                        <li>
-                                            <a href="">What's New</a>Login
-                                        </li>
-                                    </ul>
-                                </div>
-                                <div className="col-md-3">
-                                    <h3> Solutions</h3>
-                                    <ul>
-                                        <li>
-                                            <a href="">Small business</a>
-                                        </li>
-                                        <li>
-                                            <a href="">Personal use</a>
-                                        </li>
-                                        <li>
-                                            <a href="">Remote work</a>
-                                        </li>
-                                        <li>
-                                            <a href="">Startups</a>
-                                        </li>
-                                        <li>
-                                            <a href="">Manager</a>
-                                        </li>
-                                    </ul>
-                                </div>
-                                <div className="col-md-3">
-                                    <h3> Resource</h3>
-                                    <ul>
-                                        <li>
-                                            <a href="">About us</a>
-                                        </li>
-                                        <li>
-                                            <a href="">Pricing</a>
-                                        </li>
-                                        <li>
-                                            <a href="">Email us</a>
-                                        </li>
-                                        <li>
-                                            <a href="">Security</a>
-                                        </li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="row social-foot">
-                        <div className="col">
-                            <ul>
-                                <li>
-                                    <a href={appData.twitter_link}>
-                                        <i className="fa fa-twitter" aria-hidden="true" />
-                                    </a>
-                                </li>
-                                <li>
-                                    <a href={appData.linkedin_link}>
-                                        <i className="fa fa-linkedin" aria-hidden="true" />
-                                    </a>
-                                </li>
-                                <li>
-                                    <a href={appData.instagram_link}>
-                                        <i className="fa fa-instagram" aria-hidden="true" />
-                                    </a>
-                                </li>
-                                {/* <li>
-                        <a href="">
-                            <i className="fa fa-facebook-square" aria-hidden="true" />
-                        </a>
-                    </li> */}
+const SocialButton = ({ icon, href }) => {
+  return (
+    <Link
+      href={href}
+      isExternal
+      p={2}
+      color={useColorModeValue('gray.600', 'gray.300')}
+      _hover={{ color: 'blue.500' }}
+    >
+      <Icon as={icon} w={5} h={5} />
+    </Link>
+  );
+};
 
+const Footer = () => {
+  const bgColor = useColorModeValue('gray.50', 'gray.900');
+  const textColor = useColorModeValue('gray.600', 'gray.300');
 
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </footer>
-            <div className="foot-bottom">
-                <div className="container">
-                    <div className="row">
-                        <div className="col">
-                            <h6>
-                                <i className="fa fa-copyright" aria-hidden="true" /> 2023 Copyright
-                                - {appData.project_name}.
-                            </h6>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </>
-    );
-}
+  return (
+    <Box bg={bgColor} color={textColor}>
+      <Container as={Stack} maxW="container.xl" py={10}>
+        <SimpleGrid columns={{ base: 1, sm: 2, md: 4 }} spacing={8}>
+          <Stack align="flex-start">
+            <ListHeader>Product</ListHeader>
+            <Link href="#">Features</Link>
+            <Link href="#">Pricing</Link>
+            <Link href="#">Integrations</Link>
+            <Link href="#">Updates</Link>
+          </Stack>
+
+          <Stack align="flex-start">
+            <ListHeader>Get Started</ListHeader>
+            <Link href="#">Documentation</Link>
+            <Link href="#">Tutorials</Link>
+            <Link href="#">Resources</Link>
+            <Link href="#">Community</Link>
+          </Stack>
+
+          <Stack align="flex-start">
+            <ListHeader>Solutions</ListHeader>
+            <Link href="#">For Teams</Link>
+            <Link href="#">For Enterprise</Link>
+            <Link href="#">For Education</Link>
+            <Link href="#">For Startups</Link>
+          </Stack>
+
+          <Stack align="flex-start">
+            <ListHeader>Resource</ListHeader>
+            <Link href="#">Blog</Link>
+            <Link href="#">Help Center</Link>
+            <Link href="#">Contact Us</Link>
+            <Link href="#">Status</Link>
+          </Stack>
+        </SimpleGrid>
+      </Container>
+
+      <Box py={10}>
+        <Container maxW="container.xl">
+          <Stack
+            direction={{ base: 'column', md: 'row' }}
+            spacing={4}
+            justify="space-between"
+            align={{ base: 'center', md: 'center' }}
+          >
+            <Stack direction="row" spacing={6}>
+              <Image
+                src={appData.logo}
+                alt="Logo"
+                height="40px"
+                objectFit="contain"
+              />
+              <Stack spacing={1}>
+                <Heading size="sm">{appData.office_address}</Heading>
+                <Text fontSize="sm">{appData.support_email}</Text>
+              </Stack>
+            </Stack>
+
+            <Stack direction="row" spacing={6}>
+              <SocialButton icon={FaTwitter} href="#" />
+              <SocialButton icon={FaFacebook} href="#" />
+              <SocialButton icon={FaInstagram} href="#" />
+              <SocialButton icon={FaLinkedin} href="#" />
+            </Stack>
+          </Stack>
+        </Container>
+      </Box>
+
+      <Box py={4} borderTop="1px" borderColor={useColorModeValue('gray.200', 'gray.700')}>
+        <Container maxW="container.xl">
+          <Text textAlign="center" fontSize="sm">
+            © {new Date().getFullYear()} {appData.app_name}. All rights reserved.
+          </Text>
+        </Container>
+      </Box>
+    </Box>
+  );
+};
+
+export default Footer;

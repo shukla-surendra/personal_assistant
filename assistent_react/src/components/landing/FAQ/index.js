@@ -1,62 +1,89 @@
-import Accordion from 'react-bootstrap/Accordion';
+import {
+  Box,
+  Container,
+  Heading,
+  Text,
+  VStack,
+  Accordion,
+  AccordionItem,
+  AccordionButton,
+  AccordionPanel,
+  AccordionIcon,
+  useColorModeValue,
+} from '@chakra-ui/react';
 import appData from '../../../config.json';
 
 const FAQ = () => {
+  const bgColor = useColorModeValue('white', 'gray.800');
+  const textColor = useColorModeValue('gray.600', 'gray.300');
+  const headingColor = useColorModeValue('gray.800', 'white');
+  const accordionBg = useColorModeValue('gray.50', 'gray.700');
+  const accordionHoverBg = useColorModeValue('gray.100', 'gray.600');
 
-    return (
-        <>
-            <section className="faq">
-                <div className="container">
-                    <div className="row">
-                        <div className="col-md-5">
-                            <h2>
-                                {" "}
-                                <span>FAQ's</span>Frequently <br />
-                                Asked <br /> Questions
-                            </h2>
-                            <h6>Or drop email at</h6>
-                            <div className="email">{appData.support_email}</div>
-                        </div>
-                        <div className="col-md-7 advantage-left ">
-                            
-                            <Accordion defaultActiveKey="0">
-                                <Accordion.Item eventKey="0">
-                                    <Accordion.Header > What if i had multiple members i want to add to my
-                                        workspace?</Accordion.Header>
-                                    <Accordion.Body>
-                                        No worries even if you have multiple members to add. just copy
-                                        the link from User settings and share, or you could add them
-                                        with their email id.
-                                    </Accordion.Body>
-                                </Accordion.Item>
-                                <Accordion.Item eventKey="1">
-                                    <Accordion.Header>
-                                        Can i use google account to create FOKII account?
-                                    </Accordion.Header>
-                                    <Accordion.Body>
-                                        No worries even if you have multiple members to add. just copy
-                                        the link from User settings and share, or you could add them
-                                        with their email id.
-                                    </Accordion.Body>
-                                </Accordion.Item>
-                                <Accordion.Item eventKey="2" >
-                                    <Accordion.Header>
-                                        Can i use google account to create FOKII account?
-                                    </Accordion.Header>
-                                    <Accordion.Body>
-                                        No worries even if you have multiple members to add. just copy
-                                        the link from User settings and share, or you could add them
-                                        with their email id.
-                                    </Accordion.Body>
-                                </Accordion.Item>
-                            </Accordion>
-                        </div>
-                    </div>
-                </div>
-            </section>
-        </>
-    );
+  const faqItems = [
+    {
+      question: "What if I had multiple members I want to add to my workspace?",
+      answer: "No worries even if you have multiple members to add. Just copy the link from User settings and share, or you could add them with their email id."
+    },
+    {
+      question: "Can I use Google account to create an account?",
+      answer: "Yes, you can use your Google account to sign up and log in to our platform. This provides a quick and secure way to access our services."
+    },
+    {
+      question: "How secure is my data?",
+      answer: "We take security seriously. All your data is encrypted and stored securely. We use industry-standard security practices to protect your information."
+    },
+    {
+      question: "Can I export my data?",
+      answer: "Yes, you can export your tasks, notes, and other data at any time. We provide multiple export formats for your convenience."
+    }
+  ];
 
-}
+  return (
+    <Box as="section" py={20} bg={bgColor}>
+      <Container maxW="container.xl">
+        <VStack spacing={12} align="stretch">
+          <VStack spacing={4} textAlign="center">
+            <Heading
+              as="h2"
+              size="2xl"
+              color={headingColor}
+              fontWeight="bold"
+            >
+              Frequently Asked Questions
+            </Heading>
+            <Text fontSize="lg" color={textColor}>
+              Can't find the answer you're looking for? Reach out to our{' '}
+              <Text as="a" href={`mailto:${appData.support_email}`} color="blue.500">
+                support team
+              </Text>
+            </Text>
+          </VStack>
+
+          <Accordion allowMultiple>
+            {faqItems.map((item, index) => (
+              <AccordionItem key={index} border="none" mb={4}>
+                <AccordionButton
+                  p={4}
+                  bg={accordionBg}
+                  borderRadius="lg"
+                  _hover={{ bg: accordionHoverBg }}
+                >
+                  <Box flex="1" textAlign="left" fontWeight="medium">
+                    {item.question}
+                  </Box>
+                  <AccordionIcon />
+                </AccordionButton>
+                <AccordionPanel pb={4} color={textColor}>
+                  {item.answer}
+                </AccordionPanel>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        </VStack>
+      </Container>
+    </Box>
+  );
+};
 
 export default FAQ;
