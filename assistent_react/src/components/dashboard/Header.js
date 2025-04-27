@@ -30,11 +30,16 @@ import { logout } from '../../slices/auth';
 import auth from '../../utils/auth';
 import UserSettings from './modals/UserSettings';
 import UserProfile from './modals/UserProfile';
+import UnifiedCreateButton from './UnifiedCreateButton';
+import NewTaskDrawer from './drawers/NewTaskDrawer';
+import NewNoteDrawer from './drawers/NewNoteDrawer';
 
 const Header = ({ menu_open }) => {
     const { isOpen: isProfileOpen, onOpen: onProfileOpen, onClose: onProfileClose } = useDisclosure();
     const { isOpen: isSettingsOpen, onOpen: onSettingsOpen, onClose: onSettingsClose } = useDisclosure();
     const { isOpen: isNotificationsOpen, onOpen: onNotificationsOpen, onClose: onNotificationsClose } = useDisclosure();
+    const { isOpen: isNewTaskOpen, onOpen: onNewTaskOpen, onClose: onNewTaskClose } = useDisclosure();
+    const { isOpen: isNewNoteOpen, onOpen: onNewNoteOpen, onClose: onNewNoteClose } = useDisclosure();
 
     const bg = useColorModeValue('white', 'gray.800');
     const borderColor = useColorModeValue('gray.200', 'gray.700');
@@ -103,6 +108,10 @@ const Header = ({ menu_open }) => {
                         color: useColorModeValue('brand.600', 'brand.300'),
                     }}
                 />
+                <UnifiedCreateButton 
+                    onCreateNote={onNewNoteOpen}
+                    onCreateTask={onNewTaskOpen}
+                />
                 <Popover
                     isOpen={isNotificationsOpen}
                     onClose={onNotificationsClose}
@@ -160,6 +169,8 @@ const Header = ({ menu_open }) => {
 
             <UserProfile isOpen={isProfileOpen} onClose={onProfileClose} />
             <UserSettings isOpen={isSettingsOpen} onClose={onSettingsClose} />
+            <NewTaskDrawer disclosures={{ isOpen: isNewTaskOpen, onOpen: onNewTaskOpen, onClose: onNewTaskClose }} />
+            <NewNoteDrawer disclosures={{ isOpen: isNewNoteOpen, onOpen: onNewNoteOpen, onClose: onNewNoteClose }} />
         </Flex>
     );
 };

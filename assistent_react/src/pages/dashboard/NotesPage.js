@@ -2,22 +2,48 @@ import {
   Drawer,
   DrawerContent,
   DrawerOverlay,
-  useColorModeValue
+  useColorModeValue,
+  Input,
+  InputGroup,
+  InputLeftElement,
+  Select,
+  HStack,
+  VStack,
+  Tag,
+  TagLabel,
+  TagCloseButton,
+  Wrap,
+  Icon,
+  Text,
+  useDisclosure,
+  Box,
+  Flex,
+  Grid,
+  GridItem,
+  IconButton,
+  Button,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
+  Divider
 } from '@chakra-ui/react';
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { retrieveNotes } from "../../slices/tasks";
-import { Box, Flex, Grid, GridItem, Text, useDisclosure, Tbody, Table, Thead, Th, Tr, Td } from "@chakra-ui/react";
-import { AddIcon, EditIcon, ChevronRightIcon, DeleteIcon } from '@chakra-ui/icons';
+import { AddIcon, EditIcon, ChevronRightIcon, DeleteIcon, SearchIcon, FilterIcon } from '@chakra-ui/icons';
 import Navbar from "../../components/dashboard/Navbar";
-import { IconButton } from '@chakra-ui/react';
 import { Helmet } from 'react-helmet';
 import { formatLocalDateTime } from "../../utils/locale"
 import NewNoteDrawer from "../../components/dashboard/drawers/NewNoteDrawer";
 import EditNoteDrawer from '../../components/dashboard/drawers/EditNoteDrawer'
 import DeleteTaskNoteModal from "../../components/dashboard/modals/DeleteTaskNoteModal";
 import Header from "../../components/dashboard/Header";
+import { FaTags, FaFolder, FaEye, FaTrash } from "react-icons/fa";
+import UnifiedEditButton from "../../components/dashboard/UnifiedEditButton";
+import UnifiedCreateButton from "../../components/dashboard/UnifiedCreateButton";
+import { useNavigate } from "react-router-dom";
 
 export default function DashboardResponsive() {
   const menu_open = useDisclosure();
@@ -26,6 +52,13 @@ export default function DashboardResponsive() {
   const delete_modal = useDisclosure()
   const edit_note_drawer = useDisclosure()
   const new_note_drawer = useDisclosure()
+  const navigate = useNavigate();
+
+  // Filter states
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedTags, setSelectedTags] = useState([]);
+  const [sortBy, setSortBy] = useState("newest");
 
   // Move hooks to component level
   const pageBg = useColorModeValue('gray.50', 'gray.900');
@@ -70,6 +103,56 @@ export default function DashboardResponsive() {
       initFetch();
     }
   }, [new_note_drawer.isOpen, initFetch]);
+
+  // Get all unique categories and tags
+  const { categories, tags } = useMemo(() => {
+    const uniqueCategories = new Set();
+    const uniqueTags = new Set();
+    
+    notes.forEach(note => {
+      if (note.category) uniqueCategories.add(note.category);
+      if (note.tags) note.tags.forEach(tag => uniqueTags.add(tag));
+    });
+
+    return {
+      categories: Array.from(uniqueCategories),
+      tags: Array.from(uniqueTags)
+    };
+  }, [notes]);
+
+  // Filter and sort notes
+  const filteredNotes = useMemo(() => {
+    return notes
+      .filter(note => {
+        const matchesSearch = note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            (note.description && note.description.toLowerCase().includes(searchQuery.toLowerCase()));
+        const matchesCategory = !selectedCategory || note.category === selectedCategory;
+        const matchesTags = selectedTags.length === 0 || 
+                          (note.tags && selectedTags.every(tag => note.tags.includes(tag)));
+        
+        return matchesSearch && matchesCategory && matchesTags;
+      })
+      .sort((a, b) => {
+        switch (sortBy) {
+          case 'newest':
+            return new Date(b.created_at) - new Date(a.created_at);
+          case 'oldest':
+            return new Date(a.created_at) - new Date(b.created_at);
+          case 'title':
+            return a.title.localeCompare(b.title);
+          default:
+            return 0;
+        }
+      });
+  }, [notes, searchQuery, selectedCategory, selectedTags, sortBy]);
+
+  const handleTagClick = (tag) => {
+    setSelectedTags(prev => 
+      prev.includes(tag) 
+        ? prev.filter(t => t !== tag)
+        : [...prev, tag]
+    );
+  };
 
   return (
     <>
@@ -119,14 +202,74 @@ export default function DashboardResponsive() {
                 >
                   <ChevronRightIcon /> NOTES
                 </Text>
-                <IconButton
-                  aria-label="Add Note"
-                  icon={<AddIcon />}
-                  size="sm"
-                  onClick={() => handleAddItem({})}
-                  variant="ghost"
+                <UnifiedCreateButton 
+                  onCreateNote={handleAddItem}
+                  onCreateTask={() => {
+                    navigate('/tasks');
+                  }}
                 />
               </Flex>
+
+              {/* Search and Filter Section */}
+              <VStack align="stretch" spacing={4} mb={6}>
+                <InputGroup>
+                  <InputLeftElement pointerEvents="none">
+                    <SearchIcon color="gray.300" />
+                  </InputLeftElement>
+                  <Input
+                    placeholder="Search notes..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </InputGroup>
+
+                <HStack spacing={4}>
+                  <Select
+                    placeholder="Category"
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    width="200px"
+                  >
+                    {categories.map(category => (
+                      <option key={category} value={category}>{category}</option>
+                    ))}
+                  </Select>
+
+                  <Select
+                    placeholder="Sort by"
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    width="150px"
+                  >
+                    <option value="newest">Newest first</option>
+                    <option value="oldest">Oldest first</option>
+                    <option value="title">Title</option>
+                  </Select>
+                </HStack>
+
+                {/* Tags */}
+                <Box>
+                  <HStack mb={2}>
+                    <Icon as={FaTags} color="gray.500" />
+                    <Text fontSize="sm" fontWeight="medium">Tags</Text>
+                  </HStack>
+                  <Wrap>
+                    {tags.map(tag => (
+                      <Tag
+                        key={tag}
+                        size="md"
+                        borderRadius="full"
+                        variant={selectedTags.includes(tag) ? "solid" : "outline"}
+                        colorScheme="blue"
+                        cursor="pointer"
+                        onClick={() => handleTagClick(tag)}
+                      >
+                        <TagLabel>{tag}</TagLabel>
+                      </Tag>
+                    ))}
+                  </Wrap>
+                </Box>
+              </VStack>
 
               <Grid
                 templateColumns={{
@@ -137,7 +280,7 @@ export default function DashboardResponsive() {
                 }}
                 gap={6}
               >
-                {notes.map((task, index) => (
+                {filteredNotes.map((task, index) => (
                   <Box
                     key={task.task_id || index}
                     p={4}
@@ -166,29 +309,54 @@ export default function DashboardResponsive() {
                         <Text
                           fontSize="sm"
                           color="gray.500"
-                          mb={4}
+                          mb={2}
                         >
                           {formatLocalDateTime(task.created_at)}
                         </Text>
+                        {task.category && (
+                          <HStack mb={2}>
+                            <Icon as={FaFolder} color="gray.500" />
+                            <Text fontSize="sm" color="gray.600">{task.category}</Text>
+                          </HStack>
+                        )}
+                        {task.tags && task.tags.length > 0 && (
+                          <Wrap mb={4}>
+                            {task.tags.map(tag => (
+                              <Tag
+                                key={tag}
+                                size="sm"
+                                borderRadius="full"
+                                variant="subtle"
+                                colorScheme="blue"
+                              >
+                                <TagLabel>{tag}</TagLabel>
+                              </Tag>
+                            ))}
+                          </Wrap>
+                        )}
                       </Box>
                       <Flex justify="flex-end" mt="auto">
-                        <IconButton
-                          aria-label="Edit Task"
-                          icon={<EditIcon />}
-                          size="sm"
-                          onClick={() => handleUpdateItem(task)}
-                          variant="ghost"
-                          colorScheme="blue"
-                          mr={2}
-                        />
-                        <IconButton
-                          aria-label="Delete Task"
-                          icon={<DeleteIcon />}
-                          onClick={() => handleDeleteItem(task)}
-                          size="sm"
-                          variant="ghost"
-                          colorScheme="red"
-                        />
+                        <HStack spacing={2}>
+                          <IconButton
+                            icon={<Icon as={FaEye} />}
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleUpdateItem(task)}
+                            aria-label="View Task"
+                          />
+                          <UnifiedEditButton 
+                            item={task} 
+                            type="note" 
+                            onEdit={handleUpdateItem}
+                          />
+                          <IconButton
+                            icon={<Icon as={FaTrash} />}
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleDeleteItem(task)}
+                            aria-label="Delete Task"
+                          />
+                        </HStack>
                       </Flex>
                     </Flex>
                   </Box>

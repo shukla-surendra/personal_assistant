@@ -3,17 +3,32 @@ import {
   Flex, Drawer, DrawerOverlay, DrawerContent, DrawerCloseButton,
   DrawerHeader, DrawerBody, DrawerFooter, Box, Button, FormControl,
   Input, Menu, MenuButton, MenuItem, MenuList, Icon, Text, useColorModeValue,
-  Badge, Tooltip, useToast, IconButton, VStack, HStack, Divider
+  Badge, Tooltip, useToast, IconButton, VStack, HStack, Divider, Tag,
+  TagLabel, TagCloseButton, Wrap, Select, InputGroup, InputLeftElement,
+  InputRightElement, Spinner
 } from "@chakra-ui/react";
 import { useDispatch } from "react-redux";
 import { updateTask } from "../../../slices/tasks";
 import TaskDataService from "../../../services/taskservice";
-import { FaArrowLeft, FaSave, FaEye, FaEyeSlash, FaShare, FaDownload, FaFilePdf, FaFileWord, FaFileAlt } from "react-icons/fa";
+import { FaArrowLeft, FaSave, FaEye, FaEyeSlash, FaShare, FaDownload, FaFilePdf, FaFileWord, FaFileAlt, FaTags, FaFolder } from "react-icons/fa";
 import { BiCommentDetail } from "react-icons/bi";
 import { BsGearFill } from "react-icons/bs";
+import { FiSearch, FiPlus } from "react-icons/fi";
 import FtTextEditor from "../sections/FtTextEditor";
-import { Spinner } from '@chakra-ui/react';
 import { formatLocalDateTime } from "../../../utils/locale";
+
+// Note templates
+const NOTE_TEMPLATES = [
+  { id: 'meeting', name: 'Meeting Notes', description: 'Template for meeting notes' },
+  { id: 'todo', name: 'To-Do List', description: 'Template for task lists' },
+  { id: 'project', name: 'Project Notes', description: 'Template for project documentation' },
+  { id: 'code', name: 'Code Snippet', description: 'Template for code documentation' },
+];
+
+// Available categories
+const AVAILABLE_CATEGORIES = [
+  'Work', 'Personal', 'Study', 'Project', 'Ideas', 'Code', 'Documentation'
+];
 
 export default function EditNoteDrawer(props) {
   const [isLoading, setIsLoading] = useState(false);
@@ -24,6 +39,9 @@ export default function EditNoteDrawer(props) {
   const [message, setMessage] = useState("");
   const { isOpen, onOpen, onClose } = props.disclosures;
   const toast = useToast();
+  const [newTag, setNewTag] = useState("");
+  const [newCategory, setNewCategory] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.600');
@@ -104,13 +122,131 @@ export default function EditNoteDrawer(props) {
   };
 
   const handleExport = (format) => {
-    // Implement export functionality
     toast({
       title: "Export",
       description: `Exporting to ${format}...`,
       status: "info",
       duration: 2000,
       isClosable: true,
+    });
+  };
+
+  const handleAddTag = () => {
+    if (newTag.trim() && !currentTask.tags?.includes(newTag.trim())) {
+      const updatedTags = [...(currentTask.tags || []), newTag.trim()];
+      setCurrentTask({ ...currentTask, tags: updatedTags });
+      setNewTag("");
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove) => {
+    const updatedTags = currentTask.tags?.filter(tag => tag !== tagToRemove);
+    setCurrentTask({ ...currentTask, tags: updatedTags });
+  };
+
+  const handleAddCategory = () => {
+    if (newCategory && !currentTask.category) {
+      setCurrentTask({ ...currentTask, category: newCategory });
+      setNewCategory("");
+    }
+  };
+
+  const handleApplyTemplate = (template) => {
+    let initialContent = "";
+    switch (template.id) {
+      case 'meeting':
+        initialContent = {
+          root: {
+            children: [
+              {
+                type: "heading",
+                children: [{ text: "Meeting Notes" }],
+                tag: "h1"
+              },
+              {
+                type: "paragraph",
+                children: [
+                  { text: "Date: " },
+                  { text: new Date().toLocaleDateString(), bold: true }
+                ]
+              },
+              {
+                type: "paragraph",
+                children: [{ text: "Attendees:" }]
+              },
+              {
+                type: "list",
+                children: [{ text: "Add attendee names here" }],
+                listType: "bullet"
+              },
+              {
+                type: "paragraph",
+                children: [{ text: "Agenda:" }]
+              },
+              {
+                type: "list",
+                children: [{ text: "Add agenda items here" }],
+                listType: "bullet"
+              }
+            ]
+          }
+        };
+        break;
+      case 'todo':
+        initialContent = {
+          root: {
+            children: [
+              {
+                type: "heading",
+                children: [{ text: "To-Do List" }],
+                tag: "h1"
+              },
+              {
+                type: "list",
+                children: [{ text: "Add tasks here" }],
+                listType: "check"
+              }
+            ]
+          }
+        };
+        break;
+      case 'code':
+        initialContent = {
+          root: {
+            children: [
+              {
+                type: "heading",
+                children: [{ text: "Code Documentation" }],
+                tag: "h1"
+              },
+              {
+                type: "paragraph",
+                children: [{ text: "Description:" }]
+              },
+              {
+                type: "code",
+                children: [{ text: "// Add your code here" }],
+                language: "javascript"
+              }
+            ]
+          }
+        };
+        break;
+      default:
+        initialContent = {
+          root: {
+            children: [
+              {
+                type: "paragraph",
+                children: [{ text: "Start writing..." }]
+              }
+            ]
+          }
+        };
+    }
+    setCurrentTask({
+      ...currentTask,
+      description: JSON.stringify(initialContent)
     });
   };
 
@@ -184,9 +320,97 @@ export default function EditNoteDrawer(props) {
                   Last updated: {formatLocalDateTime(currentTask?.updated_at)}
                 </Text>
               </Flex>
+
+              {/* Categories */}
+              <HStack mb={4}>
+                <Icon as={FaFolder} color="gray.500" />
+                <Select
+                  placeholder="Select category"
+                  value={currentTask?.category || ''}
+                  onChange={(e) => setNewCategory(e.target.value)}
+                  size="sm"
+                  width="200px"
+                >
+                  {AVAILABLE_CATEGORIES.map(category => (
+                    <option key={category} value={category}>{category}</option>
+                  ))}
+                </Select>
+                {newCategory && (
+                  <Button
+                    size="sm"
+                    leftIcon={<Icon as={FiPlus} />}
+                    onClick={handleAddCategory}
+                  >
+                    Add
+                  </Button>
+                )}
+              </HStack>
+
+              {/* Tags */}
+              <VStack align="start" mb={4}>
+                <HStack>
+                  <Icon as={FaTags} color="gray.500" />
+                  <Text fontSize="sm" fontWeight="medium">Tags</Text>
+                </HStack>
+                <Wrap>
+                  {currentTask?.tags?.map((tag) => (
+                    <Tag
+                      key={tag}
+                      size="md"
+                      borderRadius="full"
+                      variant="solid"
+                      colorScheme="blue"
+                    >
+                      <TagLabel>{tag}</TagLabel>
+                      <TagCloseButton onClick={() => handleRemoveTag(tag)} />
+                    </Tag>
+                  ))}
+                </Wrap>
+                <InputGroup size="sm" width="200px">
+                  <InputLeftElement pointerEvents="none">
+                    <Icon as={FiSearch} color="gray.300" />
+                  </InputLeftElement>
+                  <Input
+                    placeholder="Add tag"
+                    value={newTag}
+                    onChange={(e) => setNewTag(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
+                  />
+                  <InputRightElement>
+                    <IconButton
+                      size="xs"
+                      icon={<Icon as={FiPlus} />}
+                      onClick={handleAddTag}
+                      variant="ghost"
+                    />
+                  </InputRightElement>
+                </InputGroup>
+              </VStack>
+
+              {/* Templates */}
+              <VStack align="start" mb={4}>
+                <Text fontSize="sm" fontWeight="medium">Templates</Text>
+                <Wrap>
+                  {NOTE_TEMPLATES.map(template => (
+                    <Button
+                      key={template.id}
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleApplyTemplate(template)}
+                    >
+                      {template.name}
+                    </Button>
+                  ))}
+                </Wrap>
+              </VStack>
             </FormControl>
             <FormControl>
-              <FtTextEditor currentTask={currentTask} setCurrentTask={setCurrentTask} />
+              {currentTask && (
+                <FtTextEditor 
+                  currentTask={currentTask} 
+                  setCurrentTask={setCurrentTask} 
+                />
+              )}
             </FormControl>
           </Box>
         </DrawerBody>

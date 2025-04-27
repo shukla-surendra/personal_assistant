@@ -41,6 +41,8 @@ import Header from "../../components/dashboard/Header";
 import { useNavigate } from 'react-router-dom';
 import { FaTrash, FaEdit, FaEye } from 'react-icons/fa';
 import TaskViewModal from "../../components/dashboard/modals/TaskViewModal";
+import UnifiedEditButton from "../../components/dashboard/UnifiedEditButton";
+import UnifiedCreateButton from "../../components/dashboard/UnifiedCreateButton";
 
 export default function DashboardResponsive() {
   const menu_open = useDisclosure();
@@ -163,12 +165,10 @@ export default function DashboardResponsive() {
                 onClick={() => onView(task)}
                 aria-label="View Task"
               />
-              <IconButton
-                icon={<Icon as={FaEdit} />}
-                size="sm"
-                variant="ghost"
-                onClick={() => onUpdate(task)}
-                aria-label="Edit Task"
+              <UnifiedEditButton 
+                item={task} 
+                type="task" 
+                onEdit={onUpdate}
               />
               <IconButton
                 icon={<Icon as={FaTrash} />}
@@ -228,12 +228,12 @@ export default function DashboardResponsive() {
                             <Tab>Board View</Tab>
                             <Tab>Table View</Tab>
                             <Stack>
-                              <IconButton
-                                aria-label="Add Task"
-                                icon={<AddIcon />}
-                                size="sm"
-                                onClick={() => handleAddItem({})}
-                                variant="ghost"
+                              <UnifiedCreateButton 
+                                onCreateNote={() => {
+                                  // Navigate to notes page or handle note creation
+                                  navigate('/notes');
+                                }}
+                                onCreateTask={handleAddItem}
                               />
                             </Stack>
                           </TabList>
