@@ -3,10 +3,9 @@ from starlette import status
 from fastapi import HTTPException
 from application.commands.workspace_cmd import WorkspaceCreateCommand
 from application.dto.workspace_dto import WorkspaceDtoMapper
-from models import Workspace, workspace_users
+from application.adapters.orm.models.pg_models import Workspace, workspace_users
 from config import logger
-from sqlalchemy.orm import Session
-from database import get_db
+from application.adapters.orm.models.database import get_db
 
 
 class WorkspaceHandler:

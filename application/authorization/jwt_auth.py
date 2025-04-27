@@ -6,7 +6,7 @@ from starlette import status
 from jwt.algorithms import RSAAlgorithm
 from fastapi.security.api_key import APIKeyHeader
 from config import get_config
-from application.common.adapters.factory import AdapterFactory, AuthType
+from application.adapters.factory import AdapterFactory, AuthType
 
 COGNITO_REGION = os.getenv("COGNITO_REGION")
 USER_POOL_ID = os.getenv("USER_POOL_ID")

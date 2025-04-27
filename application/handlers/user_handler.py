@@ -5,7 +5,7 @@ from application.commands.user_cmd import UserCommand, UserUpdateCommand
 from application.dto.user_dto import UserDtoMapper
 from config import logger, get_config
 from application.commands.user_cmd import EmailVerificationRequest, LoginCommand
-from application.common.adapters.factory import AdapterFactory, StorageType, AuthType
+from application.adapters.factory import AdapterFactory, StorageType, AuthType
 
 config = get_config()
 
@@ -166,11 +166,10 @@ class UserHandler:
 
                     workspace_handler = WorkspaceHandler()
                     default_workspace = WorkspaceCreateCommand(
-                        workspace_name=f"{cmd.first_name}'s Workspace",
+                        name=f"{cmd.first_name}'s Workspace",
                         description="My default workspace",
-                        user={"user_id": user['user_id']},
-                        is_default=True
-                    )
+                        owner_id=user.get("user_id"),
+                        is_default=True)
                     workspace = workspace_handler.create_workspace(default_workspace)
                     logger.info(f"Default workspace created successfully: {workspace}")
 

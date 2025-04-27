@@ -9,7 +9,7 @@ from application.commands.user_cmd import (
     UserUpdateCommand
 )
 from application.handlers.user_handler import UserHandler
-from application.common.auth import get_auth_details
+from application.authorization.auth import get_auth_details
 
 router = APIRouter(
     prefix="/api/v1/users",

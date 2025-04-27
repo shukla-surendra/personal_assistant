@@ -3,7 +3,7 @@ from pydantic import BaseModel
 import logging
 from datetime import datetime
 import uuid
-from models import Workspace
+from application.adapters.orm.models.pg_models import Workspace
 
 logger = logging.getLogger(__name__)
 

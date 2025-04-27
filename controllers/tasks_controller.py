@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, Request, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from starlette import status
 from starlette.responses import Response
 from application.commands.task_cmd import TaskCommand, TaskDeleteCommand, TaskUpdateCommand
 from application.handlers.task_handler import TaskHandler
-from application.common.auth import get_auth_details
+from application.authorization.auth import get_auth_details
 from config import logger
 
 

@@ -8,7 +8,7 @@ from controllers.tasks_controller import router as task_routers
 from controllers.users_controller import router as user_routers
 from controllers.workspace_controller import router as workspace_routers
 from controllers.board_controller import router as board_routers
-from database import engine, Base
+from application.adapters.orm.models.database import engine, Base
 
 # Create database tables
 Base.metadata.create_all(bind=engine)

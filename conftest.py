@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from main import app
-from database import Base, get_db
+from application.adapters.orm.models.database import Base, get_db
 
 # Test database URL
 TEST_DATABASE_URL = "postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/postgres"

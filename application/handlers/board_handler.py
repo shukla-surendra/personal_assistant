@@ -3,7 +3,7 @@ from fastapi import HTTPException
 from application.commands.board_cmd import BoardCommand, BoardUpdateCommand, BoardDeleteCommand
 from application.dto.task_dto import BoardDtoMapper
 from config import logger, get_config
-from application.common.adapters.factory import AdapterFactory, StorageType, AuthType
+from application.adapters.factory import AdapterFactory, StorageType
 
 config = get_config()
 

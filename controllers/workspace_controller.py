@@ -3,7 +3,7 @@ from starlette import status
 from starlette.responses import Response
 from application.commands.workspace_cmd import WorkspaceCreateCommand, WorkspaceUpdateCommand
 from application.handlers.workspace_handlers import WorkspaceHandler
-from application.common.auth import get_auth_details
+from application.authorization.auth import get_auth_details
 from config import logger
 
 router = APIRouter(

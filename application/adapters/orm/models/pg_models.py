@@ -3,7 +3,7 @@ from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 import uuid
-from database import Base
+from application.adapters.orm.models.database import Base
 from constants import TaskStatus, TaskType, UserStatus, UserRoles, UserType
 
 class User(Base):

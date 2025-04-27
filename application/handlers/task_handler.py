@@ -2,15 +2,14 @@ from datetime import datetime
 from application.commands.task_cmd import TaskCommand, TaskDeleteCommand, TaskUpdateCommand
 from starlette import status
 from fastapi import HTTPException
-from constants import TaskType, TaskPriority, TaskStatus
-from models import Task
+from constants import TaskType, TaskStatus
+from application.adapters.orm.models.pg_models import Task
 from application.dto.task_dto import TaskDtoMapper
 from config import logger
-from sqlalchemy.orm import Session
-from database import get_db
+from application.adapters.orm.models.database import get_db
 import traceback
 import re
-import uuid
+
 
 class TaskHandler:
     def __init__(self):

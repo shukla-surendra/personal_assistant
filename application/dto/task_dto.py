@@ -2,9 +2,7 @@
 from typing import Optional, List
 from pydantic import BaseModel
 from utils.datetime_utils import datetime_to_str
-from domain.models.dynamo_models import Board
-from application.dto.base_dto import BaseDto
-from models import Task
+from application.adapters.orm.models.pg_models import Task
 from datetime import datetime
 
 
@@ -22,7 +20,7 @@ class BoardDto(BaseModel):
     updated_at: Optional[str] = None
 
 
-class TaskDto(BaseDto):
+class TaskDto(BaseModel):
     task_id: str
     workspace_id: str
     board_id: Optional[str]
