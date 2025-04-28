@@ -6,7 +6,7 @@ const getBackendUrl = () => {
     if (process.env.EXPO_PUBLIC_ENV === 'production') {
         return process.env.EXPO_PUBLIC_BACKEND_PROD_URL;
     }
-    return process.env.EXPO_PUBLIC_BACKEND_DEV_URL || 'http://192.168.1.3:8000';
+    return process.env.EXPO_PUBLIC_BACKEND_DEV_URL || 'http://192.168.29.93:8000';
 };
 
 const api = axios.create({

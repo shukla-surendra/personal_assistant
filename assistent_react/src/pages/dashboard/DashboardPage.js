@@ -95,6 +95,10 @@ export default function DashboardResponsive() {
     edit_task_drawer.onOpen();
   };
 
+  const handleTaskUpdate = (updatedTask) => {
+    dispatch(retrieveTasks());
+  };
+
   const handleUpdateNote = (note) => {
     setCurrentTask({
       task_id: note.task_id,
@@ -205,7 +209,12 @@ export default function DashboardResponsive() {
         <meta name="description" content="App Description" />
         <meta name="theme-color" content="#008f68" />
       </Helmet>
-      <EditTaskDrawer currentTask={currentTask} setCurrentTask={setCurrentTask} disclosures={edit_task_drawer} />
+      <EditTaskDrawer 
+        currentTask={currentTask} 
+        setCurrentTask={setCurrentTask} 
+        disclosures={edit_task_drawer} 
+        onTaskUpdate={handleTaskUpdate}
+      />
       <EditNoteDrawer currentTask={currentTask} setCurrentTask={setCurrentTask} disclosures={edit_note_drawer} />
 
       <Box minH="100vh" bg={bgColor}>

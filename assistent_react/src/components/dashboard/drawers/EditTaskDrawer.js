@@ -70,7 +70,7 @@ const sampleLabels = [
 const storyPoints = [1, 2, 3, 5, 8, 13, 21];
 
 export default function EditTaskDrawer(props) {
-  const { currentTask, setCurrentTask, disclosures } = props;
+  const { currentTask, setCurrentTask, disclosures, onTaskUpdate } = props;
   const { isOpen, onClose } = disclosures;
   const [loading, setLoading] = useState(false);
   const dispatch = useDispatch();
@@ -110,16 +110,31 @@ export default function EditTaskDrawer(props) {
 
   const handleInputChange = (event) => {
     const { name, value } = event.target;
-    setCurrentTask(prev => ({ ...prev, [name]: value }));
+    
+    // Special handling for priority to ensure it's always a string
+    if (name === 'priority') {
+      setCurrentTask(prev => ({ ...prev, [name]: String(value) }));
+    } else {
+      setCurrentTask(prev => ({ ...prev, [name]: value }));
+    }
   };
 
   const updateContent = () => {
     if (!currentTask?.task_id) return;
 
-    dispatch(updateTask({ task_id: currentTask.task_id, data: currentTask }))
+    // Validate and ensure priority is a valid string
+    const taskData = {
+      ...currentTask,
+      priority: String(currentTask.priority || 'Low') // Default to 'Low' if not set
+    };
+
+    dispatch(updateTask({ task_id: currentTask.task_id, data: taskData }))
       .unwrap()
       .then(() => {
         onClose();
+        if (onTaskUpdate) {
+          onTaskUpdate(taskData);
+        }
         toast({
           title: "Success",
           description: "Task updated successfully",
@@ -203,7 +218,7 @@ export default function EditTaskDrawer(props) {
                 <FormLabel color={labelColor} fontSize="sm" fontWeight="medium">Priority</FormLabel>
                 <Select
                   name="priority"
-                  value={currentTask?.priority || ''}
+                  value={String(currentTask?.priority || '')}
                   onChange={handleInputChange}
                   bg={inputBg}
                 >
