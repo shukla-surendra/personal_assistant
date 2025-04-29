@@ -2,40 +2,65 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Workspace {
     workspace_id: string;
-    [key: string]: any;
+    name: string;
+    description?: string;
 }
 
 class ConfigService {
-    async setDefaultWorkspace(default_workspace: Workspace) {
-        try {
-            await AsyncStorage.setItem('workspace', JSON.stringify(default_workspace));
-            return true;
-        } catch (error) {
-            console.error('Error setting default workspace:', error);
-            return false;
+    private static instance: ConfigService;
+    private token: string | null = null;
+    private defaultWorkspace: Workspace | null = null;
+
+    private constructor() {}
+
+    static getInstance(): ConfigService {
+        if (!ConfigService.instance) {
+            ConfigService.instance = new ConfigService();
+        }
+        return ConfigService.instance;
+    }
+
+    async setToken(token: string | null): Promise<void> {
+        this.token = token;
+        if (token) {
+            await AsyncStorage.setItem('token', token);
+        } else {
+            await AsyncStorage.removeItem('token');
         }
     }
 
-    async removeDefaultWorkspace() {
-        try {
-            await AsyncStorage.removeItem('workspace');
-            return true;
-        } catch (error) {
-            console.error('Error removing default workspace:', error);
-            return false;
+    async getToken(): Promise<string | null> {
+        if (!this.token) {
+            this.token = await AsyncStorage.getItem('token');
+        }
+        return this.token;
+    }
+
+    async setDefaultWorkspace(workspace: Workspace | null): Promise<void> {
+        this.defaultWorkspace = workspace;
+        if (workspace) {
+            await AsyncStorage.setItem('defaultWorkspace', JSON.stringify(workspace));
+        } else {
+            await AsyncStorage.removeItem('defaultWorkspace');
         }
     }
 
-    async getDefaultWorkspace(): Promise<Workspace> {
-        const default_workspace = { workspace_id: "default_id" };
-        try {
-            const workspaceJSON = await AsyncStorage.getItem('workspace');
-            return workspaceJSON ? JSON.parse(workspaceJSON) : default_workspace;
-        } catch (error) {
-            console.error('Error getting default workspace:', error);
-            return default_workspace;
+    async getDefaultWorkspace(): Promise<Workspace | null> {
+        if (!this.defaultWorkspace) {
+            const workspace = await AsyncStorage.getItem('defaultWorkspace');
+            if (workspace) {
+                this.defaultWorkspace = JSON.parse(workspace);
+            }
         }
+        return this.defaultWorkspace;
+    }
+
+    async clear(): Promise<void> {
+        this.token = null;
+        this.defaultWorkspace = null;
+        await AsyncStorage.clear();
     }
 }
 
-export default new ConfigService(); 
+const Config = ConfigService.getInstance();
+export default Config; 

@@ -1,46 +1,33 @@
 import React, { useState } from 'react';
 import {
     View,
-    TextInput,
-    TouchableOpacity,
     Text,
     StyleSheet,
+    TextInput,
+    TouchableOpacity,
     Alert,
+    ActivityIndicator,
     KeyboardAvoidingView,
     Platform,
-    ActivityIndicator,
+    ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import Auth from '../../src/utils/auth';
-import api from '../../src/services/api';
+import { Ionicons } from '@expo/vector-icons';
+import userService from '../../src/services/userService';
+import { useThemeColor } from '../../hooks/useThemeColor';
 import Config from '../../src/utils/config';
-import { AxiosError } from 'axios';
-
-interface LoginResponse {
-    access_token: string;
-    token_type: string;
-    user: {
-        user_id: string;
-        email: string;
-        first_name: string;
-        last_name: string;
-        role: string;
-        default_workspace: {
-            workspace_id: string;
-            name: string;
-        };
-    };
-}
-
-interface ErrorResponse {
-    detail?: string;
-}
+import Auth from '../../src/utils/auth';
 
 export default function LoginScreen() {
     const router = useRouter();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
+
+    const backgroundColor = useThemeColor({ light: '#fff', dark: '#000' }, 'background');
+    const textColor = useThemeColor({ light: '#000', dark: '#fff' }, 'text');
+    const borderColor = useThemeColor({ light: '#f0f0f0', dark: '#38383A' }, 'border');
 
     const handleLogin = async () => {
         if (!email || !password) {
@@ -50,30 +37,14 @@ export default function LoginScreen() {
 
         setLoading(true);
         try {
-            const response = await api.post<LoginResponse>('/api/v1/users/login', {
-                email,
-                password,
-            });
-
-            if (response.data?.access_token) {
-                // Save the access token
-                await Auth.login(response.data.access_token);
-                
-                // Save the workspace info
-                if (response.data.user?.default_workspace) {
-                    await Config.setDefaultWorkspace(response.data.user.default_workspace);
-                }
-                
-                router.replace('/(tabs)');
-            } else {
-                Alert.alert('Error', 'Invalid response from server');
-            }
-        } catch (error) {
+            const response = await userService.login({ email, password });
+            await Auth.login(response);
+            router.replace('/(tabs)');
+        } catch (error: any) {
             console.error('Login error:', error);
-            const axiosError = error as AxiosError<ErrorResponse>;
             Alert.alert(
                 'Login Failed',
-                axiosError.response?.data?.detail || 'An error occurred during login'
+                error.response?.data?.detail || 'Invalid email or password'
             );
         } finally {
             setLoading(false);
@@ -83,45 +54,83 @@ export default function LoginScreen() {
     return (
         <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={styles.container}
+            style={[styles.container, { backgroundColor }]}
         >
-            <View style={styles.logoContainer}>
-                <Text style={styles.logoText}>Right Hand</Text>
-                <Text style={styles.subtitle}>Your Personal Assistant</Text>
-            </View>
+            <ScrollView contentContainerStyle={styles.scrollContent}>
+                <View style={styles.logoContainer}>
+                    <Text style={[styles.logoText, { color: textColor }]}>Assistant.AI</Text>
+                    <Text style={[styles.subtitle, { color: textColor }]}>Your Personal Assistant</Text>
+                </View>
 
-            <View style={styles.formContainer}>
-                <TextInput
-                    style={styles.input}
-                    placeholder="Email"
-                    value={email}
-                    onChangeText={setEmail}
-                    autoCapitalize="none"
-                    keyboardType="email-address"
-                    placeholderTextColor="#999"
-                    editable={!loading}
-                />
-                <TextInput
-                    style={styles.input}
-                    placeholder="Password"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry
-                    placeholderTextColor="#999"
-                    editable={!loading}
-                />
-                <TouchableOpacity
-                    style={[styles.button, loading && styles.buttonDisabled]}
-                    onPress={handleLogin}
-                    disabled={loading}
-                >
-                    {loading ? (
-                        <ActivityIndicator color="#fff" />
-                    ) : (
-                        <Text style={styles.buttonText}>Login</Text>
-                    )}
-                </TouchableOpacity>
-            </View>
+                <View style={styles.formContainer}>
+                    <View style={[styles.inputContainer, { borderColor }]}>
+                        <Ionicons name="mail-outline" size={20} color="#666" style={styles.inputIcon} />
+                        <TextInput
+                            style={[styles.input, { color: textColor }]}
+                            placeholder="Email"
+                            placeholderTextColor="#999"
+                            value={email}
+                            onChangeText={setEmail}
+                            autoCapitalize="none"
+                            keyboardType="email-address"
+                            editable={!loading}
+                        />
+                    </View>
+
+                    <View style={[styles.inputContainer, { borderColor }]}>
+                        <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
+                        <TextInput
+                            style={[styles.input, { color: textColor }]}
+                            placeholder="Password"
+                            placeholderTextColor="#999"
+                            value={password}
+                            onChangeText={setPassword}
+                            secureTextEntry={!showPassword}
+                            editable={!loading}
+                        />
+                        <TouchableOpacity
+                            style={styles.eyeIcon}
+                            onPress={() => setShowPassword(!showPassword)}
+                        >
+                            <Ionicons
+                                name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                                size={20}
+                                color="#666"
+                            />
+                        </TouchableOpacity>
+                    </View>
+
+                    <TouchableOpacity
+                        style={[styles.forgotPassword, { borderColor }]}
+                        onPress={() => router.push('/(auth)/forgot-password')}
+                    >
+                        <Text style={[styles.forgotPasswordText, { color: textColor }]}>
+                            Forgot Password?
+                        </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.button, loading && styles.buttonDisabled]}
+                        onPress={handleLogin}
+                        disabled={loading}
+                    >
+                        {loading ? (
+                            <ActivityIndicator color="#fff" />
+                        ) : (
+                            <Text style={styles.buttonText}>Sign In</Text>
+                        )}
+                    </TouchableOpacity>
+
+                    <View style={styles.signUpContainer}>
+                        <Text style={[styles.signUpText, { color: textColor }]}>
+                            Don't have an account?{' '}
+                        </Text>
+                        <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
+                            <Text style={styles.signUpLink}>Sign Up</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </ScrollView>
         </KeyboardAvoidingView>
     );
 }
@@ -129,7 +138,9 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#fff',
+    },
+    scrollContent: {
+        flexGrow: 1,
         padding: 20,
     },
     logoContainer: {
@@ -140,26 +151,41 @@ const styles = StyleSheet.create({
     logoText: {
         fontSize: 32,
         fontWeight: 'bold',
-        color: '#007AFF',
         marginBottom: 10,
     },
     subtitle: {
         fontSize: 16,
-        color: '#666',
     },
     formContainer: {
         flex: 1,
         justifyContent: 'center',
     },
-    input: {
-        height: 50,
+    inputContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
         borderWidth: 1,
-        borderColor: '#ddd',
         borderRadius: 8,
         marginBottom: 15,
+        backgroundColor: '#f8f8f8',
+    },
+    inputIcon: {
+        marginLeft: 15,
+    },
+    input: {
+        flex: 1,
+        height: 50,
         paddingHorizontal: 15,
         fontSize: 16,
-        backgroundColor: '#f8f8f8',
+    },
+    eyeIcon: {
+        padding: 15,
+    },
+    forgotPassword: {
+        alignSelf: 'flex-end',
+        marginBottom: 20,
+    },
+    forgotPasswordText: {
+        fontSize: 14,
     },
     button: {
         backgroundColor: '#007AFF',
@@ -167,7 +193,7 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         justifyContent: 'center',
         alignItems: 'center',
-        marginTop: 10,
+        marginBottom: 20,
     },
     buttonDisabled: {
         backgroundColor: '#81b0ff',
@@ -175,6 +201,19 @@ const styles = StyleSheet.create({
     buttonText: {
         color: '#fff',
         fontSize: 16,
+        fontWeight: '600',
+    },
+    signUpContainer: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    signUpText: {
+        fontSize: 14,
+    },
+    signUpLink: {
+        fontSize: 14,
+        color: '#007AFF',
         fontWeight: '600',
     },
 }); 

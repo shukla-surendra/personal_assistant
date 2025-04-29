@@ -1,7 +1,28 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useEffect } from 'react';
+import { useRouter } from 'expo-router';
+import Auth from '../../src/utils/auth';
 
 export default function TabLayout() {
+    const router = useRouter();
+
+    useEffect(() => {
+        checkAuth();
+    }, []);
+
+    const checkAuth = async () => {
+        try {
+            const isLoggedIn = await Auth.loggedIn();
+            if (!isLoggedIn) {
+                router.replace('/(auth)/login');
+            }
+        } catch (error) {
+            console.error('Auth check failed:', error);
+            router.replace('/(auth)/login');
+        }
+    };
+
     return (
         <Tabs
             screenOptions={{
@@ -20,15 +41,6 @@ export default function TabLayout() {
                     title: 'Home',
                     tabBarIcon: ({ color, size }) => (
                         <Ionicons name="home" size={size} color={color} />
-                    ),
-                }}
-            />
-            <Tabs.Screen
-                name="chat"
-                options={{
-                    title: 'Chat',
-                    tabBarIcon: ({ color, size }) => (
-                        <Ionicons name="chatbubbles" size={size} color={color} />
                     ),
                 }}
             />
@@ -56,6 +68,15 @@ export default function TabLayout() {
                     title: 'Notes',
                     tabBarIcon: ({ color, size }) => (
                         <Ionicons name="document-text" size={size} color={color} />
+                    ),
+                }}
+            />
+            <Tabs.Screen
+                name="account"
+                options={{
+                    title: 'Account',
+                    tabBarIcon: ({ color, size }) => (
+                        <Ionicons name="person" size={size} color={color} />
                     ),
                 }}
             />

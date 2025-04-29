@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "right-hand-mobile",
-    "slug": "right-hand-mobile",
+    "name": "assistant.ai-mobile",
+    "slug": "assistant.ai-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",

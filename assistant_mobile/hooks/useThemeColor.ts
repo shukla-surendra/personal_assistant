@@ -22,15 +22,14 @@ const darkColors = {
 };
 
 export function useThemeColor(
-  props: { light?: string; dark?: string },
-  colorName: keyof typeof lightColors | keyof typeof darkColors
-) {
-  const theme = useColorScheme() ?? 'light';
-  const colorFromProps = props[theme];
+    props: { light: string; dark: string },
+    colorName: 'background' | 'text' | 'border'
+): string {
+    const theme = useColorScheme();
+    const colorFromProps = props[theme ?? 'light'];
 
-  if (colorFromProps) {
-    return colorFromProps;
-  }
-
-  return theme === 'light' ? lightColors[colorName] : darkColors[colorName];
+    if (theme === 'dark') {
+        return props.dark;
+    }
+    return props.light;
 }

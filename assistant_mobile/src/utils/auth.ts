@@ -1,9 +1,23 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { jwtDecode } from 'jwt-decode';
+import Config from './config';
+
+interface User {
+    id: string;
+    email: string;
+    first_name: string;
+    last_name: string;
+    role: string;
+    default_workspace?: {
+        workspace_id: string;
+        name: string;
+    };
+}
 
 interface LoginResponse {
-    token: string;
-    user: any;
+    access_token: string;
+    token_type: string;
+    user: User;
 }
 
 interface JwtPayload {
@@ -26,46 +40,42 @@ class AuthService {
 
     async loggedIn(): Promise<boolean> {
         try {
-            const token = await this.getToken();
-            return !!token;
+            const token = await Config.getToken();
+            if (!token) return false;
+            
+            const decoded = jwtDecode<JwtPayload>(token);
+            return decoded.exp > Date.now() / 1000;
         } catch (error) {
             console.error('Error checking auth status:', error);
             return false;
         }
     }
 
-    isTokenExpired(token: string) {
+    async login(response: LoginResponse): Promise<void> {
         try {
-            const decoded = jwtDecode<JwtPayload>(token);
-            return decoded.exp < Date.now() / 1000;
+            // Store the access token
+            await Config.setToken(response.access_token);
+            
+            // Store user info
+            await AsyncStorage.setItem('user_info', JSON.stringify(response.user));
+            
+            // Store default workspace if exists
+            if (response.user.default_workspace) {
+                await Config.setDefaultWorkspace(response.user.default_workspace);
+            }
         } catch (error) {
-            return true;
-        }
-    }
-
-    async getToken(): Promise<string | null> {
-        try {
-            return await AsyncStorage.getItem(AUTH_TOKEN_KEY);
-        } catch (error) {
-            console.error('Error getting auth token:', error);
-            return null;
-        }
-    }
-
-    async login(token: string): Promise<void> {
-        try {
-            await AsyncStorage.setItem(AUTH_TOKEN_KEY, token);
-        } catch (error) {
-            console.error('Error saving auth token:', error);
+            console.error('Error saving auth data:', error);
             throw error;
         }
     }
 
     async logout(): Promise<void> {
         try {
-            await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
+            await Config.setToken(null);
+            await Config.setDefaultWorkspace(null);
+            await AsyncStorage.removeItem('user_info');
         } catch (error) {
-            console.error('Error removing auth token:', error);
+            console.error('Error removing auth data:', error);
             throw error;
         }
     }
