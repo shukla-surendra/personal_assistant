@@ -53,7 +53,7 @@ const About = () => {
                 bgClip="text"
                 fontWeight="extrabold"
               >
-                About Assistant AI
+                About Assistant.AI
               </Heading>
               <Text fontSize="xl" color={textColor} maxW="3xl">
                 Empowering individuals and teams with intelligent productivity solutions
@@ -65,7 +65,7 @@ const About = () => {
               <VStack spacing={6} align="start">
                 <Heading size="lg" color={headingColor}>Our Mission</Heading>
                 <Text fontSize="lg" color={textColor}>
-                  At Assistant AI, we're dedicated to revolutionizing productivity through artificial intelligence. 
+                  At Assistant.AI, we're dedicated to revolutionizing productivity through artificial intelligence. 
                   Our mission is to empower individuals and teams to achieve more by providing intelligent, 
                   intuitive, and efficient tools that adapt to your workflow.
                 </Text>

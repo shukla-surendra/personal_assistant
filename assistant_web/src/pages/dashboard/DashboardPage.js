@@ -205,7 +205,7 @@ export default function DashboardResponsive() {
   return (
     <>
       <Helmet>
-        <title>Assistant AI Dashboard</title>
+        <title>Assistant.AI Dashboard</title>
         <meta name="description" content="App Description" />
         <meta name="theme-color" content="#008f68" />
       </Helmet>
