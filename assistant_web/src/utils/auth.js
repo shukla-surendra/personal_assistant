@@ -59,6 +59,7 @@ class AuthService {
 			name: loginResponse.user.default_workspace.name
 		};
 		ConfigService.setDefaultWorkspace(default_workspace);
+		ConfigService.setUserId(loginResponse.user.user_id);
 		
 		window.location.assign('/');
 	}
