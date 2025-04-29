@@ -16,6 +16,7 @@ import { BsGearFill } from "react-icons/bs";
 import { FiSearch, FiPlus } from "react-icons/fi";
 import FtTextEditor from "../sections/FtTextEditor";
 import { formatLocalDateTime } from "../../../utils/locale";
+import ConfigService from "../../../utils/config";
 
 // Note templates
 const NOTE_TEMPLATES = [
@@ -84,7 +85,20 @@ export default function EditNoteDrawer(props) {
   const updateContent = () => {
     setIsLoading(true);
     setMessage("Saving ...");
-    dispatch(updateTask({ task_id: currentTask.task_id, data: currentTask }))
+    
+    // Get workspace ID and user ID from config
+    const workspace_id = ConfigService.getDefaultWorkspace().workspace_id;
+    const user_id = ConfigService.getUserId();
+    
+    // Include workspace_id, user_id and default priority in the payload
+    const payload = {
+      ...currentTask,
+      workspace_id: workspace_id,
+      user_id: user_id,
+      priority: "Medium" // Default priority for notes
+    };
+
+    dispatch(updateTask({ task_id: currentTask.task_id, data: payload }))
       .unwrap()
       .then(response => {
         setMessage("Saved !");

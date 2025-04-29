@@ -23,6 +23,18 @@ class ConfigService {
         }
     }
 
+    // New methods for user_id
+    setUserId(user_id) {
+        localStorage.setItem('user_id', user_id);
+    }
+
+    getUserId() {
+        return localStorage.getItem('user_id') || null;
+    }
+
+    removeUserId() {
+        localStorage.removeItem('user_id');
+    }
 }
 
 const config = new ConfigService();
