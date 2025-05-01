@@ -5,15 +5,16 @@ import {
   Input, Menu, MenuButton, MenuItem, MenuList, Icon, Text, useColorModeValue,
   Badge, Tooltip, useToast, IconButton, VStack, HStack, Divider, Tag,
   TagLabel, TagCloseButton, Wrap, Select, InputGroup, InputLeftElement,
-  InputRightElement, Spinner
+  InputRightElement, Spinner, Portal, Popover, PopoverTrigger, PopoverContent,
+  PopoverBody, PopoverArrow, MenuDivider
 } from "@chakra-ui/react";
 import { useDispatch } from "react-redux";
 import { updateTask } from "../../../slices/tasks";
 import TaskDataService from "../../../services/taskservice";
-import { FaArrowLeft, FaSave, FaEye, FaEyeSlash, FaShare, FaDownload, FaFilePdf, FaFileWord, FaFileAlt, FaTags, FaFolder } from "react-icons/fa";
+import { FaArrowLeft, FaSave, FaEye, FaEyeSlash, FaShare, FaDownload, FaFilePdf, FaFileWord, FaFileAlt, FaTags, FaFolder, FaEllipsisH } from "react-icons/fa";
 import { BiCommentDetail } from "react-icons/bi";
-import { BsGearFill } from "react-icons/bs";
-import { FiSearch, FiPlus } from "react-icons/fi";
+import { BsGearFill, BsThreeDots } from "react-icons/bs";
+import { FiSearch, FiPlus, FiMoreHorizontal } from "react-icons/fi";
 import FtTextEditor from "../sections/FtTextEditor";
 import { formatLocalDateTime } from "../../../utils/locale";
 import ConfigService from "../../../utils/config";
@@ -46,6 +47,11 @@ export default function EditNoteDrawer(props) {
 
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.600');
+  const inputBg = useColorModeValue('gray.50', 'gray.700');
+  const textColor = useColorModeValue('gray.800', 'white');
+  const mutedColor = useColorModeValue('gray.600', 'gray.400');
+  const hoverBg = useColorModeValue('gray.100', 'gray.700');
+  const activeBg = useColorModeValue('blue.50', 'blue.900');
 
   const getTask = task_id => {
     setIsLoading(true);
@@ -265,17 +271,49 @@ export default function EditNoteDrawer(props) {
   };
 
   return (
-    <Drawer onClose={onClose} isOpen={isOpen} size={size}>
-      <DrawerOverlay />
-      <DrawerContent>
-        <DrawerCloseButton />
-        <DrawerHeader borderBottomWidth="1px" pb={2}>
-          <Flex justifyContent="space-between" alignItems="center" pr={10}>
-            <Button onClick={onClose} leftIcon={<Icon as={FaArrowLeft} />} variant="ghost" size="sm">
-              Back
-            </Button>
-            <Flex gap={2} alignItems="center">
-              <Tooltip label="Comments">
+    <Drawer 
+      onClose={onClose} 
+      isOpen={isOpen} 
+      size={size}
+      placement="right"
+    >
+      <DrawerOverlay backdropFilter="blur(4px)" />
+      <DrawerContent 
+        bg={bgColor} 
+        borderLeft="1px" 
+        borderColor={borderColor}
+        boxShadow="xl"
+      >
+        <DrawerCloseButton top={4} right={4} />
+        
+        {/* Header */}
+        <DrawerHeader 
+          borderBottomWidth="1px" 
+          borderColor={borderColor}
+          py={4}
+          px={6}
+        >
+          <Flex justify="space-between" align="center">
+            <HStack spacing={4}>
+              <IconButton
+                icon={<Icon as={FaArrowLeft} />}
+                variant="ghost"
+                size="sm"
+                onClick={onClose}
+                aria-label="Back"
+              />
+              <Badge 
+                colorScheme={currentTask?.published ? "green" : "gray"}
+                px={2}
+                py={1}
+                borderRadius="full"
+                fontSize="xs"
+              >
+                {currentTask?.published ? "Published" : "Draft"}
+              </Badge>
+            </HStack>
+            <HStack spacing={2}>
+              <Tooltip label="Comments" hasArrow>
                 <IconButton
                   icon={<Icon as={BiCommentDetail} />}
                   variant="ghost"
@@ -284,178 +322,215 @@ export default function EditNoteDrawer(props) {
                 />
               </Tooltip>
               <Menu>
-                <MenuButton as={IconButton} icon={<Icon as={BsGearFill} />} variant="ghost" size="sm" />
-                <MenuList>
+                <MenuButton
+                  as={IconButton}
+                  icon={<Icon as={FiMoreHorizontal} />}
+                  variant="ghost"
+                  size="sm"
+                  aria-label="More options"
+                />
+                <MenuList shadow="lg" py={2}>
                   <MenuItem 
-                    icon={<Icon as={currentTask?.published ? FaEyeSlash : FaEye} />} 
+                    icon={<Icon as={currentTask?.published ? FaEyeSlash : FaEye} />}
                     onClick={handlePublishToggle}
+                    py={2}
                   >
                     {currentTask?.published ? "Unpublish" : "Publish"}
                   </MenuItem>
-                  <MenuItem icon={<Icon as={FaShare} />}>Share</MenuItem>
-                  <Menu>
-                    <MenuButton as={MenuItem} icon={<Icon as={FaDownload} />}>
-                      Export
-                    </MenuButton>
-                    <MenuList>
-                      <MenuItem icon={<Icon as={FaFilePdf} />} onClick={() => handleExport('PDF')}>PDF</MenuItem>
-                      <MenuItem icon={<Icon as={FaFileWord} />} onClick={() => handleExport('Word')}>Word</MenuItem>
-                      <MenuItem icon={<Icon as={FaFileAlt} />} onClick={() => handleExport('Markdown')}>Markdown</MenuItem>
-                    </MenuList>
-                  </Menu>
+                  <MenuItem icon={<Icon as={FaShare} />} py={2}>
+                    Share
+                  </MenuItem>
+                  <MenuDivider />
+                  <MenuItem icon={<Icon as={FaFilePdf} />} onClick={() => handleExport('PDF')} py={2}>
+                    Export as PDF
+                  </MenuItem>
+                  <MenuItem icon={<Icon as={FaFileWord} />} onClick={() => handleExport('Word')} py={2}>
+                    Export as Word
+                  </MenuItem>
+                  <MenuItem icon={<Icon as={FaFileAlt} />} onClick={() => handleExport('Markdown')} py={2}>
+                    Export as Markdown
+                  </MenuItem>
                 </MenuList>
               </Menu>
-            </Flex>
+            </HStack>
           </Flex>
         </DrawerHeader>
 
-        <DrawerBody>
-          <Box>
-            <FormControl mb={4}>
+        {/* Body */}
+        <DrawerBody px={6} py={4}>
+          <VStack spacing={6} align="stretch">
+            {/* Title Input */}
+            <FormControl>
               <Input
                 ref={initialRef}
-                placeholder="Title"
+                placeholder="Untitled"
                 id="title"
                 required
                 value={currentTask?.title || ''}
                 onChange={handleInputChange}
                 name="title"
                 size="lg"
+                fontSize="2xl"
                 fontWeight="bold"
-                borderColor="gray.300"
-                bg="gray.50"
+                variant="unstyled"
+                px={0}
+                _placeholder={{ color: mutedColor }}
                 mb={2}
               />
-              <Flex align="center" gap={2} mb={4}>
-                <Badge colorScheme={currentTask?.published ? "green" : "gray"}>
-                  {currentTask?.published ? "Published" : "Draft"}
-                </Badge>
-                <Text fontSize="sm" color="gray.500">
-                  Last updated: {formatLocalDateTime(currentTask?.updated_at)}
-                </Text>
-              </Flex>
+              <Text fontSize="sm" color={mutedColor}>
+                Last updated: {formatLocalDateTime(currentTask?.updated_at)}
+              </Text>
+            </FormControl>
 
-              {/* Categories */}
-              <HStack mb={4}>
-                <Icon as={FaFolder} color="gray.500" />
-                <Select
-                  placeholder="Select category"
-                  value={currentTask?.category || ''}
-                  onChange={(e) => setNewCategory(e.target.value)}
-                  size="sm"
-                  width="200px"
-                >
-                  {AVAILABLE_CATEGORIES.map(category => (
-                    <option key={category} value={category}>{category}</option>
-                  ))}
-                </Select>
-                {newCategory && (
-                  <Button
-                    size="sm"
-                    leftIcon={<Icon as={FiPlus} />}
-                    onClick={handleAddCategory}
-                  >
-                    Add
-                  </Button>
-                )}
+            <Divider />
+
+            {/* Metadata Section */}
+            <VStack spacing={4} align="stretch">
+              {/* Category */}
+              <HStack spacing={3}>
+                <Icon as={FaFolder} color={mutedColor} />
+                <Popover placement="bottom-start">
+                  <PopoverTrigger>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      rightIcon={<Icon as={FiPlus} />}
+                      color={mutedColor}
+                      _hover={{ bg: hoverBg }}
+                    >
+                      {currentTask?.category || "Add category"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent width="200px" shadow="lg">
+                    <PopoverArrow />
+                    <PopoverBody p={2}>
+                      <VStack align="stretch" spacing={1}>
+                        {AVAILABLE_CATEGORIES.map(category => (
+                          <Button
+                            key={category}
+                            size="sm"
+                            variant="ghost"
+                            justifyContent="flex-start"
+                            onClick={() => {
+                              setNewCategory(category);
+                              handleAddCategory();
+                            }}
+                            _hover={{ bg: hoverBg }}
+                          >
+                            {category}
+                          </Button>
+                        ))}
+                      </VStack>
+                    </PopoverBody>
+                  </PopoverContent>
+                </Popover>
               </HStack>
 
               {/* Tags */}
-              <VStack align="start" mb={4}>
-                <HStack>
-                  <Icon as={FaTags} color="gray.500" />
-                  <Text fontSize="sm" fontWeight="medium">Tags</Text>
-                </HStack>
-                <Wrap>
-                  {currentTask?.tags?.map((tag) => (
-                    <Tag
-                      key={tag}
-                      size="md"
-                      borderRadius="full"
-                      variant="solid"
-                      colorScheme="blue"
-                    >
-                      <TagLabel>{tag}</TagLabel>
-                      <TagCloseButton onClick={() => handleRemoveTag(tag)} />
-                    </Tag>
-                  ))}
-                </Wrap>
-                <InputGroup size="sm" width="200px">
-                  <InputLeftElement pointerEvents="none">
-                    <Icon as={FiSearch} color="gray.300" />
-                  </InputLeftElement>
-                  <Input
-                    placeholder="Add tag"
-                    value={newTag}
-                    onChange={(e) => setNewTag(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
-                  />
-                  <InputRightElement>
-                    <IconButton
-                      size="xs"
-                      icon={<Icon as={FiPlus} />}
-                      onClick={handleAddTag}
-                      variant="ghost"
-                    />
-                  </InputRightElement>
-                </InputGroup>
-              </VStack>
+              <HStack spacing={3} align="flex-start">
+                <Icon as={FaTags} color={mutedColor} mt={2} />
+                <VStack align="stretch" spacing={2} flex={1}>
+                  <Wrap spacing={2}>
+                    {currentTask?.tags?.map((tag) => (
+                      <Tag
+                        key={tag}
+                        size="md"
+                        borderRadius="full"
+                        variant="subtle"
+                        colorScheme="blue"
+                      >
+                        <TagLabel>{tag}</TagLabel>
+                        <TagCloseButton onClick={() => handleRemoveTag(tag)} />
+                      </Tag>
+                    ))}
+                    <InputGroup size="sm" width="150px" display="inline-flex">
+                      <Input
+                        placeholder="Add tag"
+                        value={newTag}
+                        onChange={(e) => setNewTag(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
+                        borderRadius="full"
+                        pl={8}
+                      />
+                      <InputLeftElement pointerEvents="none">
+                        <Icon as={FiSearch} color={mutedColor} />
+                      </InputLeftElement>
+                    </InputGroup>
+                  </Wrap>
+                </VStack>
+              </HStack>
+            </VStack>
 
-              {/* Templates */}
-              <VStack align="start" mb={4}>
-                <Text fontSize="sm" fontWeight="medium">Templates</Text>
-                <Wrap>
-                  {NOTE_TEMPLATES.map(template => (
-                    <Button
-                      key={template.id}
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleApplyTemplate(template)}
-                    >
-                      {template.name}
-                    </Button>
-                  ))}
-                </Wrap>
-              </VStack>
-            </FormControl>
-            <FormControl>
-              {currentTask && (
-                <FtTextEditor 
-                  currentTask={currentTask} 
-                  setCurrentTask={setCurrentTask} 
-                />
-              )}
-            </FormControl>
-          </Box>
+            <Divider />
+
+            {/* Templates */}
+            <VStack align="stretch" spacing={3}>
+              <Text fontSize="sm" fontWeight="medium" color={textColor}>
+                Templates
+              </Text>
+              <Wrap spacing={2}>
+                {NOTE_TEMPLATES.map(template => (
+                  <Button
+                    key={template.id}
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleApplyTemplate(template)}
+                    _hover={{ bg: hoverBg }}
+                  >
+                    {template.name}
+                  </Button>
+                ))}
+              </Wrap>
+            </VStack>
+
+            <Divider />
+
+            {/* Editor */}
+            <Box flex={1}>
+              <FtTextEditor
+                currentTask={currentTask}
+                setCurrentTask={setCurrentTask}
+              />
+            </Box>
+          </VStack>
         </DrawerBody>
 
-        <DrawerFooter borderTopWidth="1px" pt={2}>
+        {/* Footer */}
+        <DrawerFooter 
+          borderTopWidth="1px" 
+          borderColor={borderColor}
+          py={4}
+          px={6}
+        >
           <Flex w="100%" justify="space-between" align="center">
-            <Box color={isLoading ? "blue.500" : "gray.600"} fontSize="sm">
-              {isLoading && (
-                <>
-                  <Spinner size="sm" mr={2} />
-                  {message}
-                </>
+            <Box color={isLoading ? "blue.500" : mutedColor}>
+              {isLoading ? (
+                <HStack>
+                  <Spinner size="sm" />
+                  <Text fontSize="sm">{message}</Text>
+                </HStack>
+              ) : (
+                <Text fontSize="sm">{message}</Text>
               )}
-              {!isLoading && message}
             </Box>
-            <Flex gap={2}>
+            <HStack spacing={3}>
               <Button
-                onClick={onClose}
                 variant="ghost"
+                onClick={onClose}
+                size="md"
               >
-                Cancel
+                Close
               </Button>
               <Button
-                onClick={updateContent}
-                leftIcon={<Icon as={FaSave} />}
                 colorScheme="blue"
+                onClick={updateContent}
                 isLoading={isLoading}
+                leftIcon={<Icon as={FaSave} />}
+                size="md"
               >
                 Save
               </Button>
-            </Flex>
+            </HStack>
           </Flex>
         </DrawerFooter>
       </DrawerContent>

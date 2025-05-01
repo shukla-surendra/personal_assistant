@@ -1,0 +1,98 @@
+Context:
+React Web Application (React + Chakra UI + Lexical Editor)
+Path: assistant_web
+
+Key Components:
+1. Navigation:
+   - Navbar.js: Left sidebar with collapsible menu
+   - Header.js: Top header with user controls
+   - DashboardPage.js: Main dashboard view
+
+2. Pages:
+   - DashboardPage.js: Main dashboard with tasks and notes overview
+   - TasksPage.js: Task management page
+   - NotesPage.js: Note management page
+   - TaskDetailPage.js: Detailed task view
+   - SearchNotebookPage.js: Note search functionality
+   - SearchTasksPage.js: Task search functionality
+
+3. Drawers:
+   - NewTaskDrawer.js: Create new tasks
+   - NewNoteDrawer.js: Create new notes
+   - EditTaskDrawer.js: Edit existing tasks
+   - EditNoteDrawer.js: Edit existing notes
+
+4. Editor:
+   - FtTextEditor.js: Lexical-based rich text editor
+   - Used in both task and note creation/editing
+
+5. State Management:
+   - Redux slices for tasks and notes
+   - Workspace and user context management
+
+Current Issues:
+1. Navigation:
+   - Missing direct links to Tasks and Notes pages
+   - No quick access to create new tasks/notes
+   - Hamburger menu in collapsed state not functional
+
+2. Dashboard:
+   - Limited task/note creation options
+   - No quick access to view all tasks/notes
+   - Inconsistent navigation patterns
+
+3. Editor:
+   - Performance issues with Lexical editor
+   - Focus management problems
+   - State update optimizations needed
+
+Constraints:
+1. Use @lexical/react packages for editor
+2. Maintain existing Redux state management
+3. Keep Chakra UI styling consistent
+4. Preserve workspace and user context
+5. Ensure responsive design
+6. Follow React hooks best practices
+7. Avoid unnecessary re-renders
+8. Maintain existing functionality
+
+Required Changes:
+1. Navigation:
+   - Add direct links to Tasks and Notes pages
+   - Implement quick creation buttons
+   - Fix hamburger menu functionality
+   - Add proper routing for new items
+
+2. Dashboard:
+   - Add quick action buttons for task/note creation
+   - Implement "View All" functionality
+   - Improve layout organization
+   - Add proper navigation between sections
+
+3. Editor:
+   - Optimize performance
+   - Fix focus management
+   - Improve state updates
+   - Add proper error handling
+
+Expected Output:
+1. Modified files with:
+   - Updated navigation structure
+   - Enhanced dashboard functionality
+   - Optimized editor performance
+   - Improved user experience
+
+2. New features:
+   - Quick access to tasks and notes
+   - Efficient task/note creation
+   - Better navigation patterns
+   - Improved editor performance
+
+3. Maintained features:
+   - Existing state management
+   - Current styling
+   - Workspace context
+   - User authentication
+   - All existing functionality
+
+Please provide specific changes to implement these improvements while maintaining the existing codebase structure and functionality.

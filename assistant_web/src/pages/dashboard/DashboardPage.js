@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { retrieveTasks, retrieveNotes } from "../../slices/tasks";
+import { retrieveTasks, retrieveNotes, updateTask } from "../../slices/tasks";
 import {
   Box,
   Flex,
@@ -50,64 +50,67 @@ import {
   FiMoreVertical,
   FiEdit2,
   FiTrash2,
-  FiStar
+  FiStar,
+  FiChevronRight
 } from 'react-icons/fi';
-import { ChevronRightIcon } from '@chakra-ui/icons';
 import Navbar from "../../components/dashboard/Navbar";
 import EditTaskDrawer from "../../components/dashboard/drawers/EditTaskDrawer";
 import EditNoteDrawer from "../../components/dashboard/drawers/EditNoteDrawer";
 import Header from "../../components/dashboard/Header";
 import { Helmet } from 'react-helmet';
 import { formatLocalDateTime } from "../../utils/locale";
+import { useNavigate } from "react-router-dom";
+import NewTaskDrawer from "../../components/dashboard/drawers/NewTaskDrawer";
+import NewNoteDrawer from "../../components/dashboard/drawers/NewNoteDrawer";
 
 export default function DashboardResponsive() {
-  const menu_open = useDisclosure();
-  const [currentTask, setCurrentTask] = useState({ task_id: "", title: "", description: "", status: "" });
-  const view_modal = useDisclosure();
-  const delete_modal = useDisclosure();
-  const edit_task_drawer = useDisclosure();
-  const edit_note_drawer = useDisclosure();
-  const tasks = useSelector(state => state.tasks.tasks);
-  const notes = useSelector(state => state.tasks.notes);
   const dispatch = useDispatch();
+  const { tasks, notes, loading, error } = useSelector((state) => state.tasks);
+  const { isOpen: isTaskEditOpen, onOpen: onTaskEditOpen, onClose: onTaskEditClose } = useDisclosure();
+  const { isOpen: isNoteEditOpen, onOpen: onNoteEditOpen, onClose: onNoteEditClose } = useDisclosure();
+  const { isOpen: isNewTaskOpen, onOpen: onNewTaskOpen, onClose: onNewTaskClose } = useDisclosure();
+  const { isOpen: isNewNoteOpen, onOpen: onNewNoteOpen, onClose: onNewNoteClose } = useDisclosure();
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [isMenuCollapsed, setIsMenuCollapsed] = useState(false);
+  const navigate = useNavigate();
 
-  const initFetch = useCallback(() => {
+  useEffect(() => {
     dispatch(retrieveTasks());
     dispatch(retrieveNotes());
   }, [dispatch]);
 
-  useEffect(() => {
-    initFetch();
-  }, [initFetch]);
-
-  const handleViewItem = (task) => {
-    setCurrentTask(task);
-    view_modal.onOpen(true);
-  };
-
-  const handleDeleteItem = (task) => {
-    setCurrentTask(task);
-    delete_modal.onOpen(true);
-  };
-
   const handleUpdateItem = (task) => {
-    setCurrentTask(task);
-    edit_task_drawer.onOpen();
+    setSelectedTask(task);
+    onTaskEditOpen();
   };
 
-  const handleTaskUpdate = (updatedTask) => {
-    dispatch(retrieveTasks());
+  const handleDeleteItem = (item) => {
+    // TODO: Implement delete functionality
+    console.log('Delete item:', item);
+  };
+
+  const handleTaskUpdate = async (updatedTask) => {
+    try {
+      onTaskEditClose();
+      await dispatch(updateTask({ 
+        task_id: updatedTask.task_id, 
+        data: updatedTask 
+      })).unwrap();
+      setSelectedTask(null);
+    } catch (error) {
+      console.error('Failed to update task:', error);
+    }
   };
 
   const handleUpdateNote = (note) => {
-    setCurrentTask({
+    setSelectedTask({
       task_id: note.task_id,
       title: note.title,
       description: note.description || '',
       status: note.status || '',
       task_type: 'note'
     });
-    edit_note_drawer.onOpen();
+    onNoteEditOpen();
   };
 
   const priorityColorMapping = {
@@ -134,7 +137,7 @@ export default function DashboardResponsive() {
       .join('\n');
   };
 
-  const TaskCard = ({ task }) => {
+  const TaskCard = React.memo(({ task }) => {
     const [content, setContent] = useState('');
 
     useEffect(() => {
@@ -200,7 +203,83 @@ export default function DashboardResponsive() {
         </CardFooter>
       </Card>
     );
-  };
+  });
+
+  const NoteCard = React.memo(({ note }) => {
+    const [content, setContent] = useState('');
+
+    useEffect(() => {
+      if (note?.description) {
+        try {
+          const jsonContent = typeof note.description === 'string' 
+            ? JSON.parse(note.description) 
+            : note.description;
+          
+          const textContent = extractTextFromLexicalJSON(jsonContent);
+          setContent(textContent);
+        } catch (error) {
+          console.error('Error parsing description:', error);
+          setContent(note.description);
+        }
+      }
+    }, [note?.description]);
+
+    return (
+      <Card key={note.task_id} bg={cardBg} borderWidth="1px" borderColor={borderColor}>
+        <CardHeader>
+          <Flex justify="space-between" align="center">
+            <Heading size="sm">{note.title}</Heading>
+            <Menu>
+              <MenuButton
+                as={IconButton}
+                icon={<FiMoreVertical />}
+                variant="ghost"
+                size="sm"
+              />
+              <MenuList>
+                <MenuItem icon={<FiEdit2 />} onClick={() => handleUpdateNote(note)}>
+                  Edit
+                </MenuItem>
+                <MenuItem icon={<FiTrash2 />} onClick={() => handleDeleteItem(note)}>
+                  Delete
+                </MenuItem>
+              </MenuList>
+            </Menu>
+          </Flex>
+        </CardHeader>
+        <CardBody>
+          <Stack divider={<StackDivider />} spacing="4">
+            <Box>
+              <Text fontSize="sm" color={textColor} noOfLines={3}>
+                {content}
+              </Text>
+            </Box>
+          </Stack>
+        </CardBody>
+        <CardFooter>
+          <Text fontSize="xs" color="gray.500">
+            Updated: {formatLocalDateTime(note.updated_at)}
+          </Text>
+        </CardFooter>
+      </Card>
+    );
+  });
+
+  if (loading) {
+    return (
+      <Box minH="100vh" bg={bgColor} p={4}>
+        <Text>Loading...</Text>
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box minH="100vh" bg={bgColor} p={4}>
+        <Text color="red.500">Error: {error}</Text>
+      </Box>
+    );
+  }
 
   return (
     <>
@@ -210,104 +289,103 @@ export default function DashboardResponsive() {
         <meta name="theme-color" content="#008f68" />
       </Helmet>
       <EditTaskDrawer 
-        currentTask={currentTask} 
-        setCurrentTask={setCurrentTask} 
-        disclosures={edit_task_drawer} 
+        currentTask={selectedTask} 
+        setCurrentTask={setSelectedTask} 
+        disclosures={{ isOpen: isTaskEditOpen, onClose: onTaskEditClose }}
         onTaskUpdate={handleTaskUpdate}
       />
-      <EditNoteDrawer currentTask={currentTask} setCurrentTask={setCurrentTask} disclosures={edit_note_drawer} />
+      <EditNoteDrawer 
+        currentTask={selectedTask} 
+        setCurrentTask={setSelectedTask} 
+        disclosures={{ isOpen: isNoteEditOpen, onClose: onNoteEditClose }}
+        onTaskUpdate={handleTaskUpdate}
+      />
+      <NewTaskDrawer 
+        currentTask={{}} 
+        disclosures={{ isOpen: isNewTaskOpen, onClose: onNewTaskClose }}
+      />
+      <NewNoteDrawer 
+        currentTask={{}} 
+        disclosures={{ isOpen: isNewNoteOpen, onClose: onNewNoteClose }}
+      />
 
       <Box minH="100vh" bg={bgColor}>
-        <Navbar />
+        <Navbar isCollapsed={isMenuCollapsed} />
         <Box
-          ml={{ base: 0, md: 60 }}
-          transition=".3s ease"
-          p={{ base: 4, md: 6, lg: 8 }}
+          ml={{ base: 0, md: isMenuCollapsed ? "60px" : "250px" }}
+          transition="all 0.3s ease"
+          minH="100vh"
         >
-          <Header menu_open={menu_open} />
-          <Box
-            as="main"
-            p={{ base: 4, md: 6 }}
-            minH="calc(100vh - 4rem)"
-            bg={cardBg}
-            borderRadius="lg"
-            boxShadow="sm"
-          >
-            {/* Search and Filter Bar */}
-            <Flex mb={6} gap={4} align="center">
-              <InputGroup maxW="400px">
-                <InputLeftElement pointerEvents="none">
-                  <Icon as={FiSearch} color="gray.400" />
-                </InputLeftElement>
-                <Input placeholder="Search..." />
-              </InputGroup>
-              <Button leftIcon={<Icon as={FiFilter} />} variant="outline">
-                Filter
-              </Button>
-              <Button leftIcon={<Icon as={FiPlus} />} colorScheme="blue">
-                New
-              </Button>
-            </Flex>
-
-            {/* Recent Items Grid */}
-            <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6} mb={8}>
-              {tasks.slice(0, 6).map((task) => (
-                <TaskCard key={task.task_id} task={task} />
-              ))}
-            </SimpleGrid>
-
-            {/* Recent Notes Section */}
-            <Box mb={8}>
-              <Flex justify="space-between" align="center" mb={4}>
-                <Text fontSize="lg" fontWeight="bold" color="blue.600">
-                  Recent Notes
-                </Text>
-                <Button size="sm" variant="ghost" rightIcon={<ChevronRightIcon />}>
-                  View All
-                </Button>
+          <Header onMenuToggle={() => setIsMenuCollapsed(!isMenuCollapsed)} />
+          <Box p="4">
+            <VStack spacing={8} align="stretch">
+              {/* Quick Actions */}
+              <Flex justify="space-between" align="center">
+                <Text fontSize="xl" fontWeight="bold">Quick Actions</Text>
+                <HStack spacing={4}>
+                  <Button
+                    leftIcon={<Icon as={FiPlus} />}
+                    colorScheme="blue"
+                    variant="solid"
+                    onClick={onNewTaskOpen}
+                  >
+                    New Task
+                  </Button>
+                  <Button
+                    leftIcon={<Icon as={FiPlus} />}
+                    colorScheme="blue"
+                    variant="solid"
+                    onClick={onNewNoteOpen}
+                  >
+                    New Note
+                  </Button>
+                </HStack>
               </Flex>
-              <Table variant="simple" size="md">
-                <Thead>
-                  <Tr>
-                    <Th fontWeight="bold" fontSize="md" color="gray.600">Title</Th>
-                    <Th fontWeight="bold" fontSize="md" color="gray.600">Created At</Th>
-                    <Th fontWeight="bold" fontSize="md" color="gray.600">Actions</Th>
-                  </Tr>
-                </Thead>
-                <Tbody>
-                  {notes.slice(0, 5).map((note, index) => (
-                    <Tr key={note.task_id || index} fontSize="14px">
-                      <Td>
-                        <Text isTruncated fontWeight="semibold">{note.title}</Text>
-                      </Td>
-                      <Td>
-                        <Text fontSize="sm" color="gray.500">
-                          {note.created_at ? formatLocalDateTime(note.created_at) : "-"}
-                        </Text>
-                      </Td>
-                      <Td>
-                        <HStack spacing={2}>
-                          <IconButton
-                            aria-label="Edit note"
-                            icon={<FiEdit2 />}
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleUpdateNote(note)}
-                          />
-                          <IconButton
-                            aria-label="Delete note"
-                            icon={<FiTrash2 />}
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleDeleteItem(note)}
-                          />
-                        </HStack>
-                      </Td>
-                    </Tr>
+
+              {/* Tasks Section */}
+              <Box>
+                <Flex justify="space-between" align="center" mb={4}>
+                  <Text fontSize="xl" fontWeight="bold">Recent Tasks</Text>
+                  <Button
+                    variant="ghost"
+                    rightIcon={<Icon as={FiChevronRight} />}
+                    onClick={() => navigate('/tasks')}
+                  >
+                    View All
+                  </Button>
+                </Flex>
+                <Grid
+                  templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' }}
+                  gap={6}
+                >
+                  {tasks && tasks.slice(0, 6).map((task) => (
+                    <TaskCard key={task.task_id} task={task} />
                   ))}
-                </Tbody>
-              </Table>
-            </Box>
+                </Grid>
+              </Box>
+
+              {/* Notes Section */}
+              <Box>
+                <Flex justify="space-between" align="center" mb={4}>
+                  <Text fontSize="xl" fontWeight="bold">Recent Notes</Text>
+                  <Button
+                    variant="ghost"
+                    rightIcon={<Icon as={FiChevronRight} />}
+                    onClick={() => navigate('/notes')}
+                  >
+                    View All
+                  </Button>
+                </Flex>
+                <Grid
+                  templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' }}
+                  gap={6}
+                >
+                  {notes && notes.slice(0, 6).map((note) => (
+                    <NoteCard key={note.task_id} note={note} />
+                  ))}
+                </Grid>
+              </Box>
+            </VStack>
           </Box>
         </Box>
       </Box>

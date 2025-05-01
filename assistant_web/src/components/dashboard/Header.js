@@ -34,15 +34,15 @@ import UnifiedCreateButton from './UnifiedCreateButton';
 import NewTaskDrawer from './drawers/NewTaskDrawer';
 import NewNoteDrawer from './drawers/NewNoteDrawer';
 
-const Header = ({ menu_open }) => {
+const Header = ({ onMenuToggle }) => {
     const { isOpen: isProfileOpen, onOpen: onProfileOpen, onClose: onProfileClose } = useDisclosure();
     const { isOpen: isSettingsOpen, onOpen: onSettingsOpen, onClose: onSettingsClose } = useDisclosure();
     const { isOpen: isNotificationsOpen, onOpen: onNotificationsOpen, onClose: onNotificationsClose } = useDisclosure();
     const { isOpen: isNewTaskOpen, onOpen: onNewTaskOpen, onClose: onNewTaskClose } = useDisclosure();
     const { isOpen: isNewNoteOpen, onOpen: onNewNoteOpen, onClose: onNewNoteClose } = useDisclosure();
 
-    const bg = useColorModeValue('white', 'gray.800');
-    const borderColor = useColorModeValue('gray.200', 'gray.700');
+    const bgColor = useColorModeValue("white", "gray.800");
+    const borderColor = useColorModeValue("gray.200", "gray.700");
     const { colorMode, toggleColorMode } = useColorMode();
     const navigate = useNavigate();
     const dispatch = useDispatch();
@@ -61,8 +61,8 @@ const Header = ({ menu_open }) => {
             { workspace_id: "workspace2", name: "Workspace 2" },
             { workspace_id: "workspace3", name: "Workspace 3" }
         ];
-        setWorkspaces(userWorkspaces);
-    }, []);
+        setWorkspaces(userWorkspaces);},[])
+    
 
     const handleWorkspaceChange = (workspaceId) => {
         const selectedWorkspace = workspaces.find(w => w.workspace_id === workspaceId);
@@ -77,101 +77,105 @@ const Header = ({ menu_open }) => {
     const handleLogout = () => {
         dispatch(logout()); // Dispatch Redux logout action
         auth.logout(); // Call auth service logout
+        navigate('/login'); // Redirect to login page
     };
 
     return (
-        <Flex
+        <Box
             as="header"
-            align="center"
-            justify="space-between"
-            w="full"
-            px={4}
-            py={3}
-            bg={bg}
+            position="sticky"
+            top="0"
+            zIndex="sticky"
+            bg={bgColor}
             borderBottom="1px"
             borderColor={borderColor}
         >
-            <IconButton
-                aria-label="Open menu"
-                icon={<FiMenu />}
-                variant="ghost"
-                onClick={menu_open.onOpen}
-            />
-
-            <HStack spacing={4}>
-                <IconButton
-                    aria-label="Search"
-                    icon={<FiSearch />}
-                    variant="ghost"
-                    color={useColorModeValue('gray.600', 'gray.300')}
-                    _hover={{
-                        color: useColorModeValue('brand.600', 'brand.300'),
-                    }}
-                />
-                <UnifiedCreateButton 
-                    onCreateNote={onNewNoteOpen}
-                    onCreateTask={onNewTaskOpen}
-                />
-                <Popover
-                    isOpen={isNotificationsOpen}
-                    onClose={onNotificationsClose}
-                    placement="bottom-end"
-                >
-                    <PopoverTrigger>
-                        <IconButton
-                            aria-label="Notifications"
-                            icon={<FiBell />}
-                            variant="ghost"
-                            onClick={onNotificationsOpen}
-                        />
-                    </PopoverTrigger>
-                    <PopoverContent>
-                        <PopoverBody>
-                            <NotificationList />
-                        </PopoverBody>
-                    </PopoverContent>
-                </Popover>
-                <IconButton
-                    aria-label="Toggle color mode"
-                    icon={colorMode === 'light' ? <FiMoon /> : <FiSun />}
-                    onClick={toggleColorMode}
-                    variant="ghost"
-                    color={useColorModeValue('gray.600', 'gray.300')}
-                    _hover={{
-                        color: useColorModeValue('brand.600', 'brand.300'),
-                    }}
-                />
-            </HStack>
-
-            <HStack spacing={4}>
-                <Menu>
-                    <MenuButton
-                        as={Button}
+            <Flex
+                h="16"
+                alignItems="center"
+                justifyContent="space-between"
+                px={4}
+            >
+                <HStack spacing={4}>
+                    <IconButton
+                        icon={<FiMenu />}
                         variant="ghost"
-                        leftIcon={<Avatar size="sm" />}
-                        rightIcon={<FiUser />}
-                    >
-                        Profile
-                    </MenuButton>
-                    <MenuList>
-                        <MenuItem icon={<FiUser />} onClick={onProfileOpen}>
-                            Profile
-                        </MenuItem>
-                        <MenuItem icon={<FiSettings />} onClick={onSettingsOpen}>
-                            Settings
-                        </MenuItem>
-                        <MenuItem icon={<FiMoon />} onClick={handleLogout}>
-                            Logout
-                        </MenuItem>
-                    </MenuList>
-                </Menu>
-            </HStack>
+                        onClick={onMenuToggle}
+                        aria-label="Toggle menu"
+                    />
+                    <IconButton
+                        icon={<FiSearch />}
+                        variant="ghost"
+                        aria-label="Search"
+                    />
+                </HStack>
 
+                <HStack spacing={4}>
+                    <Popover
+                        isOpen={isNotificationsOpen}
+                        onClose={onNotificationsClose}
+                        placement="bottom-end"
+                    >
+                        <PopoverTrigger>
+                            <IconButton
+                                icon={<FiBell />}
+                                variant="ghost"
+                                onClick={onNotificationsOpen}
+                                aria-label="Notifications"
+                            />
+                        </PopoverTrigger>
+                        <PopoverContent>
+                            <PopoverBody>
+                                <NotificationList />
+                            </PopoverBody>
+                        </PopoverContent>
+                    </Popover>
+
+                    <Menu>
+                        <MenuButton
+                            as={Button}
+                            rightIcon={<FiChevronDown />}
+                            variant="ghost"
+                            leftIcon={<Avatar size="sm" name="User Name" />}
+                        >
+                            <Text display={{ base: "none", md: "block" }}>User Name</Text>
+                        </MenuButton>
+                        <MenuList>
+                            <MenuItem icon={<FiUser />} onClick={onProfileOpen}>
+                                Profile
+                            </MenuItem>
+                            <MenuItem icon={<FiSettings />} onClick={onSettingsOpen}>
+                                Settings
+                            </MenuItem>
+                            <MenuDivider />
+                            <MenuItem icon={<FiLogOut />} onClick={handleLogout}>
+                                Logout
+                            </MenuItem>
+                        </MenuList>
+                    </Menu>
+                </HStack>
+            </Flex>
+
+            {/* Modals and Drawers */}
             <UserProfile isOpen={isProfileOpen} onClose={onProfileClose} />
             <UserSettings isOpen={isSettingsOpen} onClose={onSettingsClose} />
-            <NewTaskDrawer disclosures={{ isOpen: isNewTaskOpen, onOpen: onNewTaskOpen, onClose: onNewTaskClose }} />
-            <NewNoteDrawer disclosures={{ isOpen: isNewNoteOpen, onOpen: onNewNoteOpen, onClose: onNewNoteClose }} />
-        </Flex>
+            <NewTaskDrawer 
+                currentTask={{}} 
+                disclosures={{ 
+                    isOpen: isNewTaskOpen, 
+                    onOpen: onNewTaskOpen, 
+                    onClose: onNewTaskClose 
+                }} 
+            />
+            <NewNoteDrawer 
+                currentTask={{}} 
+                disclosures={{ 
+                    isOpen: isNewNoteOpen, 
+                    onOpen: onNewNoteOpen, 
+                    onClose: onNewNoteClose 
+                }} 
+            />
+        </Box>
     );
 };
 

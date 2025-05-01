@@ -156,7 +156,7 @@ export default function NewArticleDrawer({ isOpen, onClose, onSave }) {
 
         <DrawerFooter borderTopWidth="1px">
           <Button variant="outline" mr={3} onClick={onClose}>
-            Cancel
+            Close
           </Button>
           <Button colorScheme="blue" onClick={handleSave}>
             Save Article

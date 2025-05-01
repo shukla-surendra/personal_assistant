@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { Box, VStack, HStack, IconButton, useColorModeValue, Icon, Menu, MenuButton, MenuList, MenuItem, Divider, Tooltip, Select, useToast } from '@chakra-ui/react';
+import React, { useCallback, useEffect, useRef } from 'react';
+import { Box, VStack, HStack, IconButton, useColorModeValue, Icon, Tooltip } from '@chakra-ui/react';
 import {
   FiBold, FiItalic, FiUnderline, FiList, FiLink, FiCheckSquare,
   FiTable, FiType, FiMinus, FiPlus, FiAlignLeft, FiAlignCenter, FiAlignRight,
@@ -78,16 +78,11 @@ const theme = {
   },
 };
 
-const MenuBar = ({ editor }) => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+const Toolbar = React.memo(({ editor }) => {
   const borderColor = useColorModeValue('gray.200', 'gray.600');
   const bgColor = useColorModeValue('white', 'gray.800');
-  const hoverBg = useColorModeValue('gray.100', 'gray.700');
-  const toast = useToast();
 
-  if (!editor) {
-    return null;
-  }
+  if (!editor) return null;
 
   const handleFormat = (format) => {
     editor.dispatchCommand('FORMAT_TEXT', { format });
@@ -110,115 +105,73 @@ const MenuBar = ({ editor }) => {
     }
   };
 
-  const handleCodeLanguageChange = (language) => {
-    editor.dispatchCommand('UPDATE_CODE_LANGUAGE', { language });
-    toast({
-      title: "Code Block",
-      description: `Language set to ${language}`,
-      status: "info",
-      duration: 2000,
-      isClosable: true,
-    });
-  };
-
   return (
-    <VStack align="stretch" spacing={0}>
-      <HStack spacing={1} p={2} borderBottomWidth="1px" borderColor={borderColor} bg={bgColor}>
-        {/* Text Formatting */}
-        <Menu>
-          <MenuButton as={IconButton} size="sm" icon={<Icon as={FiType} />} variant="ghost" />
-          <MenuList>
-            <MenuItem onClick={() => handleHeading(1)}>Heading 1</MenuItem>
-            <MenuItem onClick={() => handleHeading(2)}>Heading 2</MenuItem>
-            <MenuItem onClick={() => handleHeading(3)}>Heading 3</MenuItem>
-            <Divider />
-            <MenuItem onClick={() => handleFormat('bold')}>Bold</MenuItem>
-            <MenuItem onClick={() => handleFormat('italic')}>Italic</MenuItem>
-            <MenuItem onClick={() => handleFormat('underline')}>Underline</MenuItem>
-            <MenuItem onClick={() => handleFormat('strikethrough')}>Strikethrough</MenuItem>
-            <MenuItem onClick={() => handleFormat('subscript')}>Subscript</MenuItem>
-            <MenuItem onClick={() => handleFormat('superscript')}>Superscript</MenuItem>
-          </MenuList>
-        </Menu>
-
-        {/* Lists */}
-        <Menu>
-          <MenuButton as={IconButton} size="sm" icon={<Icon as={FiList} />} variant="ghost" />
-          <MenuList>
-            <MenuItem onClick={() => editor.dispatchCommand('INSERT_UNORDERED_LIST')}>Bullet List</MenuItem>
-            <MenuItem onClick={() => editor.dispatchCommand('INSERT_ORDERED_LIST')}>Numbered List</MenuItem>
-            <MenuItem onClick={() => editor.dispatchCommand('INSERT_CHECK_LIST')}>Check List</MenuItem>
-            <Divider />
-            <MenuItem onClick={() => editor.dispatchCommand('INDENT_LIST')}>Indent</MenuItem>
-            <MenuItem onClick={() => editor.dispatchCommand('OUTDENT_LIST')}>Outdent</MenuItem>
-          </MenuList>
-        </Menu>
-
-        {/* Code Block */}
-        <Menu>
-          <MenuButton as={IconButton} size="sm" icon={<Icon as={FiCode} />} variant="ghost" />
-          <MenuList>
-            <MenuItem onClick={() => handleInsert('code')}>Insert Code Block</MenuItem>
-            <Divider />
-            <MenuItem onClick={() => handleCodeLanguageChange('javascript')}>JavaScript</MenuItem>
-            <MenuItem onClick={() => handleCodeLanguageChange('python')}>Python</MenuItem>
-            <MenuItem onClick={() => handleCodeLanguageChange('java')}>Java</MenuItem>
-            <MenuItem onClick={() => handleCodeLanguageChange('css')}>CSS</MenuItem>
-          </MenuList>
-        </Menu>
-
-        {/* Alignment */}
-        <Menu>
-          <MenuButton as={IconButton} size="sm" icon={<Icon as={FiAlignLeft} />} variant="ghost" />
-          <MenuList>
-            <MenuItem onClick={() => handleFormat('left')}>Align Left</MenuItem>
-            <MenuItem onClick={() => handleFormat('center')}>Align Center</MenuItem>
-            <MenuItem onClick={() => handleFormat('right')}>Align Right</MenuItem>
-            <MenuItem onClick={() => handleFormat('justify')}>Justify</MenuItem>
-          </MenuList>
-        </Menu>
-
-        {/* Special Blocks */}
-        <Menu>
-          <MenuButton as={IconButton} size="sm" icon={<Icon as={FiPlus} />} variant="ghost" />
-          <MenuList>
-            <MenuItem onClick={() => editor.dispatchCommand('INSERT_QUOTE')}>Quote</MenuItem>
-            <MenuItem onClick={() => handleInsert('table')}>Table</MenuItem>
-            <MenuItem onClick={() => editor.dispatchCommand('INSERT_COLUMNS')}>Columns</MenuItem>
-            <MenuItem onClick={() => editor.dispatchCommand('INSERT_TOGGLE')}>Toggle</MenuItem>
-            <MenuItem onClick={() => editor.dispatchCommand('INSERT_HORIZONTAL_RULE')}>Divider</MenuItem>
-          </MenuList>
-        </Menu>
-
-        {/* Quick Actions */}
-        <Tooltip label="Link">
-          <IconButton
-            size="sm"
-            icon={<Icon as={FiLink} />}
-            onClick={() => editor.dispatchCommand('INSERT_LINK')}
-            variant="ghost"
-          />
-        </Tooltip>
-        <Tooltip label="Tags">
-          <IconButton
-            size="sm"
-            icon={<Icon as={FiHash} />}
-            onClick={() => editor.dispatchCommand('INSERT_HASHTAG')}
-            variant="ghost"
-          />
-        </Tooltip>
-        <Tooltip label="Quote">
-          <IconButton
-            size="sm"
-            icon={<Icon as={FiMessageSquare} />}
-            onClick={() => editor.dispatchCommand('INSERT_QUOTE')}
-            variant="ghost"
-          />
-        </Tooltip>
-      </HStack>
-    </VStack>
+    <HStack
+      spacing={1}
+      p={2}
+      borderBottom="1px"
+      borderColor={borderColor}
+      bg={bgColor}
+    >
+      <Tooltip label="Bold">
+        <IconButton
+          size="sm"
+          icon={<Icon as={FiBold} />}
+          onClick={() => handleFormat('bold')}
+          variant="ghost"
+        />
+      </Tooltip>
+      <Tooltip label="Italic">
+        <IconButton
+          size="sm"
+          icon={<Icon as={FiItalic} />}
+          onClick={() => handleFormat('italic')}
+          variant="ghost"
+        />
+      </Tooltip>
+      <Tooltip label="Underline">
+        <IconButton
+          size="sm"
+          icon={<Icon as={FiUnderline} />}
+          onClick={() => handleFormat('underline')}
+          variant="ghost"
+        />
+      </Tooltip>
+      <Tooltip label="Link">
+        <IconButton
+          size="sm"
+          icon={<Icon as={FiLink} />}
+          onClick={() => editor.dispatchCommand('INSERT_LINK')}
+          variant="ghost"
+        />
+      </Tooltip>
+      <Tooltip label="Code">
+        <IconButton
+          size="sm"
+          icon={<Icon as={FiCode} />}
+          onClick={() => handleInsert('code')}
+          variant="ghost"
+        />
+      </Tooltip>
+      <Tooltip label="List">
+        <IconButton
+          size="sm"
+          icon={<Icon as={FiList} />}
+          onClick={() => editor.dispatchCommand('INSERT_UNORDERED_LIST')}
+          variant="ghost"
+        />
+      </Tooltip>
+      <Tooltip label="Table">
+        <IconButton
+          size="sm"
+          icon={<Icon as={FiTable} />}
+          onClick={() => handleInsert('table')}
+          variant="ghost"
+        />
+      </Tooltip>
+    </HStack>
   );
-};
+});
 
 const FtTextEditor = ({ currentTask, setCurrentTask }) => {
   const initialConfig = {
@@ -246,6 +199,30 @@ const FtTextEditor = ({ currentTask, setCurrentTask }) => {
 
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.600');
+  const updateTimeoutRef = useRef(null);
+  const isInitialMount = useRef(true);
+
+  const handleChange = useCallback((editorState) => {
+    if (updateTimeoutRef.current) {
+      clearTimeout(updateTimeoutRef.current);
+    }
+
+    updateTimeoutRef.current = setTimeout(() => {
+      const editorStateJSON = editorState.toJSON();
+      setCurrentTask(prev => ({
+        ...prev,
+        description: JSON.stringify(editorStateJSON),
+      }));
+    }, 300);
+  }, [setCurrentTask]);
+
+  useEffect(() => {
+    return () => {
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return (
     <VStack
@@ -258,7 +235,7 @@ const FtTextEditor = ({ currentTask, setCurrentTask }) => {
       minH="500px"
     >
       <LexicalComposer initialConfig={initialConfig}>
-        <MenuBar />
+        <Toolbar />
         <Box p={4} className="lexical-editor">
           <RichTextPlugin
             contentEditable={<ContentEditable className="editor-input" />}
@@ -266,13 +243,9 @@ const FtTextEditor = ({ currentTask, setCurrentTask }) => {
             ErrorBoundary={LexicalErrorBoundary}
           />
           <OnChangePlugin
-            onChange={(editorState) => {
-              const editorStateJSON = editorState.toJSON();
-              setCurrentTask({
-                ...currentTask,
-                description: JSON.stringify(editorStateJSON),
-              });
-            }}
+            onChange={handleChange}
+            ignoreSelectionChange={true}
+            ignoreHistoryMergeTagChange={true}
           />
           <HistoryPlugin />
           <AutoFocusPlugin />
@@ -283,32 +256,35 @@ const FtTextEditor = ({ currentTask, setCurrentTask }) => {
           <HorizontalRulePlugin />
           <HashtagPlugin />
           <CodeHighlightPlugin />
-          <EditorContentLoader currentTask={currentTask} />
+          <EditorContentLoader currentTask={currentTask} isInitialMount={isInitialMount} />
         </Box>
       </LexicalComposer>
     </VStack>
   );
 };
 
-// Separate component to handle content loading
-const EditorContentLoader = ({ currentTask }) => {
+const EditorContentLoader = React.memo(({ currentTask, isInitialMount }) => {
   const [editor] = useLexicalComposerContext();
+  const lastContentRef = useRef(null);
 
   useEffect(() => {
-    if (currentTask?.description) {
+    if (currentTask?.description && 
+        (currentTask.description !== lastContentRef.current || isInitialMount.current)) {
       try {
         const parsedState = JSON.parse(currentTask.description);
         editor.setEditorState(editor.parseEditorState(parsedState));
+        lastContentRef.current = currentTask.description;
+        isInitialMount.current = false;
       } catch (error) {
         console.error('Error parsing editor state:', error);
       }
     }
-  }, [currentTask?.description, editor]);
+  }, [currentTask?.description, editor, isInitialMount]);
 
   return null;
-};
+});
 
-const CodeHighlightPlugin = () => {
+const CodeHighlightPlugin = React.memo(() => {
   const [editor] = useLexicalComposerContext();
 
   useEffect(() => {
@@ -321,6 +297,6 @@ const CodeHighlightPlugin = () => {
   }, [editor]);
 
   return null;
-};
+});
 
-export default FtTextEditor;
+export default React.memo(FtTextEditor);
