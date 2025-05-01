@@ -42,8 +42,10 @@ import { FaTrash, FaEdit, FaEye } from 'react-icons/fa';
 import TaskViewModal from "../../components/dashboard/modals/TaskViewModal";
 import UnifiedEditButton from "../../components/dashboard/UnifiedEditButton";
 import UnifiedCreateButton from "../../components/dashboard/UnifiedCreateButton";
+import { ChevronRightIcon } from '@chakra-ui/icons';
 
-export default function DashboardResponsive() {
+export default function TasksPage() {
+  const [isMenuCollapsed, setIsMenuCollapsed] = useState(false);
   const menu_open = useDisclosure();
   const [currentTask, setCurrentTask] = useState({ task_id: "", title: "", descrtiption: "", status: "" });
   const delete_modal = useDisclosure()
@@ -86,6 +88,11 @@ export default function DashboardResponsive() {
     'Medium': 'yellow',
     'Low': 'green',
   };
+
+  const bgColor = useColorModeValue('gray.50', 'gray.900');
+  const cardBg = useColorModeValue('white', 'gray.800');
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const textColor = useColorModeValue('gray.800', 'gray.200');
 
   const initFetch = useCallback(() => {
     dispatch(retrieveTasks());
@@ -204,134 +211,170 @@ export default function DashboardResponsive() {
         task={currentTask} 
       />
 
-      <Box as="section" bg={useColorModeValue('gray.50', 'gray.700')} minH="100vh">
-        <Navbar display={{ base: 'none', md: 'unset' }} />
-        <Drawer isOpen={menu_open.isOpen} onClose={menu_open.onClose} placement="left">
-          <DrawerOverlay />
-          <DrawerContent>
-            <Navbar w="full" borderRight="none" />
-          </DrawerContent>
-        </Drawer>
-        <Box ml={{ base: 0, md: 60 }} transition=".3s ease">
-          <Header menu_open={menu_open}></Header>
+<Box minH="100vh" bg={bgColor}>
+        <Navbar isCollapsed={isMenuCollapsed} />
+        <Box
+          ml={{ base: 0, md: isMenuCollapsed ? "60px" : "250px" }}
+          transition="all 0.3s ease"
+          minH="100vh"
+        >
+          <Header onMenuToggle={() => setIsMenuCollapsed(!isMenuCollapsed)} />
+          <Box p="4">
+            <VStack spacing={6}>
+              <Flex
+                justifyContent="space-between"
+                alignItems="center"
+                w="full"
+                mb={4}
+              >
+                <Text
+                  fontSize="lg"
+                  fontWeight="bold"
+                  color="blue.600"
+                  display="flex"
+                  alignItems="center"
+                  gap={2}
+                >
+                  <ChevronRightIcon /> TASKS
+                </Text>
+                <UnifiedCreateButton 
+                  onCreateNote={() => navigate('/notes')}
+                  onCreateTask={handleAddItem}
+                />
+              </Flex>
 
-          <Box as="main" p={4} minH="25rem" bg={useColorModeValue('auto', 'gray.800')}>
-            <Flex direction={'column'} justifyContent="center">
-              <Box>
-                <Stack bg="#FFFFFF" m={'5px'} p={'30px'} borderRadius="10px">
-                  <Flex justifyContent="left">
-                    <Box>
-                      <Flex>
-                        <Tabs>
-                          <TabList>
-                            <Tab>Board View</Tab>
-                            <Tab>Table View</Tab>
-                            <Stack>
-                              <UnifiedCreateButton 
-                                onCreateNote={() => {
-                                  // Navigate to notes page or handle note creation
-                                  navigate('/notes');
-                                }}
-                                onCreateTask={handleAddItem}
-                              />
-                            </Stack>
-                          </TabList>
+              <Stack spacing={6} w="full">
+                <Tabs variant="enclosed" colorScheme="blue">
+                  <TabList>
+                    <Tab>Board View</Tab>
+                    <Tab>Table View</Tab>
+                  </TabList>
 
-                          <TabPanels>
-                            <TabPanel>
-                              <Grid templateColumns="repeat(3, 1fr)" gap={6}>
-                                <GridItem>
-                                  <Text as='b' fontSize={14}>Not Started</Text>
-                                  <Box>
-                                    <Grid templateColumns="repeat(auto-fit, minmax(250px, 1fr))" gap={6}>
-                                      {tasks.filter(task => task.status === 'todo').map((task, index) => (
-                                        <GridItem key={index}>
-                                          <TaskCard 
-                                            task={task} 
-                                            onUpdate={handleUpdateItem}
-                                            onDelete={handleDeleteItem}
-                                            onView={handleViewItem}
-                                          />
-                                        </GridItem>
-                                      ))}
-                                    </Grid>
-                                  </Box>
-                                </GridItem>
+                  <TabPanels>
+                    <TabPanel p={0}>
+                      <Grid 
+                        templateColumns={{ 
+                          base: "1fr", 
+                          md: "repeat(2, 1fr)", 
+                          lg: "repeat(3, 1fr)" 
+                        }} 
+                        gap={6}
+                      >
+                        <GridItem>
+                          <Box bg={useColorModeValue('gray.50', 'gray.700')} p={4} borderRadius="md">
+                            <Text fontSize="lg" fontWeight="semibold" mb={4}>Not Started</Text>
+                            <VStack spacing={4} align="stretch">
+                              {tasks.filter(task => task.status === 'todo').map((task, index) => (
+                                <TaskCard 
+                                  key={index}
+                                  task={task} 
+                                  onUpdate={handleUpdateItem}
+                                  onDelete={handleDeleteItem}
+                                  onView={handleViewItem}
+                                />
+                              ))}
+                            </VStack>
+                          </Box>
+                        </GridItem>
 
-                                <GridItem>
-                                  <Text as='b' fontSize={14}>In Progress</Text>
-                                  <Box>
-                                    <Grid templateColumns="repeat(auto-fit, minmax(250px, 1fr))" gap={6}>
-                                      {tasks.filter(task => task.status === 'in_progress').map((task, index) => (
-                                        <GridItem key={index}>
-                                          <TaskCard 
-                                            task={task} 
-                                            onUpdate={handleUpdateItem}
-                                            onDelete={handleDeleteItem}
-                                            onView={handleViewItem}
-                                          />
-                                        </GridItem>
-                                      ))}
-                                    </Grid>
-                                  </Box>
-                                </GridItem>
+                        <GridItem>
+                          <Box bg={useColorModeValue('gray.50', 'gray.700')} p={4} borderRadius="md">
+                            <Text fontSize="lg" fontWeight="semibold" mb={4}>In Progress</Text>
+                            <VStack spacing={4} align="stretch">
+                              {tasks.filter(task => task.status === 'in_progress').map((task, index) => (
+                                <TaskCard 
+                                  key={index}
+                                  task={task} 
+                                  onUpdate={handleUpdateItem}
+                                  onDelete={handleDeleteItem}
+                                  onView={handleViewItem}
+                                />
+                              ))}
+                            </VStack>
+                          </Box>
+                        </GridItem>
 
-                                <GridItem>
-                                  <Text as='b' fontSize={14}>Done</Text>
-                                  <Box>
-                                    <Grid templateColumns="repeat(auto-fit, minmax(250px, 1fr))" gap={6}>
-                                      {tasks.filter(task => task.status === 'done').map((task, index) => (
-                                        <GridItem key={index}>
-                                          <TaskCard 
-                                            task={task} 
-                                            onUpdate={handleUpdateItem}
-                                            onDelete={handleDeleteItem}
-                                            onView={handleViewItem}
-                                          />
-                                        </GridItem>
-                                      ))}
-                                    </Grid>
-                                  </Box>
-                                </GridItem>
-                              </Grid>
-                            </TabPanel>
+                        <GridItem>
+                          <Box bg={useColorModeValue('gray.50', 'gray.700')} p={4} borderRadius="md">
+                            <Text fontSize="lg" fontWeight="semibold" mb={4}>Done</Text>
+                            <VStack spacing={4} align="stretch">
+                              {tasks.filter(task => task.status === 'done').map((task, index) => (
+                                <TaskCard 
+                                  key={index}
+                                  task={task} 
+                                  onUpdate={handleUpdateItem}
+                                  onDelete={handleDeleteItem}
+                                  onView={handleViewItem}
+                                />
+                              ))}
+                            </VStack>
+                          </Box>
+                        </GridItem>
+                      </Grid>
+                    </TabPanel>
 
-                            <TabPanel>
-                              <Grid templateColumns="repeat(1, 1fr)" gap={6}>
-                                <GridItem>
-                                  <Box>
-                                    <Table variant="simple">
-                                      <Thead>
-                                        <Tr fontSize={'14px'} fontWeight={'bold'}>
-                                          <Th>Title</Th>
-                                          <Th>Due On</Th>
-                                          <Th>Created At</Th>
-                                          <Th>Status</Th>
-                                        </Tr>
-                                      </Thead>
-                                      <Tbody>
-                                        {tasks.map((task, index) => (
-                                          <Tr key={index} fontSize={'14px'}>
-                                            <Td><Text onClick={() => handleUpdateItem(task)}>{task.title}</Text></Td>
-                                            <Td>{formatLocalDateTime(task.due_on)}</Td>
-                                            <Td>{formatLocalDateTime(task.created_at)}</Td>
-                                            <td><StatusIndicator status={task.status} /></td>
-                                          </Tr>
-                                        ))}
-                                      </Tbody>
-                                    </Table>
-                                  </Box>
-                                </GridItem>
-                              </Grid>
-                            </TabPanel>
-                          </TabPanels>
-                        </Tabs>
-                      </Flex>
-                    </Box>
-                  </Flex>
-                </Stack>
-              </Box>
-            </Flex>
+                    <TabPanel p={0}>
+                      <Box overflowX="auto">
+                        <Table variant="simple">
+                          <Thead>
+                            <Tr>
+                              <Th>Title</Th>
+                              <Th>Due On</Th>
+                              <Th>Created At</Th>
+                              <Th>Status</Th>
+                              <Th>Actions</Th>
+                            </Tr>
+                          </Thead>
+                          <Tbody>
+                            {tasks.map((task, index) => (
+                              <Tr key={index}>
+                                <Td>
+                                  <Text 
+                                    fontWeight="medium" 
+                                    cursor="pointer"
+                                    onClick={() => handleUpdateItem(task)}
+                                  >
+                                    {task.title}
+                                  </Text>
+                                </Td>
+                                <Td>{formatLocalDateTime(task.due_on)}</Td>
+                                <Td>{formatLocalDateTime(task.created_at)}</Td>
+                                <Td>
+                                  <StatusIndicator status={task.status} />
+                                </Td>
+                                <Td>
+                                  <HStack spacing={2}>
+                                    <IconButton
+                                      icon={<Icon as={FaEye} />}
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => handleViewItem(task)}
+                                      aria-label="View Task"
+                                    />
+                                    <UnifiedEditButton 
+                                      item={task} 
+                                      type="task" 
+                                      onEdit={handleUpdateItem}
+                                    />
+                                    <IconButton
+                                      icon={<Icon as={FaTrash} />}
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => handleDeleteItem(task)}
+                                      aria-label="Delete Task"
+                                    />
+                                  </HStack>
+                                </Td>
+                              </Tr>
+                            ))}
+                          </Tbody>
+                        </Table>
+                      </Box>
+                    </TabPanel>
+                  </TabPanels>
+                </Tabs>
+              </Stack>
+            </VStack>
           </Box>
         </Box>
       </Box>

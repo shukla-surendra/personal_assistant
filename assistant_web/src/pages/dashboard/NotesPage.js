@@ -33,7 +33,18 @@ import {
   CardFooter,
   Stack,
   StackDivider,
-  Heading
+  Heading,
+  Tabs,
+  TabList,
+  Tab,
+  TabPanel,
+  TabPanels,
+  Table,
+  Thead,
+  Tr,
+  Th,
+  Tbody,
+  Td
 } from '@chakra-ui/react';
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
@@ -54,13 +65,15 @@ import { useNavigate } from "react-router-dom";
 import NoteViewModal from "../../components/dashboard/modals/NoteViewModal";
 import { FiEye, FiMoreVertical, FiEdit2, FiTrash2 } from "react-icons/fi";
 
-export default function DashboardResponsive() {
+export default function NotesPage() {
+  const [isMenuCollapsed, setIsMenuCollapsed] = useState(false);
   const menu_open = useDisclosure();
   const [currentTask, setCurrentTask] = useState({ task_id: "" });
   const notes = useSelector(state => state.tasks.notes);
   const delete_modal = useDisclosure()
   const edit_note_drawer = useDisclosure()
   const new_note_drawer = useDisclosure()
+  const view_task_modal = useDisclosure()
   const navigate = useNavigate();
 
   // Filter states
@@ -69,10 +82,12 @@ export default function DashboardResponsive() {
   const [selectedTags, setSelectedTags] = useState([]);
   const [sortBy, setSortBy] = useState("newest");
 
-  // Move hooks to component level
-  const pageBg = useColorModeValue('gray.50', 'gray.900');
-  const mainBg = useColorModeValue('gray.50', 'gray.800');
-  const noteCardBg = useColorModeValue('gray.50', 'gray.700');
+  // Color mode values
+  const bgColor = useColorModeValue('gray.50', 'gray.900');
+  const cardBg = useColorModeValue('white', 'gray.800');
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const textColor = useColorModeValue('gray.800', 'gray.200');
+  const contentColor = useColorModeValue('gray.600', 'gray.400');
 
   const extractTextFromLexicalJSON = (json) => {
     if (!json || !json.root || !json.root.children) return '';
@@ -176,6 +191,11 @@ export default function DashboardResponsive() {
     );
   };
 
+  const handleViewItem = (note) => {
+    setCurrentTask(note);
+    view_task_modal.onOpen();
+  };
+
   const NoteCard = React.memo(({ note }) => {
     const [content, setContent] = useState('');
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
@@ -198,7 +218,7 @@ export default function DashboardResponsive() {
 
     return (
       <>
-        <Card key={note.task_id} bg={noteCardBg} borderWidth="1px" borderColor={useColorModeValue('gray.200', 'gray.700')}>
+        <Card key={note.task_id} bg={cardBg} borderWidth="1px" borderColor={borderColor}>
           <CardHeader>
             <Flex justify="space-between" align="center">
               <Heading size="sm">{note.title}</Heading>
@@ -232,7 +252,7 @@ export default function DashboardResponsive() {
           <CardBody>
             <Stack divider={<StackDivider />} spacing="4">
               <Box>
-                <Text fontSize="sm" color={useColorModeValue('gray.600', 'gray.400')} noOfLines={3}>
+                <Text fontSize="sm" color={textColor} noOfLines={3}>
                   {content}
                 </Text>
               </Box>
@@ -264,33 +284,27 @@ export default function DashboardResponsive() {
       <DeleteTaskNoteModal currentTask={currentTask} disclosures={delete_modal} />
       <NewNoteDrawer task={currentTask} disclosures={new_note_drawer} />
       <EditNoteDrawer currentTask={currentTask} setCurrentTask={setCurrentTask} disclosures={edit_note_drawer}></EditNoteDrawer>
+      <NoteViewModal 
+        isOpen={view_task_modal.isOpen} 
+        onClose={view_task_modal.onClose} 
+        note={currentTask}
+        onEdit={handleUpdateItem}
+      />
 
-      <Box minH="100vh" bg={pageBg}>
-        <Navbar />
+      <Box minH="100vh" bg={bgColor}>
+        <Navbar isCollapsed={isMenuCollapsed} />
         <Box
-          ml={{ base: 0, md: 60 }}
-          transition=".3s ease"
-          p={{ base: 4, md: 6, lg: 8 }}
+          ml={{ base: 0, md: isMenuCollapsed ? "60px" : "250px" }}
+          transition="all 0.3s ease"
+          minH="100vh"
         >
-          <Header menu_open={menu_open} />
-          <Box
-            as="main"
-            p={{ base: 4, md: 6 }}
-            minH="calc(100vh - 4rem)"
-            bg={mainBg}
-            borderRadius="lg"
-            boxShadow="sm"
-          >
-            <Box
-              bg="white"
-              borderRadius="lg"
-              p={{ base: 4, md: 6 }}
-              boxShadow="md"
-            >
+          <Header onMenuToggle={() => setIsMenuCollapsed(!isMenuCollapsed)} />
+          <Box p="4">
+            <VStack spacing={6}>
               <Flex
                 justifyContent="space-between"
                 alignItems="center"
-                mb={6}
+                w="full"
               >
                 <Text
                   fontSize="lg"
@@ -304,87 +318,175 @@ export default function DashboardResponsive() {
                 </Text>
                 <UnifiedCreateButton 
                   onCreateNote={handleAddItem}
-                  onCreateTask={() => {
-                    navigate('/tasks');
-                  }}
+                  onCreateTask={() => navigate('/tasks')}
                 />
               </Flex>
 
-              {/* Search and Filter Section */}
-              <VStack align="stretch" spacing={4} mb={6}>
-                <InputGroup>
-                  <InputLeftElement pointerEvents="none">
-                    <SearchIcon color="gray.300" />
-                  </InputLeftElement>
-                  <Input
-                    placeholder="Search notes..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </InputGroup>
+              <Tabs variant="enclosed" colorScheme="blue" w="full">
+                <TabList>
+                  <Tab>Board View</Tab>
+                  <Tab>Table View</Tab>
+                </TabList>
 
-                <HStack spacing={4}>
-                  <Select
-                    placeholder="Category"
-                    value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value)}
-                    width="200px"
-                  >
-                    {categories.map(category => (
-                      <option key={category} value={category}>{category}</option>
-                    ))}
-                  </Select>
+                <TabPanels>
+                  <TabPanel p={0}>
+                    <Grid 
+                      templateColumns={{ 
+                        base: "1fr", 
+                        md: "repeat(2, 1fr)", 
+                        lg: "repeat(3, 1fr)" 
+                      }} 
+                      gap={6}
+                    >
+                      {filteredNotes.map((note, index) => (
+                        <GridItem key={index}>
+                          <Box 
+                            bg={cardBg}
+                            borderWidth="1px"
+                            borderColor={borderColor}
+                            borderRadius="lg"
+                            p={4}
+                            _hover={{
+                              transform: 'translateY(-2px)',
+                              boxShadow: 'lg',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            <Flex justify="space-between" align="center" mb={4}>
+                              <Text fontSize="lg" fontWeight="semibold" color={textColor}>
+                                {note.title}
+                              </Text>
+                              <HStack spacing={2}>
+                                <IconButton
+                                  icon={<FiEye />}
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleViewItem(note)}
+                                  aria-label="View Note"
+                                />
+                                <UnifiedEditButton 
+                                  item={note} 
+                                  type="note" 
+                                  onEdit={handleUpdateItem}
+                                />
+                                <IconButton
+                                  icon={<FiTrash2 />}
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleDeleteItem(note)}
+                                  aria-label="Delete Note"
+                                />
+                              </HStack>
+                            </Flex>
+                            <Text 
+                              fontSize="sm" 
+                              color={contentColor} 
+                              noOfLines={3}
+                              mb={4}
+                            >
+                              {extractTextFromLexicalJSON(note.description)}
+                            </Text>
+                            <Flex justify="space-between" align="center">
+                              <Text fontSize="xs" color="gray.500">
+                                Updated: {formatLocalDateTime(note.updated_at)}
+                              </Text>
+                              {note.tags && note.tags.length > 0 && (
+                                <HStack spacing={1}>
+                                  {note.tags.slice(0, 2).map((tag, i) => (
+                                    <Tag key={i} size="sm" colorScheme="blue">
+                                      {tag}
+                                    </Tag>
+                                  ))}
+                                  {note.tags.length > 2 && (
+                                    <Tag size="sm" colorScheme="gray">
+                                      +{note.tags.length - 2}
+                                    </Tag>
+                                  )}
+                                </HStack>
+                              )}
+                            </Flex>
+                          </Box>
+                        </GridItem>
+                      ))}
+                    </Grid>
+                  </TabPanel>
 
-                  <Select
-                    placeholder="Sort by"
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value)}
-                    width="150px"
-                  >
-                    <option value="newest">Newest first</option>
-                    <option value="oldest">Oldest first</option>
-                    <option value="title">Title</option>
-                  </Select>
-                </HStack>
-
-                {/* Tags */}
-                <Box>
-                  <HStack mb={2}>
-                    <Icon as={FaTags} color="gray.500" />
-                    <Text fontSize="sm" fontWeight="medium">Tags</Text>
-                  </HStack>
-                  <Wrap>
-                    {tags.map(tag => (
-                      <Tag
-                        key={tag}
-                        size="md"
-                        borderRadius="full"
-                        variant={selectedTags.includes(tag) ? "solid" : "outline"}
-                        colorScheme="blue"
-                        cursor="pointer"
-                        onClick={() => handleTagClick(tag)}
-                      >
-                        <TagLabel>{tag}</TagLabel>
-                      </Tag>
-                    ))}
-                  </Wrap>
-                </Box>
-              </VStack>
-
-              <Grid
-                templateColumns={{
-                  base: "1fr",
-                  sm: "repeat(2, 1fr)",
-                  md: "repeat(3, 1fr)",
-                  lg: "repeat(4, 1fr)"
-                }}
-                gap={6}
-              >
-                {filteredNotes.map((task, index) => (
-                  <NoteCard key={task.task_id || index} note={task} />
-                ))}
-              </Grid>
-            </Box>
+                  <TabPanel p={0}>
+                    <Box overflowX="auto">
+                      <Table variant="simple">
+                        <Thead>
+                          <Tr>
+                            <Th>Title</Th>
+                            <Th>Content</Th>
+                            <Th>Updated At</Th>
+                            <Th>Tags</Th>
+                            <Th>Actions</Th>
+                          </Tr>
+                        </Thead>
+                        <Tbody>
+                          {filteredNotes.map((note, index) => (
+                            <Tr key={index}>
+                              <Td>
+                                <Text 
+                                  fontWeight="medium" 
+                                  cursor="pointer"
+                                  onClick={() => handleUpdateItem(note)}
+                                >
+                                  {note.title}
+                                </Text>
+                              </Td>
+                              <Td>
+                                <Text noOfLines={2}>
+                                  {extractTextFromLexicalJSON(note.description)}
+                                </Text>
+                              </Td>
+                              <Td>{formatLocalDateTime(note.updated_at)}</Td>
+                              <Td>
+                                <HStack spacing={1}>
+                                  {note.tags && note.tags.slice(0, 2).map((tag, i) => (
+                                    <Tag key={i} size="sm" colorScheme="blue">
+                                      {tag}
+                                    </Tag>
+                                  ))}
+                                  {note.tags && note.tags.length > 2 && (
+                                    <Tag size="sm" colorScheme="gray">
+                                      +{note.tags.length - 2}
+                                    </Tag>
+                                  )}
+                                </HStack>
+                              </Td>
+                              <Td>
+                                <HStack spacing={2}>
+                                  <IconButton
+                                    icon={<FiEye />}
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => handleViewItem(note)}
+                                    aria-label="View Note"
+                                  />
+                                  <UnifiedEditButton 
+                                    item={note} 
+                                    type="note" 
+                                    onEdit={handleUpdateItem}
+                                  />
+                                  <IconButton
+                                    icon={<FiTrash2 />}
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => handleDeleteItem(note)}
+                                    aria-label="Delete Note"
+                                  />
+                                </HStack>
+                              </Td>
+                            </Tr>
+                          ))}
+                        </Tbody>
+                      </Table>
+                    </Box>
+                  </TabPanel>
+                </TabPanels>
+              </Tabs>
+            </VStack>
           </Box>
         </Box>
       </Box>
