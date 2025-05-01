@@ -2,36 +2,23 @@ import React from "react";
 import {
   Icon,
   useColorModeValue,
-  Image,
   Divider,
   VStack,
   Text,
   Box,
   Flex,
-  Link,
   useColorMode,
   IconButton,
   Tooltip,
-  Collapse,
-  HStack,
-  Menu,
-  MenuButton,
-  MenuList,
-  MenuItem,
-  MenuDivider,
-  Button,
-  Avatar,
   useDisclosure,
   Spacer
 } from '@chakra-ui/react';
 // Here we have used react-icons package for the icons
 
 import { 
-  AiOutlineHome, 
   AiOutlineBook, 
   AiOutlineDatabase,
-  AiOutlineTeam,
-  AiOutlineSetting
+  AiOutlineTeam
 } from 'react-icons/ai';
 import { 
   BsCalendarCheck, 
@@ -56,11 +43,6 @@ import {
   FiMoon,
   FiSearch,
   FiGrid,
-  FiTag,
-  FiFolder,
-  FiMessageSquare,
-  FiChevronDown,
-  FiChevronRight,
   FiMenu,
   FiX,
   FiPlus,
@@ -111,271 +93,280 @@ const Navbar = ({ isCollapsed, onToggle }) => {
           borderBottom="1px"
           borderColor={borderColor}
           justify="space-between"
+          bg={bgColor}
+          position="sticky"
+          top={0}
+          zIndex={1}
         >
           {!isCollapsed && (
             <Text fontSize="lg" fontWeight="bold">
               Assistant.AI
             </Text>
           )}
-          <IconButton
+          {/* <IconButton
             icon={<Icon as={isCollapsed ? FiMenu : FiX} />}
             variant="ghost"
             onClick={onToggle}
             aria-label="Toggle Menu"
-          />
+          /> */}
         </Flex>
 
-        {/* Workspace Selector */}
-        <Box p={2}>
-          <WorkspaceSelector isCollapsed={isCollapsed} />
-        </Box>
+        {/* Scrollable Content */}
+        <Box overflowY="auto" flex={1}>
+          {/* Workspace Selector */}
+          <Box p={2}>
+            <WorkspaceSelector isCollapsed={isCollapsed} />
+          </Box>
 
-        <Divider />
+          <Divider />
 
-        {/* Quick Access */}
-        <Box p={2}>
-          {!isCollapsed && (
-            <Text
-              px={4}
-              py={2}
-              fontSize="xs"
-              fontWeight="bold"
-              color="gray.500"
-              textTransform="uppercase"
+          {/* Quick Access */}
+          <Box p={2}>
+            {!isCollapsed && (
+              <Text
+                px={4}
+                py={2}
+                fontSize="xs"
+                fontWeight="bold"
+                color="gray.500"
+                textTransform="uppercase"
+              >
+                Quick Access
+              </Text>
+            )}
+            <NavItem
+              icon={FiHome}
+              to="/dashboard"
+              isActive={location.pathname === '/dashboard'}
+              isCollapsed={isCollapsed}
             >
-              Quick Access
-            </Text>
-          )}
-          <NavItem
-            icon={FiHome}
-            to="/dashboard"
-            isActive={location.pathname === '/dashboard'}
-            isCollapsed={isCollapsed}
-          >
-            Dashboard
-          </NavItem>
-          <NavItem
-            icon={FiFileText}
-            to="/tasks"
-            isActive={location.pathname === '/tasks'}
-            isCollapsed={isCollapsed}
-          >
-            Tasks
-          </NavItem>
-          <NavItem
-            icon={FiBook}
-            to="/notes"
-            isActive={location.pathname === '/notes'}
-            isCollapsed={isCollapsed}
-          >
-            Notes
-          </NavItem>
-          <NavItem
-            icon={FiCalendar}
-            to="/calendar"
-            isActive={location.pathname === '/calendar'}
-            isCollapsed={isCollapsed}
-          >
-            Calendar
-          </NavItem>
-          <NavItem
-            icon={FiClock}
-            to="/timeblock"
-            isActive={location.pathname === '/timeblock'}
-            isCollapsed={isCollapsed}
-          >
-            Time Block
-          </NavItem>
-          <NavItem
-            icon={FiGrid}
-            to="/notion"
-            isActive={location.pathname === '/notion'}
-            isCollapsed={isCollapsed}
-          >
-            Notion Dashboard
-          </NavItem>
-          <NavItem
-            icon={FiSearch}
-            to="/search-tasks"
-            isActive={location.pathname === '/search-tasks'}
-            isCollapsed={isCollapsed}
-          >
-            Search Tasks
-          </NavItem>
-          <NavItem
-            icon={FiSearch}
-            to="/search-notebooks"
-            isActive={location.pathname === '/search-notebooks'}
-            isCollapsed={isCollapsed}
-          >
-            Search Notebooks
-          </NavItem>
-        </Box>
-
-        <Divider />
-
-        {/* Create New */}
-        <Box p={2}>
-          {!isCollapsed && (
-            <Text
-              px={4}
-              py={2}
-              fontSize="xs"
-              fontWeight="bold"
-              color="gray.500"
-              textTransform="uppercase"
+              Dashboard
+            </NavItem>
+            <NavItem
+              icon={FiFileText}
+              to="/tasks"
+              isActive={location.pathname === '/tasks'}
+              isCollapsed={isCollapsed}
             >
-              Create New
-            </Text>
-          )}
-          <NavItem
-            icon={FiPlus}
-            onClick={handleCreateTask}
-            isCollapsed={isCollapsed}
-          >
-            New Task
-          </NavItem>
-          <NavItem
-            icon={FiPlus}
-            onClick={handleCreateNote}
-            isCollapsed={isCollapsed}
-          >
-            New Note
-          </NavItem>
-        </Box>
-
-        <Divider />
-
-        {/* Workspace */}
-        <Box p={2}>
-          {!isCollapsed && (
-            <Text
-              px={4}
-              py={2}
-              fontSize="xs"
-              fontWeight="bold"
-              color="gray.500"
-              textTransform="uppercase"
+              Tasks
+            </NavItem>
+            <NavItem
+              icon={FiBook}
+              to="/notes"
+              isActive={location.pathname === '/notes'}
+              isCollapsed={isCollapsed}
             >
-              Workspace
-            </Text>
-          )}
-          <NavItem
-            icon={AiOutlineBook}
-            to="/wiki"
-            isActive={location.pathname === '/wiki'}
-            isCollapsed={isCollapsed}
-          >
-            Wiki
-          </NavItem>
-          <NavItem
-            icon={BsListTask}
-            to="/projects"
-            isActive={location.pathname === '/projects'}
-            isCollapsed={isCollapsed}
-          >
-            Projects
-          </NavItem>
-          <NavItem
-            icon={AiOutlineDatabase}
-            to="/database"
-            isActive={location.pathname === '/database'}
-            isCollapsed={isCollapsed}
-          >
-            Database
-          </NavItem>
-          <NavItem
-            icon={AiOutlineTeam}
-            to="/team"
-            isActive={location.pathname === '/team'}
-            isCollapsed={isCollapsed}
-          >
-            Team
-          </NavItem>
-        </Box>
+              Notes
+            </NavItem>
+            <NavItem
+              icon={FiCalendar}
+              to="/calendar"
+              isActive={location.pathname === '/calendar'}
+              isCollapsed={isCollapsed}
+            >
+              Calendar
+            </NavItem>
+            <NavItem
+              icon={FiClock}
+              to="/timeblock"
+              isActive={location.pathname === '/timeblock'}
+              isCollapsed={isCollapsed}
+            >
+              Time Block
+            </NavItem>
+            <NavItem
+              icon={FiGrid}
+              to="/notion"
+              isActive={location.pathname === '/notion'}
+              isCollapsed={isCollapsed}
+            >
+              Notion Dashboard
+            </NavItem>
+            <NavItem
+              icon={FiSearch}
+              to="/search-tasks"
+              isActive={location.pathname === '/search-tasks'}
+              isCollapsed={isCollapsed}
+            >
+              Search Tasks
+            </NavItem>
+            <NavItem
+              icon={FiSearch}
+              to="/search-notebooks"
+              isActive={location.pathname === '/search-notebooks'}
+              isCollapsed={isCollapsed}
+            >
+              Search Notebooks
+            </NavItem>
+          </Box>
 
-        <Divider />
+          <Divider />
 
-        {/* Analytics */}
-        <Box p={2}>
-          {!isCollapsed && (
-            <Text
-              px={4}
-              py={2}
-              fontSize="xs"
-              fontWeight="bold"
-              color="gray.500"
-              textTransform="uppercase"
+          {/* Create New */}
+          <Box p={2}>
+            {!isCollapsed && (
+              <Text
+                px={4}
+                py={2}
+                fontSize="xs"
+                fontWeight="bold"
+                color="gray.500"
+                textTransform="uppercase"
+              >
+                Create New
+              </Text>
+            )}
+            <NavItem
+              icon={FiPlus}
+              onClick={handleCreateTask}
+              isCollapsed={isCollapsed}
+            >
+              New Task
+            </NavItem>
+            <NavItem
+              icon={FiPlus}
+              onClick={handleCreateNote}
+              isCollapsed={isCollapsed}
+            >
+              New Note
+            </NavItem>
+          </Box>
+
+          <Divider />
+
+          {/* Workspace */}
+          <Box p={2}>
+            {!isCollapsed && (
+              <Text
+                px={4}
+                py={2}
+                fontSize="xs"
+                fontWeight="bold"
+                color="gray.500"
+                textTransform="uppercase"
+              >
+                Workspace
+              </Text>
+            )}
+            <NavItem
+              icon={AiOutlineBook}
+              to="/wiki"
+              isActive={location.pathname === '/wiki'}
+              isCollapsed={isCollapsed}
+            >
+              Wiki
+            </NavItem>
+            <NavItem
+              icon={BsListTask}
+              to="/projects"
+              isActive={location.pathname === '/projects'}
+              isCollapsed={isCollapsed}
+            >
+              Projects
+            </NavItem>
+            <NavItem
+              icon={AiOutlineDatabase}
+              to="/database"
+              isActive={location.pathname === '/database'}
+              isCollapsed={isCollapsed}
+            >
+              Database
+            </NavItem>
+            <NavItem
+              icon={AiOutlineTeam}
+              to="/team"
+              isActive={location.pathname === '/team'}
+              isCollapsed={isCollapsed}
+            >
+              Team
+            </NavItem>
+          </Box>
+
+          <Divider />
+
+          {/* Analytics */}
+          <Box p={2}>
+            {!isCollapsed && (
+              <Text
+                px={4}
+                py={2}
+                fontSize="xs"
+                fontWeight="bold"
+                color="gray.500"
+                textTransform="uppercase"
+              >
+                Analytics
+              </Text>
+            )}
+            <NavItem
+              icon={MdOutlineAnalytics}
+              to="/analytics"
+              isActive={location.pathname === '/analytics'}
+              isCollapsed={isCollapsed}
             >
               Analytics
-            </Text>
-          )}
-          <NavItem
-            icon={MdOutlineAnalytics}
-            to="/analytics"
-            isActive={location.pathname === '/analytics'}
-            isCollapsed={isCollapsed}
-          >
-            Analytics
-          </NavItem>
-          <NavItem
-            icon={MdOutlineSpaceDashboard}
-            to="/reports"
-            isActive={location.pathname === '/reports'}
-            isCollapsed={isCollapsed}
-          >
-            Reports
-          </NavItem>
+            </NavItem>
+            <NavItem
+              icon={MdOutlineSpaceDashboard}
+              to="/reports"
+              isActive={location.pathname === '/reports'}
+              isCollapsed={isCollapsed}
+            >
+              Reports
+            </NavItem>
+          </Box>
         </Box>
 
-        <Spacer />
-
-        {/* Settings */}
-        <Box p={2}>
-          {!isCollapsed && (
-            <Text
-              px={4}
-              py={2}
-              fontSize="xs"
-              fontWeight="bold"
-              color="gray.500"
-              textTransform="uppercase"
+        {/* Fixed Footer */}
+        <Box>
+          <Divider />
+          {/* Settings */}
+          <Box p={2}>
+            {!isCollapsed && (
+              <Text
+                px={4}
+                py={2}
+                fontSize="xs"
+                fontWeight="bold"
+                color="gray.500"
+                textTransform="uppercase"
+              >
+                Settings
+              </Text>
+            )}
+            <NavItem
+              icon={FiSettings}
+              to="/settings"
+              isActive={location.pathname === '/settings'}
+              isCollapsed={isCollapsed}
             >
               Settings
-            </Text>
-          )}
-          <NavItem
-            icon={FiSettings}
-            to="/settings"
-            isActive={location.pathname === '/settings'}
-            isCollapsed={isCollapsed}
-          >
-            Settings
-          </NavItem>
-          <NavItem
-            icon={FiUsers}
-            to="/members"
-            isActive={location.pathname === '/members'}
-            isCollapsed={isCollapsed}
-          >
-            Members
-          </NavItem>
-        </Box>
+            </NavItem>
+            <NavItem
+              icon={FiUsers}
+              to="/members"
+              isActive={location.pathname === '/members'}
+              isCollapsed={isCollapsed}
+            >
+              Members
+            </NavItem>
+          </Box>
 
-        {/* Theme Toggle */}
-        <Box p={2}>
-          <Flex align="center" justify="space-between" px={4} py={2}>
-            {!isCollapsed && (
-              <Text fontSize="sm" color="gray.500">Theme</Text>
-            )}
-            <IconButton
-              aria-label="Toggle theme"
-              icon={<Icon as={colorMode === "light" ? FiMoon : FiSun} />}
-              onClick={toggleColorMode}
-              size="sm"
-              variant="ghost"
-            />
-          </Flex>
+          {/* Theme Toggle */}
+          <Box p={2}>
+            <Flex align="center" justify="space-between" px={4} py={2}>
+              {!isCollapsed && (
+                <Text fontSize="sm" color="gray.500">Theme</Text>
+              )}
+              <IconButton
+                aria-label="Toggle theme"
+                icon={<Icon as={colorMode === "light" ? FiMoon : FiSun} />}
+                onClick={toggleColorMode}
+                size="sm"
+                variant="ghost"
+              />
+            </Flex>
+          </Box>
         </Box>
       </VStack>
     </Box>
