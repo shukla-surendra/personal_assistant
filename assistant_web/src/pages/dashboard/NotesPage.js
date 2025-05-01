@@ -26,7 +26,14 @@ import {
   MenuButton,
   MenuList,
   MenuItem,
-  Divider
+  Divider,
+  Card,
+  CardHeader,
+  CardBody,
+  CardFooter,
+  Stack,
+  StackDivider,
+  Heading
 } from '@chakra-ui/react';
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
@@ -44,6 +51,8 @@ import { FaTags, FaFolder, FaEye, FaTrash } from "react-icons/fa";
 import UnifiedEditButton from "../../components/dashboard/UnifiedEditButton";
 import UnifiedCreateButton from "../../components/dashboard/UnifiedCreateButton";
 import { useNavigate } from "react-router-dom";
+import NoteViewModal from "../../components/dashboard/modals/NoteViewModal";
+import { FiEye, FiMoreVertical, FiEdit2, FiTrash2 } from "react-icons/fi";
 
 export default function DashboardResponsive() {
   const menu_open = useDisclosure();
@@ -64,6 +73,19 @@ export default function DashboardResponsive() {
   const pageBg = useColorModeValue('gray.50', 'gray.900');
   const mainBg = useColorModeValue('gray.50', 'gray.800');
   const noteCardBg = useColorModeValue('gray.50', 'gray.700');
+
+  const extractTextFromLexicalJSON = (json) => {
+    if (!json || !json.root || !json.root.children) return '';
+    
+    return json.root.children
+      .map(child => {
+        if (child.type === 'paragraph' && child.children) {
+          return child.children.map(text => text.text).join('');
+        }
+        return '';
+      })
+      .join('\n');
+  };
 
   const handleAddItem = (task) => {
     setCurrentTask(task);
@@ -153,6 +175,84 @@ export default function DashboardResponsive() {
         : [...prev, tag]
     );
   };
+
+  const NoteCard = React.memo(({ note }) => {
+    const [content, setContent] = useState('');
+    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+
+    useEffect(() => {
+      if (note?.description) {
+        try {
+          const jsonContent = typeof note.description === 'string' 
+            ? JSON.parse(note.description) 
+            : note.description;
+          
+          const textContent = extractTextFromLexicalJSON(jsonContent);
+          setContent(textContent);
+        } catch (error) {
+          console.error('Error parsing description:', error);
+          setContent(note.description);
+        }
+      }
+    }, [note?.description]);
+
+    return (
+      <>
+        <Card key={note.task_id} bg={noteCardBg} borderWidth="1px" borderColor={useColorModeValue('gray.200', 'gray.700')}>
+          <CardHeader>
+            <Flex justify="space-between" align="center">
+              <Heading size="sm">{note.title}</Heading>
+              <HStack spacing={1}>
+                <IconButton
+                  aria-label="View Note"
+                  icon={<FiEye />}
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setIsViewModalOpen(true)}
+                />
+                <Menu>
+                  <MenuButton
+                    as={IconButton}
+                    icon={<FiMoreVertical />}
+                    variant="ghost"
+                    size="sm"
+                  />
+                  <MenuList>
+                    <MenuItem icon={<FiEdit2 />} onClick={() => handleUpdateItem(note)}>
+                      Edit
+                    </MenuItem>
+                    <MenuItem icon={<FiTrash2 />} onClick={() => handleDeleteItem(note)}>
+                      Delete
+                    </MenuItem>
+                  </MenuList>
+                </Menu>
+              </HStack>
+            </Flex>
+          </CardHeader>
+          <CardBody>
+            <Stack divider={<StackDivider />} spacing="4">
+              <Box>
+                <Text fontSize="sm" color={useColorModeValue('gray.600', 'gray.400')} noOfLines={3}>
+                  {content}
+                </Text>
+              </Box>
+            </Stack>
+          </CardBody>
+          <CardFooter>
+            <Text fontSize="xs" color="gray.500">
+              Updated: {formatLocalDateTime(note.updated_at)}
+            </Text>
+          </CardFooter>
+        </Card>
+        <NoteViewModal 
+          isOpen={isViewModalOpen} 
+          onClose={() => setIsViewModalOpen(false)} 
+          note={note}
+          onEdit={handleUpdateItem}
+        />
+      </>
+    );
+  });
 
   return (
     <>
@@ -281,85 +381,7 @@ export default function DashboardResponsive() {
                 gap={6}
               >
                 {filteredNotes.map((task, index) => (
-                  <Box
-                    key={task.task_id || index}
-                    p={4}
-                    bg={noteCardBg}
-                    borderRadius="lg"
-                    boxShadow="sm"
-                    transition="all 0.2s"
-                    _hover={{
-                      transform: "translateY(-2px)",
-                      boxShadow: "md"
-                    }}
-                  >
-                    <Flex direction="column" height="100%">
-                      <Box flex="1">
-                        <Text
-                          fontSize="lg"
-                          fontWeight="semibold"
-                          mb={2}
-                          color="blue.600"
-                          cursor="pointer"
-                          onClick={() => handleUpdateItem(task)}
-                          _hover={{ textDecoration: "underline" }}
-                        >
-                          {task.title}
-                        </Text>
-                        <Text
-                          fontSize="sm"
-                          color="gray.500"
-                          mb={2}
-                        >
-                          {formatLocalDateTime(task.created_at)}
-                        </Text>
-                        {task.category && (
-                          <HStack mb={2}>
-                            <Icon as={FaFolder} color="gray.500" />
-                            <Text fontSize="sm" color="gray.600">{task.category}</Text>
-                          </HStack>
-                        )}
-                        {task.tags && task.tags.length > 0 && (
-                          <Wrap mb={4}>
-                            {task.tags.map(tag => (
-                              <Tag
-                                key={tag}
-                                size="sm"
-                                borderRadius="full"
-                                variant="subtle"
-                                colorScheme="blue"
-                              >
-                                <TagLabel>{tag}</TagLabel>
-                              </Tag>
-                            ))}
-                          </Wrap>
-                        )}
-                      </Box>
-                      <Flex justify="flex-end" mt="auto">
-                        <HStack spacing={2}>
-                          <IconButton
-                            icon={<Icon as={FaEye} />}
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleUpdateItem(task)}
-                            aria-label="View Task"
-                          />
-                          <UnifiedEditButton 
-                            item={task} 
-                            type="note" 
-                            onEdit={handleUpdateItem}
-                          />
-                          <IconButton
-                            icon={<Icon as={FaTrash} />}
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleDeleteItem(task)}
-                            aria-label="Delete Task"
-                          />
-                        </HStack>
-                      </Flex>
-                    </Flex>
-                  </Box>
+                  <NoteCard key={task.task_id || index} note={task} />
                 ))}
               </Grid>
             </Box>

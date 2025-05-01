@@ -180,127 +180,153 @@ export function NotionLikeTableView({
   const bg = useColorModeValue("white", "gray.800");
   const border = useColorModeValue("gray.200", "gray.700");
   const rowHoverBg = useColorModeValue("gray.50", "gray.700");
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+
+  const handleViewTask = (task) => {
+    setSelectedTask(task);
+    setIsViewModalOpen(true);
+  };
 
   return (
-    <Box
-      bg={bg}
-      border="1px solid"
-      borderColor={border}
-      borderRadius="lg"
-      boxShadow="md"
-      p={4}
-      mt={4}
-      overflowX="auto"
-    >
-      <Table variant="simple" size="md">
-        <Thead>
-          <Tr>
-            {columns.map((col) => (
-              <Th key={col.key} fontWeight="bold" fontSize="md" color="gray.600">
-                {col.label}
+    <>
+      <Box
+        bg={bg}
+        border="1px solid"
+        borderColor={border}
+        borderRadius="lg"
+        boxShadow="md"
+        p={4}
+        mt={4}
+        overflowX="auto"
+      >
+        <Table variant="simple" size="md">
+          <Thead>
+            <Tr>
+              {columns.map((col) => (
+                <Th key={col.key} fontWeight="bold" fontSize="md" color="gray.600">
+                  {col.label}
+                </Th>
+              ))}
+              <Th fontWeight="bold" fontSize="md" color="gray.600">
+                Actions
               </Th>
-            ))}
-            <Th fontWeight="bold" fontSize="md" color="gray.600">
-              Actions
-            </Th>
-          </Tr>
-        </Thead>
-        <Tbody>
-          {data.map((row, idx) => (
-            <Tr
-              key={row.task_id || idx}
-              _hover={{ bg: rowHoverBg }}
-              transition="background 0.2s"
-            >
-              <Td maxW="220px">
-                <Tooltip label={row.title} hasArrow>
-                  <Text isTruncated fontWeight="semibold">
-                    {row.title}
-                  </Text>
-                </Tooltip>
-              </Td>
-              <Td>
-                <Text fontSize="sm" color="gray.500">
-                  {row.created_at
-                    ? new Date(row.created_at).toLocaleString()
-                    : "-"}
-                </Text>
-              </Td>
-              <Td>
-                <Badge
-                  colorScheme={
-                    row.status === "done"
-                      ? "green"
-                      : row.status === "in_progress"
-                      ? "orange"
-                      : "blue"
-                  }
-                  variant="subtle"
-                  px={2}
-                  py={1}
-                  borderRadius="md"
-                >
-                  {row.status === "todo"
-                    ? "Not Started"
-                    : row.status === "in_progress"
-                    ? "In Progress"
-                    : "Done"}
-                </Badge>
-              </Td>
-              <Td>
-                <Badge
-                  colorScheme={
-                    row.priority === "High"
-                      ? "red"
-                      : row.priority === "Medium"
-                      ? "yellow"
-                      : "green"
-                  }
-                  variant="outline"
-                  px={2}
-                  py={1}
-                  borderRadius="md"
-                >
-                  {row.priority}
-                </Badge>
-              </Td>
-              <Td>
-                <Flex gap={2}>
-                  <Tooltip label="Edit" hasArrow>
-                    <IconButton
-                      aria-label="Edit"
-                      icon={<EditIcon />}
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => onEdit(row)}
-                    />
-                  </Tooltip>
-                  <Tooltip label="Delete" hasArrow>
-                    <IconButton
-                      aria-label="Delete"
-                      icon={<DeleteIcon />}
-                      size="sm"
-                      variant="ghost"
-                      colorScheme="red"
-                      onClick={() => onDelete(row)}
-                    />
-                  </Tooltip>
-                  <Tooltip label="Share" hasArrow>
-                    <IconButton
-                      aria-label="Share"
-                      icon={<ExternalLinkIcon />}
-                      size="sm"
-                      variant="ghost"
-                      colorScheme="blue"
-                      onClick={() => onShare(row)}
-                    />
-                  </Tooltip>
-                </Flex>
-              </Td>
             </Tr>
-          ))}
-        </Tbody>
-      </Table>
-    </Box>
+          </Thead>
+          <Tbody>
+            {data.map((row, idx) => (
+              <Tr
+                key={row.task_id || idx}
+                _hover={{ bg: rowHoverBg }}
+                transition="background 0.2s"
+              >
+                <Td maxW="220px">
+                  <Tooltip label={row.title} hasArrow>
+                    <Text isTruncated fontWeight="semibold">
+                      {row.title}
+                    </Text>
+                  </Tooltip>
+                </Td>
+                <Td>
+                  <Text fontSize="sm" color="gray.500">
+                    {row.created_at
+                      ? new Date(row.created_at).toLocaleString()
+                      : "-"}
+                  </Text>
+                </Td>
+                <Td>
+                  <Badge
+                    colorScheme={
+                      row.status === "done"
+                        ? "green"
+                        : row.status === "in_progress"
+                        ? "orange"
+                        : "blue"
+                    }
+                    variant="subtle"
+                    px={2}
+                    py={1}
+                    borderRadius="md"
+                  >
+                    {row.status === "todo"
+                      ? "Not Started"
+                      : row.status === "in_progress"
+                      ? "In Progress"
+                      : "Done"}
+                  </Badge>
+                </Td>
+                <Td>
+                  <Badge
+                    colorScheme={
+                      row.priority === "High"
+                        ? "red"
+                        : row.priority === "Medium"
+                        ? "yellow"
+                        : "green"
+                    }
+                    variant="outline"
+                    px={2}
+                    py={1}
+                    borderRadius="md"
+                  >
+                    {row.priority}
+                  </Badge>
+                </Td>
+                <Td>
+                  <Flex gap={2}>
+                    <Tooltip label="View" hasArrow>
+                      <IconButton
+                        aria-label="View"
+                        icon={<ViewIcon />}
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleViewTask(row)}
+                      />
+                    </Tooltip>
+                    <Tooltip label="Edit" hasArrow>
+                      <IconButton
+                        aria-label="Edit"
+                        icon={<EditIcon />}
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => onEdit(row)}
+                      />
+                    </Tooltip>
+                    <Tooltip label="Delete" hasArrow>
+                      <IconButton
+                        aria-label="Delete"
+                        icon={<DeleteIcon />}
+                        size="sm"
+                        variant="ghost"
+                        colorScheme="red"
+                        onClick={() => onDelete(row)}
+                      />
+                    </Tooltip>
+                    <Tooltip label="Share" hasArrow>
+                      <IconButton
+                        aria-label="Share"
+                        icon={<ExternalLinkIcon />}
+                        size="sm"
+                        variant="ghost"
+                        colorScheme="blue"
+                        onClick={() => onShare(row)}
+                      />
+                    </Tooltip>
+                  </Flex>
+                </Td>
+              </Tr>
+            ))}
+          </Tbody>
+        </Table>
+      </Box>
+      {selectedTask && (
+        <TaskViewModal 
+          isOpen={isViewModalOpen} 
+          onClose={() => setIsViewModalOpen(false)} 
+          task={selectedTask}
+          onEdit={onEdit}
+        />
+      )}
+    </>
   );
 }

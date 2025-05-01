@@ -36,7 +36,6 @@ import DeleteTaskNoteModal from "../../components/dashboard/modals/DeleteTaskNot
 import { Helmet } from 'react-helmet';
 import { formatLocalDateTime } from "../../utils/locale"
 import { Tabs, TabList, TabPanels, Tab, TabPanel } from '@chakra-ui/react'
-import TaskBoardViewBox from "../../components/dashboard/sections/TaskBoardViewBox";
 import Header from "../../components/dashboard/Header";
 import { useNavigate } from 'react-router-dom';
 import { FaTrash, FaEdit, FaEye } from 'react-icons/fa';

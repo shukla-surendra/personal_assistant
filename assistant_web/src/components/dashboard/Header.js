@@ -25,7 +25,7 @@ import { FiMenu, FiBell, FiSearch, FiSun, FiMoon, FiChevronDown, FiLogOut, FiUse
 import NotificationList from "./NotificationList";
 import ConfigService from '../../utils/config';
 import { useNavigate } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../../slices/auth';
 import auth from '../../utils/auth';
 import UserSettings from './modals/UserSettings';
@@ -49,6 +49,7 @@ const Header = ({ onMenuToggle }) => {
     
     const [workspaces, setWorkspaces] = useState([]);
     const [currentWorkspace, setCurrentWorkspace] = useState(null);
+    const user = useSelector(state => state.auth.user);
 
     useEffect(() => {
         // Fetch workspaces from API or localStorage
@@ -61,8 +62,8 @@ const Header = ({ onMenuToggle }) => {
             { workspace_id: "workspace2", name: "Workspace 2" },
             { workspace_id: "workspace3", name: "Workspace 3" }
         ];
-        setWorkspaces(userWorkspaces);},[])
-    
+        setWorkspaces(userWorkspaces);
+    }, []);
 
     const handleWorkspaceChange = (workspaceId) => {
         const selectedWorkspace = workspaces.find(w => w.workspace_id === workspaceId);
@@ -136,9 +137,11 @@ const Header = ({ onMenuToggle }) => {
                             as={Button}
                             rightIcon={<FiChevronDown />}
                             variant="ghost"
-                            leftIcon={<Avatar size="sm" name="User Name" />}
+                            leftIcon={<Avatar size="sm" name={`${user?.first_name || ''} ${user?.last_name || ''}`.trim() || 'User'} />}
                         >
-                            <Text display={{ base: "none", md: "block" }}>User Name</Text>
+                            <Text display={{ base: "none", md: "block" }}>
+                                {`${user?.first_name || ''} ${user?.last_name || ''}`.trim() || 'User'}
+                            </Text>
                         </MenuButton>
                         <MenuList>
                             <MenuItem icon={<FiUser />} onClick={onProfileOpen}>

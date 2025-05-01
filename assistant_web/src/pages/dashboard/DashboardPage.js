@@ -51,7 +51,8 @@ import {
   FiEdit2,
   FiTrash2,
   FiStar,
-  FiChevronRight
+  FiChevronRight,
+  FiEye
 } from 'react-icons/fi';
 import Navbar from "../../components/dashboard/Navbar";
 import EditTaskDrawer from "../../components/dashboard/drawers/EditTaskDrawer";
@@ -62,6 +63,8 @@ import { formatLocalDateTime } from "../../utils/locale";
 import { useNavigate } from "react-router-dom";
 import NewTaskDrawer from "../../components/dashboard/drawers/NewTaskDrawer";
 import NewNoteDrawer from "../../components/dashboard/drawers/NewNoteDrawer";
+import TaskViewModal from "../../components/dashboard/modals/TaskViewModal";
+import NoteViewModal from "../../components/dashboard/modals/NoteViewModal";
 
 export default function DashboardResponsive() {
   const dispatch = useDispatch();
@@ -139,6 +142,7 @@ export default function DashboardResponsive() {
 
   const TaskCard = React.memo(({ task }) => {
     const [content, setContent] = useState('');
+    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
 
     useEffect(() => {
       if (task?.description) {
@@ -157,56 +161,74 @@ export default function DashboardResponsive() {
     }, [task?.description]);
 
     return (
-      <Card key={task.task_id} bg={cardBg} borderWidth="1px" borderColor={borderColor}>
-        <CardHeader>
-          <Flex justify="space-between" align="center">
-            <Heading size="sm">{task.title}</Heading>
-            <Menu>
-              <MenuButton
-                as={IconButton}
-                icon={<FiMoreVertical />}
-                variant="ghost"
-                size="sm"
-              />
-              <MenuList>
-                <MenuItem icon={<FiEdit2 />} onClick={() => handleUpdateItem(task)}>
-                  Edit
-                </MenuItem>
-                <MenuItem icon={<FiTrash2 />} onClick={() => handleDeleteItem(task)}>
-                  Delete
-                </MenuItem>
-              </MenuList>
-            </Menu>
-          </Flex>
-        </CardHeader>
-        <CardBody>
-          <Stack divider={<StackDivider />} spacing="4">
-            <Box>
-              <Text fontSize="sm" color={textColor} noOfLines={3}>
-                {content}
-              </Text>
-            </Box>
-            <Flex wrap="wrap" gap={2}>
-              <Badge colorScheme={priorityColorMapping[task.priority] || 'gray'}>
-                {task.priority || 'No Priority'}
-              </Badge>
-              <Badge colorScheme="blue">
-                {task.status || 'No Status'}
-              </Badge>
+      <>
+        <Card key={task.task_id} bg={cardBg} borderWidth="1px" borderColor={borderColor}>
+          <CardHeader>
+            <Flex justify="space-between" align="center">
+              <Heading size="sm">{task.title}</Heading>
+              <HStack spacing={1}>
+                <IconButton
+                  aria-label="View Task"
+                  icon={<FiEye />}
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setIsViewModalOpen(true)}
+                />
+                <Menu>
+                  <MenuButton
+                    as={IconButton}
+                    icon={<FiMoreVertical />}
+                    variant="ghost"
+                    size="sm"
+                  />
+                  <MenuList>
+                    <MenuItem icon={<FiEdit2 />} onClick={() => handleUpdateItem(task)}>
+                      Edit
+                    </MenuItem>
+                    <MenuItem icon={<FiTrash2 />} onClick={() => handleDeleteItem(task)}>
+                      Delete
+                    </MenuItem>
+                  </MenuList>
+                </Menu>
+              </HStack>
             </Flex>
-          </Stack>
-        </CardBody>
-        <CardFooter>
-          <Text fontSize="xs" color="gray.500">
-            Updated: {formatLocalDateTime(task.updated_at)}
-          </Text>
-        </CardFooter>
-      </Card>
+          </CardHeader>
+          <CardBody>
+            <Stack divider={<StackDivider />} spacing="4">
+              <Box>
+                <Text fontSize="sm" color={textColor} noOfLines={3}>
+                  {content}
+                </Text>
+              </Box>
+              <Flex wrap="wrap" gap={2}>
+                <Badge colorScheme={priorityColorMapping[task.priority] || 'gray'}>
+                  {task.priority || 'No Priority'}
+                </Badge>
+                <Badge colorScheme="blue">
+                  {task.status || 'No Status'}
+                </Badge>
+              </Flex>
+            </Stack>
+          </CardBody>
+          <CardFooter>
+            <Text fontSize="xs" color="gray.500">
+              Updated: {formatLocalDateTime(task.updated_at)}
+            </Text>
+          </CardFooter>
+        </Card>
+        <TaskViewModal 
+          isOpen={isViewModalOpen} 
+          onClose={() => setIsViewModalOpen(false)} 
+          task={task}
+          onEdit={handleUpdateItem}
+        />
+      </>
     );
   });
 
   const NoteCard = React.memo(({ note }) => {
     const [content, setContent] = useState('');
+    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
 
     useEffect(() => {
       if (note?.description) {
@@ -225,43 +247,60 @@ export default function DashboardResponsive() {
     }, [note?.description]);
 
     return (
-      <Card key={note.task_id} bg={cardBg} borderWidth="1px" borderColor={borderColor}>
-        <CardHeader>
-          <Flex justify="space-between" align="center">
-            <Heading size="sm">{note.title}</Heading>
-            <Menu>
-              <MenuButton
-                as={IconButton}
-                icon={<FiMoreVertical />}
-                variant="ghost"
-                size="sm"
-              />
-              <MenuList>
-                <MenuItem icon={<FiEdit2 />} onClick={() => handleUpdateNote(note)}>
-                  Edit
-                </MenuItem>
-                <MenuItem icon={<FiTrash2 />} onClick={() => handleDeleteItem(note)}>
-                  Delete
-                </MenuItem>
-              </MenuList>
-            </Menu>
-          </Flex>
-        </CardHeader>
-        <CardBody>
-          <Stack divider={<StackDivider />} spacing="4">
-            <Box>
-              <Text fontSize="sm" color={textColor} noOfLines={3}>
-                {content}
-              </Text>
-            </Box>
-          </Stack>
-        </CardBody>
-        <CardFooter>
-          <Text fontSize="xs" color="gray.500">
-            Updated: {formatLocalDateTime(note.updated_at)}
-          </Text>
-        </CardFooter>
-      </Card>
+      <>
+        <Card key={note.task_id} bg={cardBg} borderWidth="1px" borderColor={borderColor}>
+          <CardHeader>
+            <Flex justify="space-between" align="center">
+              <Heading size="sm">{note.title}</Heading>
+              <HStack spacing={1}>
+                <IconButton
+                  aria-label="View Note"
+                  icon={<FiEye />}
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setIsViewModalOpen(true)}
+                />
+                <Menu>
+                  <MenuButton
+                    as={IconButton}
+                    icon={<FiMoreVertical />}
+                    variant="ghost"
+                    size="sm"
+                  />
+                  <MenuList>
+                    <MenuItem icon={<FiEdit2 />} onClick={() => handleUpdateNote(note)}>
+                      Edit
+                    </MenuItem>
+                    <MenuItem icon={<FiTrash2 />} onClick={() => handleDeleteItem(note)}>
+                      Delete
+                    </MenuItem>
+                  </MenuList>
+                </Menu>
+              </HStack>
+            </Flex>
+          </CardHeader>
+          <CardBody>
+            <Stack divider={<StackDivider />} spacing="4">
+              <Box>
+                <Text fontSize="sm" color={textColor} noOfLines={3}>
+                  {content}
+                </Text>
+              </Box>
+            </Stack>
+          </CardBody>
+          <CardFooter>
+            <Text fontSize="xs" color="gray.500">
+              Updated: {formatLocalDateTime(note.updated_at)}
+            </Text>
+          </CardFooter>
+        </Card>
+        <NoteViewModal 
+          isOpen={isViewModalOpen} 
+          onClose={() => setIsViewModalOpen(false)} 
+          note={note}
+          onEdit={handleUpdateNote}
+        />
+      </>
     );
   });
 
