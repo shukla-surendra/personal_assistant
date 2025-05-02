@@ -47,7 +47,7 @@ class TaskDto(BaseModel):
     user_id: str
     title: str
     description: Optional[str]
-    priority: int
+    priority: str
     task_type: str
     status: str
     completed: bool
