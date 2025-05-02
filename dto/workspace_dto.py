@@ -83,7 +83,7 @@ class WorkspaceDtoMapper:
                 name=str(workspace_object.name),
                 description=workspace_object.description,
                 owner_id=str(workspace_object.owner_id),
-                users=workspace_object.users,
+                users=[str(user.user_id) for user in workspace_object.users] if workspace_object.users else [],
                 settings=workspace_object.settings,
                 is_deleted=workspace_object.is_deleted,
                 created_at=WorkspaceDtoMapper.datetime_to_str(workspace_object.created_at),

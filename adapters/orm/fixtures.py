@@ -15,7 +15,7 @@ def create_fixtures(db: Session):
         User(
             user_id=uuid.uuid4(),
             email="admin@example.com",
-            password_hash="$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW",  # password: admin123
+            password_hash="$pbkdf2-sha256$29000$2DtnDKE0ZowxhpDSmvPeGw$x7NkPbetGBbrxtZNKz1ZURKeCCRplVZlncQEd1tOmH8",  # password: Admin@123
             first_name="Admin",
             last_name="User",
             status=UserStatus.ACTIVE,
@@ -26,7 +26,7 @@ def create_fixtures(db: Session):
         User(
             user_id=uuid.uuid4(),
             email="member@example.com",
-            password_hash="$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW",  # password: admin123
+            password_hash="$pbkdf2-sha256$29000$2DtnDKE0ZowxhpDSmvPeGw$x7NkPbetGBbrxtZNKz1ZURKeCCRplVZlncQEd1tOmH8",  # password: Admin@123
             first_name="Member",
             last_name="User",
             status=UserStatus.ACTIVE,
