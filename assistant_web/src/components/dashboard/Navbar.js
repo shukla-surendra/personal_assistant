@@ -98,17 +98,24 @@ const Navbar = ({ isCollapsed, onToggle }) => {
           top={0}
           zIndex={1}
         >
-          {!isCollapsed && (
-            <Text fontSize="lg" fontWeight="bold">
-              Assistant.AI
-            </Text>
-          )}
-          {/* <IconButton
+          <RouterLink to="/dashboard" style={{ textDecoration: 'none' }}>
+            <Flex align="center" gap={2}>
+              <Text 
+                fontSize={isCollapsed ? "xl" : "lg"} 
+                fontWeight="bold" 
+                color={useColorModeValue("gray.800", "white")}
+              >
+                {isCollapsed ? "A" : "Assistant.AI"}
+              </Text>
+            </Flex>
+          </RouterLink>
+          <IconButton
             icon={<Icon as={isCollapsed ? FiMenu : FiX} />}
             variant="ghost"
             onClick={onToggle}
             aria-label="Toggle Menu"
-          /> */}
+            size="sm"
+          />
         </Flex>
 
         {/* Scrollable Content */}

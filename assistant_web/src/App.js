@@ -13,6 +13,7 @@ import ReportsPage from "./pages/dashboard/ReportsPage";
 import WikiPage from "./pages/dashboard/WikiPage";
 import DatabasePage from "./pages/dashboard/DatabasePage";
 import NotionPage from "./pages/dashboard/NotionPage";
+import MembersPage from "./pages/dashboard/MembersPage";
 // landing pages some page might require login
 import Login from "./pages/landing/Login"
 import Home from "./pages/landing/Home";
@@ -63,6 +64,7 @@ function App() {
           <Route path="/task/:id" element={<TaskDetailPage/>} />
           <Route path="/search-tasks" element={<SearchTasksPage />} />
           <Route path="/search-notebooks" element={<SearchNotebookPage />} />
+          <Route path="/members" element={<MembersPage />} />
         </Routes>
       </Router>
     </ChakraProvider>

@@ -97,6 +97,7 @@ workspace_users = Table(
     Base.metadata,
     Column('workspace_id', UUID(as_uuid=True), ForeignKey('workspaces.workspace_id'), primary_key=True),
     Column('user_id', UUID(as_uuid=True), ForeignKey('users.user_id'), primary_key=True),
+    Column('role', String(50), nullable=False, server_default='member'),
     Column('created_at', DateTime(timezone=True), server_default=func.now()),
     Column('updated_at', DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 )

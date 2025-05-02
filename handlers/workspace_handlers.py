@@ -3,9 +3,10 @@ from starlette import status
 from fastapi import HTTPException
 from commands.workspace_cmd import WorkspaceCreateCommand
 from dto.workspace_dto import WorkspaceDtoMapper
-from adapters.orm.models.pg_models import Workspace, workspace_users
+from adapters.orm.models.pg_models import Workspace, workspace_users, User
 from config import logger
 from adapters.orm.models.database import get_db
+from sqlalchemy import select
 
 
 class WorkspaceHandler:
@@ -267,3 +268,157 @@ class WorkspaceHandler:
             self.db.rollback()
             logger.error(f"Error setting default workspace: {e}")
             raise HTTPException(status_code=500, detail="Failed to set default workspace")
+
+    def get_workspace_members(self, workspace_id: str, user_id: str):
+        """Get all members of a workspace"""
+        try:
+            workspace = self.db.query(Workspace).filter(
+                Workspace.workspace_id == workspace_id,
+                Workspace.is_deleted == False
+            ).first()
+            
+            if not workspace:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
+                                 detail="Workspace not found")
+
+            if workspace.owner_id != user_id and user_id not in workspace.users:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, 
+                                 detail="Not authorized to access this workspace")
+
+            # Get all members with their roles
+            members = self.db.execute(
+                select(User, workspace_users.c.role)
+                .join(workspace_users, User.user_id == workspace_users.c.user_id)
+                .where(workspace_users.c.workspace_id == workspace_id)
+            ).all()
+
+            return [
+                {
+                    "user_id": str(member[0].user_id),
+                    "name": f"{member[0].first_name} {member[0].last_name or ''}".strip(),
+                    "email": member[0].email,
+                    "role": member[1],
+                    "avatar": f"https://ui-avatars.com/api/?name={member[0].first_name}+{member[0].last_name or ''}"
+                }
+                for member in members
+            ]
+        except HTTPException as he:
+            raise he
+        except Exception as e:
+            logger.error(f"Error getting workspace members: {e}")
+            raise HTTPException(status_code=500, detail="Failed to get workspace members")
+
+    def invite_member_to_workspace(self, workspace_id: str, owner_id: str, email: str):
+        """Invite a user to a workspace by email"""
+        try:
+            workspace = self.db.query(Workspace).filter(
+                Workspace.workspace_id == workspace_id,
+                Workspace.is_deleted == False
+            ).first()
+            
+            if not workspace:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
+                                 detail="Workspace not found")
+
+            if workspace.owner_id != owner_id:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, 
+                                 detail="Not authorized to modify this workspace")
+
+            # Find user by email
+            user = self.db.query(User).filter(
+                User.email == email,
+                User.is_deleted == False
+            ).first()
+
+            if not user:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                                 detail="User not found")
+
+            # Check if user is already a member
+            existing_member = self.db.execute(
+                select(workspace_users)
+                .where(workspace_users.c.workspace_id == workspace_id)
+                .where(workspace_users.c.user_id == user.user_id)
+            ).first()
+
+            if existing_member:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                 detail="User is already a member of this workspace")
+
+            # Add user to workspace with default role
+            self.db.execute(
+                workspace_users.insert().values(
+                    workspace_id=workspace_id,
+                    user_id=user.user_id,
+                    role='member'
+                )
+            )
+            self.db.commit()
+
+            return {
+                "user_id": str(user.user_id),
+                "name": f"{user.first_name} {user.last_name or ''}".strip(),
+                "email": user.email,
+                "role": "member",
+                "avatar": f"https://ui-avatars.com/api/?name={user.first_name}+{user.last_name or ''}"
+            }
+        except HTTPException as he:
+            self.db.rollback()
+            raise he
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"Error inviting member to workspace: {e}")
+            raise HTTPException(status_code=500, detail="Failed to invite member to workspace")
+
+    def update_member_role(self, workspace_id: str, owner_id: str, user_id: str, role: str):
+        """Update a member's role in a workspace"""
+        try:
+            workspace = self.db.query(Workspace).filter(
+                Workspace.workspace_id == workspace_id,
+                Workspace.is_deleted == False
+            ).first()
+            
+            if not workspace:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
+                                 detail="Workspace not found")
+
+            if workspace.owner_id != owner_id:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, 
+                                 detail="Not authorized to modify this workspace")
+
+            # Check if user is a member
+            member = self.db.execute(
+                select(workspace_users)
+                .where(workspace_users.c.workspace_id == workspace_id)
+                .where(workspace_users.c.user_id == user_id)
+            ).first()
+
+            if not member:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                                 detail="User is not a member of this workspace")
+
+            # Update role
+            self.db.execute(
+                workspace_users.update()
+                .where(workspace_users.c.workspace_id == workspace_id)
+                .where(workspace_users.c.user_id == user_id)
+                .values(role=role)
+            )
+            self.db.commit()
+
+            # Get updated member details
+            user = self.db.query(User).filter(User.user_id == user_id).first()
+            return {
+                "user_id": str(user.user_id),
+                "name": f"{user.first_name} {user.last_name or ''}".strip(),
+                "email": user.email,
+                "role": role,
+                "avatar": f"https://ui-avatars.com/api/?name={user.first_name}+{user.last_name or ''}"
+            }
+        except HTTPException as he:
+            self.db.rollback()
+            raise he
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"Error updating member role: {e}")
+            raise HTTPException(status_code=500, detail="Failed to update member role")

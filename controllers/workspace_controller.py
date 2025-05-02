@@ -5,6 +5,8 @@ from commands.workspace_cmd import WorkspaceCreateCommand, WorkspaceUpdateComman
 from handlers.workspace_handlers import WorkspaceHandler
 from authorization.auth import get_auth_details
 from config import logger
+from pydantic import BaseModel
+from typing import List, Optional
 
 router = APIRouter(
     prefix="/api/v1/workspaces",
@@ -16,6 +18,9 @@ router = APIRouter(
         status.HTTP_400_BAD_REQUEST: {"description": "Bad request"}
     },
 )
+
+class MemberRoleUpdate(BaseModel):
+    role: str
 
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_workspace(
@@ -197,3 +202,57 @@ async def set_default_workspace(
     except Exception as e:
         logger.error(f"Error setting default workspace: {e}")
         raise HTTPException(status_code=500, detail="Failed to set default workspace")
+
+@router.get("/{workspace_id}/members", status_code=status.HTTP_200_OK)
+async def get_workspace_members(
+    workspace_id: str,
+    user: dict = Depends(get_auth_details)
+):
+    """Get all members of a workspace"""
+    try:
+        return WorkspaceHandler().get_workspace_members(workspace_id, user.get("user_id"))
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logger.error(f"Error getting workspace members: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get workspace members")
+
+@router.post("/{workspace_id}/invite", status_code=status.HTTP_200_OK)
+async def invite_member_to_workspace(
+    workspace_id: str,
+    email: str,
+    current_user: dict = Depends(get_auth_details)
+):
+    """Invite a user to a workspace by email"""
+    try:
+        return WorkspaceHandler().invite_member_to_workspace(
+            workspace_id=workspace_id,
+            owner_id=current_user.get("user_id"),
+            email=email
+        )
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logger.error(f"Error inviting member to workspace: {e}")
+        raise HTTPException(status_code=500, detail="Failed to invite member to workspace")
+
+@router.put("/{workspace_id}/users/{user_id}/role", status_code=status.HTTP_200_OK)
+async def update_member_role(
+    workspace_id: str,
+    user_id: str,
+    role_update: MemberRoleUpdate,
+    current_user: dict = Depends(get_auth_details)
+):
+    """Update a member's role in a workspace"""
+    try:
+        return WorkspaceHandler().update_member_role(
+            workspace_id=workspace_id,
+            owner_id=current_user.get("user_id"),
+            user_id=user_id,
+            role=role_update.role
+        )
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logger.error(f"Error updating member role: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update member role")
