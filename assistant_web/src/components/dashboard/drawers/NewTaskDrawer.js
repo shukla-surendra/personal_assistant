@@ -17,7 +17,7 @@ import {
   FaShare, FaEllipsisH, FaCheckCircle, FaRegCircle
 } from "react-icons/fa";
 import { FiMoreHorizontal, FiCheck, FiClock } from "react-icons/fi";
-import FtTextEditor from "../sections/FtTextEditor";
+import RichTextEditor from '../editor/RichTextEditor';
 import ConfigService from "../../../utils/config";
 
 // Task templates
@@ -446,9 +446,14 @@ export default function NewTaskDrawer(props) {
               <Text fontSize="sm" fontWeight="medium" color={textColor} mb={3}>
                 Description
               </Text>
-              <FtTextEditor
-                currentTask={currentTask}
-                setCurrentTask={setCurrentTask}
+              <RichTextEditor
+                value={currentTask?.description || ''}
+                onChange={(newContent) => {
+                  setCurrentTask(prev => ({
+                    ...prev,
+                    description: newContent
+                  }));
+                }}
               />
             </Box>
           </VStack>

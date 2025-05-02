@@ -24,6 +24,7 @@ import {
   useToast
 } from '@chakra-ui/react';
 import { FiPlus, FiX } from 'react-icons/fi';
+import RichTextEditor from '../editor/RichTextEditor';
 
 export default function NewArticleDrawer({ isOpen, onClose, onSave }) {
   const [title, setTitle] = useState('');
@@ -144,11 +145,11 @@ export default function NewArticleDrawer({ isOpen, onClose, onSave }) {
 
             <FormControl isRequired>
               <FormLabel>Content</FormLabel>
-              <Textarea
-                placeholder="Write your article content here..."
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                minH="400px"
+              <RichTextEditor
+                value={content || ''}
+                onChange={(newContent) => {
+                  setContent(newContent);
+                }}
               />
             </FormControl>
           </VStack>

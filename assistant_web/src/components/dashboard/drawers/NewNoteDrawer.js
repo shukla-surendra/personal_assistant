@@ -15,7 +15,7 @@ import {
   FaFilePdf, FaFileWord, FaFileAlt, FaTags, FaFolder, FaEllipsisH 
 } from "react-icons/fa";
 import { FiMoreHorizontal, FiPlus, FiSearch } from "react-icons/fi";
-import FtTextEditor from "../sections/FtTextEditor";
+import RichTextEditor from '../editor/RichTextEditor';
 import ConfigService from "../../../utils/config";
 
 // Note templates
@@ -428,9 +428,14 @@ export default function NewNoteDrawer(props) {
 
             {/* Editor */}
             <Box flex={1}>
-              <FtTextEditor
-                currentTask={currentTask}
-                setCurrentTask={setCurrentTask}
+              <RichTextEditor
+                value={currentTask?.description || ''}
+                onChange={(newContent) => {
+                  setCurrentTask(prev => ({
+                    ...prev,
+                    description: newContent
+                  }));
+                }}
               />
             </Box>
           </VStack>

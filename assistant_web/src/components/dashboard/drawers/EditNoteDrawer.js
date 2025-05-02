@@ -15,7 +15,7 @@ import { FaArrowLeft, FaSave, FaEye, FaEyeSlash, FaShare, FaDownload, FaFilePdf,
 import { BiCommentDetail } from "react-icons/bi";
 import { BsGearFill, BsThreeDots } from "react-icons/bs";
 import { FiSearch, FiPlus, FiMoreHorizontal } from "react-icons/fi";
-import FtTextEditor from "../sections/FtTextEditor";
+import RichTextEditor from '../editor/RichTextEditor';
 import { formatLocalDateTime } from "../../../utils/locale";
 import ConfigService from "../../../utils/config";
 
@@ -487,9 +487,14 @@ export default function EditNoteDrawer(props) {
 
             {/* Editor */}
             <Box flex={1}>
-              <FtTextEditor
-                currentTask={currentTask}
-                setCurrentTask={setCurrentTask}
+              <RichTextEditor
+                value={currentTask?.description || ''}
+                onChange={(newContent) => {
+                  setCurrentTask(prev => ({
+                    ...prev,
+                    description: newContent
+                  }));
+                }}
               />
             </Box>
           </VStack>
