@@ -115,77 +115,37 @@ export default function TasksPage() {
   }, [new_task_drawer.isOpen]);
 
   const TaskCard = ({ task, onUpdate, onDelete, onView }) => {
-    const [content, setContent] = useState('');
-
-    useEffect(() => {
-      if (task?.description) {
-        try {
-          const jsonContent = typeof task.description === 'string' 
-            ? JSON.parse(task.description) 
-            : task.description;
-          
-          // Extract text content from the JSON structure
-          const textContent = extractTextFromLexicalJSON(jsonContent);
-          setContent(textContent);
-        } catch (error) {
-          console.error('Error parsing description:', error);
-          setContent(task.description);
-        }
-      }
-    }, [task?.description]);
-
-    const extractTextFromLexicalJSON = (json) => {
-      if (!json || !json.root || !json.root.children) return '';
-      
-      return json.root.children
-        .map(child => {
-          if (child.type === 'paragraph' && child.children) {
-            return child.children.map(text => text.text).join('');
-          }
-          return '';
-        })
-        .join('\n');
-    };
-
     return (
       <Box
         p={4}
+        bg={cardBg}
+        borderRadius="md"
         borderWidth="1px"
-        borderRadius="lg"
-        bg={useColorModeValue('white', 'gray.700')}
+        borderColor={borderColor}
+        _hover={{ transform: 'translateY(-2px)', transition: 'all 0.2s' }}
       >
-        <VStack align="stretch" spacing={3}>
-          <Text fontSize="lg" fontWeight="bold">{task.title}</Text>
-          <Text fontSize="sm" color={useColorModeValue('gray.600', 'gray.300')} noOfLines={3}>
-            {content}
+        <Stack spacing={3}>
+          <Text fontWeight="bold" fontSize="lg">
+            {task.title}
           </Text>
-          <HStack justify="space-between">
+          <Box 
+            className="ProseMirror"
+            color={textColor} 
+            noOfLines={2}
+            dangerouslySetInnerHTML={{ __html: task.description || "No description provided." }}
+          />
+          <Flex wrap="wrap" gap={2}>
+            <Badge colorScheme={task.status === 'done' ? 'green' : task.status === 'in_progress' ? 'orange' : 'blue'}>
+              {task.status === 'todo' ? 'To Do' : task.status === 'in_progress' ? 'In Progress' : 'Done'}
+            </Badge>
             <Badge colorScheme={priorityColorMapping[task.priority] || 'gray'}>
               {task.priority}
             </Badge>
-            <HStack spacing={2}>
-              <IconButton
-                icon={<Icon as={FaEye} />}
-                size="sm"
-                variant="ghost"
-                onClick={() => onView(task)}
-                aria-label="View Task"
-              />
-              <UnifiedEditButton 
-                item={task} 
-                type="task" 
-                onEdit={onUpdate}
-              />
-              <IconButton
-                icon={<Icon as={FaTrash} />}
-                size="sm"
-                variant="ghost"
-                onClick={() => onDelete(task)}
-                aria-label="Delete Task"
-              />
-            </HStack>
-          </HStack>
-        </VStack>
+          </Flex>
+          <Text fontSize="sm" color="gray.500">
+            Due: {formatLocalDateTime(task.dueDate)}
+          </Text>
+        </Stack>
       </Box>
     );
   };

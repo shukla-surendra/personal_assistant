@@ -8,22 +8,36 @@ class UserStatus(Enum):
     SUSPENDED = "suspended"
     DELETED = "deleted"
 
-
 class TaskStatus(Enum):
-    TODO = "todo"
-    IN_PROGRESS = "in_progress"
-    DONE = "done"
-    CANCELLED = "cancelled"
-
+    TODO = "todo"                     # Not yet started
+    BACKLOG = "backlog"               # Collected but not prioritized
+    IN_PROGRESS = "in_progress"       # Actively being worked on
+    BLOCKED = "blocked"               # Waiting on external/unresolved item
+    REVIEW = "review"                 # Under QA or peer review
+    APPROVED = "approved"             # Accepted but not yet deployed
+    DONE = "done"                     # Finished and accepted
+    CANCELLED = "cancelled"           # No longer needed or stopped
+    ARCHIVED = "archived"             # Historical, hidden by default
+    SCHEDULED = "scheduled"           # Planned for future
+    ON_HOLD = "on_hold"               # Delayed or paused
 
 class TaskType(Enum):
-    TASK = "task"
-    TODO = "todo"
-    NOTE = "note"
-    QUICK_NOTE = "quick_note"
-    BUG = "bug"
-    FEATURE = "feature"
-    ENHANCEMENT = "enhancement"
+    TASK = "task"                    # General task
+    STORY = "story"                  # Agile story
+    TODO = "todo"                    # Simple to-do item
+    NOTE = "note"                    # Informational note
+    QUICK_NOTE = "quick_note"        # Fast, informal note
+    BUG = "bug"                      # Defect or issue
+    FEATURE = "feature"              # New functionality
+    ENHANCEMENT = "enhancement"      # Improvement to existing feature
+    MEETING = "meeting"              # Meeting item
+    REMINDER = "reminder"            # Time-based trigger
+    IDEA = "idea"                    # Unrefined thought
+    DOCUMENT = "document"            # Long-form content
+    RESEARCH = "research"            # Exploration or investigation
+    QUESTION = "question"            # Open item requiring answer
+    CUSTOM = "custom"                # User-defined or unclassified type
+
 
 
 class UserRoles(Enum):
@@ -37,6 +51,22 @@ class UserType(Enum):
     PREMIUM = "premium"
     ENTERPRISE = "enterprise"
 
+class TaskPriority(Enum):
+    NONE = "none"             # No priority assigned
+    LOW = "low"               # Non-urgent, nice to have
+    MEDIUM = "medium"         # Standard/default importance
+    HIGH = "high"             # Time-sensitive
+    URGENT = "urgent"         # Critical and immediate
+
+    P0 = "p0"                 # Highest priority: immediate attention
+    P1 = "p1"                 # Very important: must resolve quickly
+    P2 = "p2"                 # Important but not urgent
+    P3 = "p3"                 # Low urgency, minor fixes/features
+    P4 = "p4"                 # Very low priority or backlog grooming
+
+    CUSTOM = "custom"         # User-defined or contextual
+
+
 
 class OID(str):
     @classmethod
@@ -49,9 +79,3 @@ class OID(str):
             return str(uuid.UUID(v))
         except ValueError:
             raise ValueError("Not a valid UUID")
-
-
-class TaskPriority(Enum):
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"

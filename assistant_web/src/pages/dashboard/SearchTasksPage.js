@@ -203,12 +203,15 @@ export default function SearchTasksPage() {
                       <Text fontWeight="bold" fontSize="lg">
                         {task.title}
                       </Text>
-                      <Text color={textColor} noOfLines={2}>
-                        {task.description}
-                      </Text>
+                      <Box 
+                        className="ProseMirror"
+                        color={textColor} 
+                        noOfLines={2}
+                        dangerouslySetInnerHTML={{ __html: task.description || "No description provided." }}
+                      />
                       <Flex wrap="wrap" gap={2}>
-                        <Badge colorScheme={task.status === 'completed' ? 'green' : 'blue'}>
-                          {task.status}
+                        <Badge colorScheme={task.status === 'done' ? 'green' : task.status === 'in_progress' ? 'orange' : 'blue'}>
+                          {task.status === 'todo' ? 'To Do' : task.status === 'in_progress' ? 'In Progress' : 'Done'}
                         </Badge>
                         <Badge colorScheme={task.priority === 'high' ? 'red' : 'yellow'}>
                           {task.priority}

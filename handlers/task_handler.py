@@ -33,17 +33,8 @@ class TaskHandler:
     def create_task(self, task_cmd: TaskCommand):
         """Create a new task in PostgreSQL"""
         try:
-            # Convert priority string to appropriate format based on storage type
-            priority_map = {
-                'low': {'pg': 1, 'dynamo': 'low'},
-                'medium': {'pg': 2, 'dynamo': 'medium'},
-                'high': {'pg': 3, 'dynamo': 'high'}
-            }
-            
             # Get the appropriate priority value based on storage type
-            priority_value = priority_map.get(task_cmd.priority.lower(), priority_map['medium'])
-            priority = priority_value['pg']  # Use integer for PostgreSQL
-
+            priority = task_cmd.priority.lower()
             # Convert task_type and status strings to enum values
             task_type = TaskType.TODO
             if task_cmd.task_type:
@@ -139,12 +130,7 @@ class TaskHandler:
                 logger.info(f"Updating description")
                 task.description = task_cmd.description
             if task_cmd.priority is not None:
-                priority_map = {
-                    'low': 1,
-                    'medium': 2,
-                    'high': 3
-                }
-                new_priority = priority_map.get(task_cmd.priority.lower(), 2)
+                new_priority = task_cmd.priority.lower()
                 logger.info(f"Updating priority from {task.priority} to {new_priority}")
                 task.priority = new_priority
             if task_cmd.status is not None:

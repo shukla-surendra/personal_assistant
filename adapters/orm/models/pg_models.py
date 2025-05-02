@@ -47,13 +47,6 @@ class UserSettings(Base):
 
     user = relationship("User", back_populates="settings")
 
-class TaskPriority(SQLEnum):
-    __tablename__ = "task_priority"
-
-    LOW = 1
-    MEDIUM = 2
-    HIGH = 3
-
 class Task(Base):
     __tablename__ = "tasks"
 
@@ -63,7 +56,7 @@ class Task(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id"), nullable=False)
     title = Column(String, nullable=False)
     description = Column(String)
-    priority = Column(Integer, nullable=False, default=TaskPriority.MEDIUM)
+    priority = Column(String, nullable=True)
     task_type = Column(SQLEnum(TaskType), nullable=False, default=TaskType.TODO)
     status = Column(SQLEnum(TaskStatus), nullable=False, default=TaskStatus.TODO)
     completed = Column(Boolean, default=False)

@@ -18,6 +18,7 @@
   padding: 0.5rem;
   border-bottom: 1px solid #e2e8f0;
   background: #f7fafc;
+  flex-wrap: wrap;
 }
 
 .editor-toolbar button {
@@ -26,10 +27,16 @@
   border-radius: 0.25rem;
   background: white;
   cursor: pointer;
+  font-size: 0.875rem;
 }
 
 .editor-toolbar button:hover {
   background: #edf2f7;
+}
+
+.editor-toolbar button.is-active {
+  background: #e2e8f0;
+  color: #1a202c;
 }
 
 .editor-content {
@@ -70,7 +77,7 @@
 /* Editor Content */
 .ProseMirror {
   min-height: 150px;
-  padding: 15px;
+  padding: 1rem;
   outline: none;
 }
 
@@ -84,11 +91,7 @@
 
 /* Headings */
 .ProseMirror h1,
-.ProseMirror h2,
-.ProseMirror h3,
-.ProseMirror h4,
-.ProseMirror h5,
-.ProseMirror h6 {
+.ProseMirror h2 {
   line-height: 1.1;
   margin-top: 1.5em;
   margin-bottom: 0.5em;
@@ -222,6 +225,27 @@
 /* Dark Mode */
 [data-theme='dark'] .editor-container {
   background: #1a1a1a;
+  border-color: #2d2d2d;
+}
+
+[data-theme='dark'] .editor-toolbar {
+  background: #2d2d2d;
+  border-color: #2d2d2d;
+}
+
+[data-theme='dark'] .editor-toolbar button {
+  background: #1a1a1a;
+  border-color: #2d2d2d;
+  color: #e5e7eb;
+}
+
+[data-theme='dark'] .editor-toolbar button:hover {
+  background: #2d2d2d;
+}
+
+[data-theme='dark'] .editor-toolbar button.is-active {
+  background: #2d2d2d;
+  color: #fff;
 }
 
 [data-theme='dark'] .ProseMirror {
@@ -241,35 +265,9 @@
   border-top-color: rgba(255, 255, 255, 0.1);
 }
 
-[data-theme='dark'] .editor-command {
-  border-bottom-color: #333;
-}
-
-[data-theme='dark'] .editor-command-item {
-  color: #9ca3af;
-}
-
-[data-theme='dark'] .editor-command-item:hover {
-  background: #333;
-  color: #fff;
-}
-
-[data-theme='dark'] .editor-command-item.active {
-  background: #444;
-  color: #fff;
-}
-
-[data-theme='dark'] .editor-bubble {
-  background: #1a1a1a;
-}
-
-[data-theme='dark'] .editor-bubble-item {
-  color: #9ca3af;
-}
-
-[data-theme='dark'] .editor-bubble-item:hover {
-  background: #333;
-  color: #fff;
+[data-theme='dark'] .ProseMirror code {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #e5e7eb;
 }
 
 /* Responsive */

@@ -84,33 +84,9 @@ const TaskViewModal = ({ isOpen, onClose, task, onEdit }) => {
 
   useEffect(() => {
     if (task?.description) {
-      try {
-        const jsonContent = typeof task.description === 'string' 
-          ? JSON.parse(task.description) 
-          : task.description;
-        
-        // Extract text content from the JSON structure
-        const textContent = extractTextFromLexicalJSON(jsonContent);
-        setContent(textContent);
-      } catch (error) {
-        console.error('Error parsing description:', error);
-        setContent(task.description);
-      }
+      setContent(task.description);
     }
   }, [task?.description]);
-
-  const extractTextFromLexicalJSON = (json) => {
-    if (!json || !json.root || !json.root.children) return '';
-    
-    return json.root.children
-      .map(child => {
-        if (child.type === 'paragraph' && child.children) {
-          return child.children.map(text => text.text).join('');
-        }
-        return '';
-      })
-      .join('\n');
-  };
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -188,9 +164,13 @@ const TaskViewModal = ({ isOpen, onClose, task, onEdit }) => {
             {/* Description Section */}
             <Box>
               <Text fontWeight="bold" mb={2}>Description</Text>
-              <Box p={3} bg={infoBg} borderRadius="md">
-                <Text>{content}</Text>
-              </Box>
+              <Box 
+                p={3} 
+                bg={infoBg} 
+                borderRadius="md"
+                className="ProseMirror"
+                dangerouslySetInnerHTML={{ __html: content }}
+              />
             </Box>
 
             <Divider />

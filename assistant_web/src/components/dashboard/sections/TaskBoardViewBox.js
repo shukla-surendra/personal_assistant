@@ -26,8 +26,8 @@ function TaskBoardViewBox({ task, handleUpdateItem, handleDeleteItem, priorityCo
   const [isModalOpen, setIsModalOpen] = useState(false);
   const toast = useToast();
   const tileBg = useColorModeValue("white", "gray.800");
-  const tileHoverBg = useColorModeValue("blue.50", "gray.700");
-  const descColor = useColorModeValue("gray.600", "gray.300");
+  const tileHoverBg = useColorModeValue("gray.50", "gray.700");
+  const descColor = useColorModeValue("gray.600", "gray.400");
 
   const priorityColor = priorityColors[task.priority] || priorityColors.default;
   const statusColor = statusColors[task.status] || statusColors.default;
@@ -148,9 +148,13 @@ function TaskBoardViewBox({ task, handleUpdateItem, handleDeleteItem, priorityCo
           <Text fontWeight="bold" fontSize="lg" mb={1} noOfLines={1}>
             {task.title}
           </Text>
-          <Text fontSize="sm" color={descColor} noOfLines={3}>
-            {task.description || "No description provided."}
-          </Text>
+          <Box 
+            className="ProseMirror"
+            fontSize="sm" 
+            color={descColor} 
+            noOfLines={3}
+            dangerouslySetInnerHTML={{ __html: task.description || "No description provided." }}
+          />
         </Box>
       </Box>
       <TaskViewModal 

@@ -141,24 +141,7 @@ export default function DashboardResponsive() {
   };
 
   const TaskCard = React.memo(({ task }) => {
-    const [content, setContent] = useState('');
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-
-    useEffect(() => {
-      if (task?.description) {
-        try {
-          const jsonContent = typeof task.description === 'string' 
-            ? JSON.parse(task.description) 
-            : task.description;
-          
-          const textContent = extractTextFromLexicalJSON(jsonContent);
-          setContent(textContent);
-        } catch (error) {
-          console.error('Error parsing description:', error);
-          setContent(task.description);
-        }
-      }
-    }, [task?.description]);
 
     return (
       <>
@@ -196,9 +179,13 @@ export default function DashboardResponsive() {
           <CardBody>
             <Stack divider={<StackDivider />} spacing="4">
               <Box>
-                <Text fontSize="sm" color={textColor} noOfLines={3}>
-                  {content}
-                </Text>
+                <Box 
+                  className="ProseMirror"
+                  fontSize="sm" 
+                  color={textColor} 
+                  noOfLines={3}
+                  dangerouslySetInnerHTML={{ __html: task.description || "No description provided." }}
+                />
               </Box>
               <Flex wrap="wrap" gap={2}>
                 <Badge colorScheme={priorityColorMapping[task.priority] || 'gray'}>
@@ -227,24 +214,7 @@ export default function DashboardResponsive() {
   });
 
   const NoteCard = React.memo(({ note }) => {
-    const [content, setContent] = useState('');
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-
-    useEffect(() => {
-      if (note?.description) {
-        try {
-          const jsonContent = typeof note.description === 'string' 
-            ? JSON.parse(note.description) 
-            : note.description;
-          
-          const textContent = extractTextFromLexicalJSON(jsonContent);
-          setContent(textContent);
-        } catch (error) {
-          console.error('Error parsing description:', error);
-          setContent(note.description);
-        }
-      }
-    }, [note?.description]);
 
     return (
       <>
@@ -282,9 +252,13 @@ export default function DashboardResponsive() {
           <CardBody>
             <Stack divider={<StackDivider />} spacing="4">
               <Box>
-                <Text fontSize="sm" color={textColor} noOfLines={3}>
-                  {content}
-                </Text>
+                <Box 
+                  className="ProseMirror"
+                  fontSize="sm" 
+                  color={textColor} 
+                  noOfLines={3}
+                  dangerouslySetInnerHTML={{ __html: note.description || "No content provided." }}
+                />
               </Box>
             </Stack>
           </CardBody>
