@@ -5,16 +5,16 @@ const initialState = { 'notes':[], 'tasks': []};
 
 export const createTask = createAsyncThunk(
   "tasks/create",
-  async ({ title, description, priority, due_date }) => {
-    const res = await TaskService.create({ title, description, priority, due_date });
+  async ({ title, description, priority, due_date, task_type, workspace_id, user_id }) => {
+    const res = await TaskService.create({ title, description, priority, due_date, task_type, workspace_id, user_id });
     return res.data;
   }
 );
 
 export const createNotes = createAsyncThunk(
   "tasks/create",
-  async ({ title, description, priority, task_type, due_date }) => {
-    const res = await TaskService.create({ title, description, priority, task_type, due_date });
+  async ({ title, description, priority, task_type, due_date, workspace_id, user_id }) => {
+    const res = await TaskService.create({ title, description, priority, task_type, due_date, workspace_id, user_id });
     return res.data;
   }
 );

@@ -284,7 +284,7 @@ export default function EditNoteDrawer(props) {
         borderColor={borderColor}
         boxShadow="xl"
       >
-        <DrawerCloseButton top={4} right={4} />
+        <DrawerCloseButton top={4} right={4} zIndex={2} />
         
         {/* Header */}
         <DrawerHeader 
@@ -293,7 +293,7 @@ export default function EditNoteDrawer(props) {
           py={4}
           px={6}
         >
-          <Flex justify="space-between" align="center">
+          <Flex justify="space-between" align="center" position="relative">
             <HStack spacing={4}>
               <IconButton
                 icon={<Icon as={FaArrowLeft} />}
@@ -312,7 +312,7 @@ export default function EditNoteDrawer(props) {
                 {currentTask?.published ? "Published" : "Draft"}
               </Badge>
             </HStack>
-            <HStack spacing={2}>
+            <HStack spacing={2} position="absolute" right="4" zIndex={1}>
               <Tooltip label="Comments" hasArrow>
                 <IconButton
                   icon={<Icon as={BiCommentDetail} />}

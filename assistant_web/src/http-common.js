@@ -1,24 +1,27 @@
 import axios from "axios";
-import Auth from './utils/auth'
-import Config from './utils/config'
+import ConfigService from "./utils/config";
 
-const access_token = Auth.getToken()
-const workspace = Config.getDefaultWorkspace()
+const getBackendUrl = () => {
+  return "http://127.0.0.1:8000";
+};
 
-function getBackendUrl() {
-  if (process.env.REACT_APP_ENV === 'production') {
-    return process.env.REACT_APP_BACKEND_PROD_URL;
-  } else {
-    return process.env.REACT_APP_BACKEND_DEV_URL;
-  }
+// Get access token and workspace from localStorage
+const access_token = localStorage.getItem('access_token');
+let workspace = null;
+try {
+  workspace = ConfigService.getDefaultWorkspace();
+} catch (error) {
+  console.warn('No workspace selected:', error);
 }
 
-
-export default axios.create({
+// Create axios instance with default config
+const http = axios.create({
   baseURL: getBackendUrl(),
   headers: {
     "Content-type": "application/json",
-    Authorization: `Bearer ${access_token}`,
-    "Workspace-Id": `${workspace.workspace_id}`
+    ...(access_token && { Authorization: `Bearer ${access_token}` }),
+    ...(workspace?.workspace_id && { "Workspace-Id": workspace.workspace_id })
   }
 });
+
+export default http;

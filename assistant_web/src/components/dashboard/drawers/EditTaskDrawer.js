@@ -137,7 +137,7 @@ export default function EditTaskDrawer(props) {
         borderColor={borderColor}
         boxShadow="xl"
       >
-        <DrawerCloseButton top={4} right={4} />
+        <DrawerCloseButton top={4} right={4} zIndex={2} />
         
         {/* Header */}
         <DrawerHeader 
@@ -146,7 +146,7 @@ export default function EditTaskDrawer(props) {
           py={4}
           px={6}
         >
-          <Flex justify="space-between" align="center">
+          <Flex justify="space-between" align="center" position="relative">
             <HStack spacing={4}>
               <IconButton
                 icon={<Icon as={FaArrowLeft} />}
@@ -165,17 +165,7 @@ export default function EditTaskDrawer(props) {
                 {STATUS_CONFIG[currentTask?.status || 'todo'].label}
               </Badge>
             </HStack>
-            <HStack spacing={2}>
-              <AvatarGroup size="sm" max={3}>
-                {sampleUsers.map(user => (
-                  <Avatar
-                    key={user.id}
-                    name={user.name}
-                    src={user.avatar}
-                    size="sm"
-                  />
-                ))}
-              </AvatarGroup>
+            <HStack spacing={2} position="absolute" right="4" zIndex={1}>
               <Menu>
                 <MenuButton
                   as={IconButton}

@@ -5,7 +5,7 @@ const login = data => {
 };
 
 const signup = data => {
-  return http.post("http://127.0.0.1:8000/api/v1/users/signup", data);
+  return http.post("/api/v1/users/signup", data);
 };
 
 const me = data => {

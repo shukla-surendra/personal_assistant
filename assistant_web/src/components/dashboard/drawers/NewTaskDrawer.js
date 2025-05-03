@@ -165,17 +165,18 @@ export default function NewTaskDrawer(props) {
   const saveTask = async () => {
     setIsLoading(true);
     
-    // Get workspace ID and user ID from config
-    const workspace_id = ConfigService.getDefaultWorkspace().workspace_id;
-    const user_id = ConfigService.getUserId();
-    
-    const payload = {
-      ...currentTask,
-      workspace_id,
-      user_id
-    };
-
     try {
+      // Get workspace ID and user ID from config
+      const workspace_id = ConfigService.getDefaultWorkspace().workspace_id;
+      const user_id = ConfigService.getUserId();
+      
+      const payload = {
+        ...currentTask,
+        workspace_id,
+        user_id,
+        task_type: 'task'  // Ensure task_type is set
+      };
+
       await dispatch(createTask(payload)).unwrap();
       toast({
         title: "Success",
@@ -189,7 +190,7 @@ export default function NewTaskDrawer(props) {
       console.error('Error creating task:', error);
       toast({
         title: "Error",
-        description: "Failed to create task",
+        description: error.message || "Failed to create task",
         status: "error",
         duration: 3000,
         isClosable: true,
@@ -213,7 +214,7 @@ export default function NewTaskDrawer(props) {
         borderColor={borderColor}
         boxShadow="xl"
       >
-        <DrawerCloseButton top={4} right={4} />
+        <DrawerCloseButton top={4} right={4} zIndex={2} />
         
         {/* Header */}
         <DrawerHeader 
@@ -222,7 +223,7 @@ export default function NewTaskDrawer(props) {
           py={4}
           px={6}
         >
-          <Flex justify="space-between" align="center">
+          <Flex justify="space-between" align="center" position="relative">
             <HStack spacing={4}>
               <IconButton
                 icon={<Icon as={FaArrowLeft} />}
@@ -241,7 +242,7 @@ export default function NewTaskDrawer(props) {
                 {STATUS_CONFIG[currentTask?.status || 'todo'].label}
               </Badge>
             </HStack>
-            <HStack spacing={2}>
+            <HStack spacing={2} position="absolute" right="4" zIndex={1}>
               <Menu>
                 <MenuButton
                   as={IconButton}

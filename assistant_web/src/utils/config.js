@@ -3,23 +3,25 @@ class ConfigService {
     setDefaultWorkspace(default_workspace) {
         // Serialize the object to JSON and save it in localStorage
         localStorage.setItem('workspace', JSON.stringify(default_workspace));
-        window.location.assign('/');
     }
 
     removeDefaultWorkspace() {
-        // Serialize the object to JSON and save it in localStorage
+        // Remove workspace from localStorage
         localStorage.removeItem('workspace');
     }
 
     getDefaultWorkspace() {
-        const default_workspace = {workspace_id: "default_id"}
         // Retrieve the JSON string from localStorage and parse it to an object
         const workspaceJSON = localStorage.getItem('workspace');
         try {
-            return JSON.parse(workspaceJSON) || default_workspace;
+            const workspace = JSON.parse(workspaceJSON);
+            if (!workspace || !workspace.workspace_id) {
+                throw new Error('Invalid workspace data');
+            }
+            return workspace;
         } catch (error) {
             console.error('Error parsing workspace from localStorage:', error);
-            return default_workspace;
+            throw new Error('No workspace selected');
         }
     }
 
@@ -29,7 +31,11 @@ class ConfigService {
     }
 
     getUserId() {
-        return localStorage.getItem('user_id') || null;
+        const userId = localStorage.getItem('user_id');
+        if (!userId) {
+            throw new Error('No user ID found');
+        }
+        return userId;
     }
 
     removeUserId() {
