@@ -32,6 +32,7 @@ import NewSignup from "./pages/landing/NewSignup"
 import TaskDetailPage from './pages/dashboard/TaskDetailPage';
 import SearchTasksPage from './pages/dashboard/SearchTasksPage';
 import SearchNotebookPage from './pages/dashboard/SearchNotebookPage';
+import TaskPage from './pages/TaskPage';
 
 function App() {
   return (
@@ -65,6 +66,7 @@ function App() {
           <Route path="/search-tasks" element={<SearchTasksPage />} />
           <Route path="/search-notebooks" element={<SearchNotebookPage />} />
           <Route path="/members" element={<MembersPage />} />
+          <Route path="/page/:task_id" element={<TaskPage />} />
         </Routes>
       </Router>
     </ChakraProvider>
