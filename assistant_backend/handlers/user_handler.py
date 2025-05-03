@@ -182,11 +182,8 @@ class UserHandler:
                         default_board = BoardCommand(
                             name="My Board",
                             description="Default board",
-                            users=[user['user_id']],
-                            labels=[],
-                            owner=user['user_id']
+                            workspace_id=workspace.workspace_id
                         )
-                        default_board.workspace_id = workspace.workspace_id
                         board = board_handler.create_board(default_board)
                         logger.info(f"Default board created successfully: {board}")
                     except Exception as board_error:

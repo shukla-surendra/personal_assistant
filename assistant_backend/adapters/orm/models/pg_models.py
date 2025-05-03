@@ -33,10 +33,21 @@ class User(Base):
     first_name = Column(String, nullable=False)
     last_name = Column(String, nullable=False)
     email = Column(String, unique=True, nullable=False)
-    role = Column(String, nullable=False)
-    status = Column(String, nullable=False)
-    default_workspace_id = Column(UUID(as_uuid=True), ForeignKey("workspaces.workspace_id"), nullable=True)
+    password_hash = Column(String, nullable=False)
+    country_code = Column(String, nullable=True)
+    mobile_number = Column(String, nullable=True)
+    google_id = Column(String, nullable=True)
+    status = Column(String, nullable=False, default="ACTIVE")
+    role = Column(String, nullable=False, default="USER")
+    user_type = Column(String, nullable=False, default="FREE")
+    preferences = Column(JSONB, nullable=True, default={})
     is_deleted = Column(Boolean, default=False)
+    is_email_verified = Column(Boolean, default=False)
+    is_phone_verified = Column(Boolean, default=False)
+    verification_token = Column(String, nullable=True)
+    otp = Column(String, nullable=True)
+    otp_time = Column(DateTime, nullable=True)
+    default_workspace_id = Column(UUID(as_uuid=True), ForeignKey("workspaces.workspace_id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -117,6 +128,7 @@ class Workspace(Base):
     members = Column(JSONB, nullable=True)
     settings = Column(JSONB, nullable=True)
     is_public = Column(Boolean, default=False)
+    is_default = Column(Boolean, default=False)
     is_template = Column(Boolean, default=False)
     is_deleted = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -125,18 +137,22 @@ class Workspace(Base):
     owner = relationship("User", foreign_keys=[owner_id])
     tasks = relationship("Task", back_populates="workspace")
     users = relationship("User", secondary=workspace_users, back_populates="workspaces")
+    boards = relationship("Board", back_populates="workspace")
     pages = relationship("Page", back_populates="workspace")
     databases = relationship("Database", back_populates="workspace")
     templates = relationship("Template", back_populates="workspace")
     activities = relationship("Activity", back_populates="workspace")
     integrations = relationship("Integration", back_populates="workspace")
+    comments = relationship("Comment", back_populates="workspace")
+    notifications = relationship("Notification", back_populates="workspace")
+    reminders = relationship("Reminder", back_populates="workspace")
 
 class Board(Base):
     __tablename__ = "boards"
 
     board_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     workspace_id = Column(UUID(as_uuid=True), ForeignKey("workspaces.workspace_id"), nullable=False)
-    title = Column(String, nullable=False)
+    name = Column(String, nullable=False)
     description = Column(String, nullable=True)
     properties = Column(JSONB, nullable=True)
     views = Column(JSONB, nullable=True)
@@ -146,6 +162,7 @@ class Board(Base):
 
     workspace = relationship("Workspace", back_populates="boards")
     items = relationship("BoardItem", back_populates="board")
+    tasks = relationship("Task", back_populates="board")
 
 class BoardItem(Base):
     __tablename__ = "board_items"
@@ -156,11 +173,13 @@ class BoardItem(Base):
     description = Column(String, nullable=True)
     properties = Column(JSONB, nullable=True)
     order = Column(Integer, nullable=True)
+    assignee_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id"), nullable=True)
     is_deleted = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     board = relationship("Board", back_populates="items")
+    assignee = relationship("User", foreign_keys=[assignee_id], back_populates="assigned_items")
 
 class Reminder(Base):
     __tablename__ = "reminders"
@@ -205,8 +224,9 @@ class Comment(Base):
     comment_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     workspace_id = Column(UUID(as_uuid=True), ForeignKey("workspaces.workspace_id"), nullable=False)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id"), nullable=False)
-    entity_id = Column(UUID(as_uuid=True), nullable=False)
-    entity_type = Column(String, nullable=False)
+    task_id = Column(UUID(as_uuid=True), ForeignKey("tasks.task_id"), nullable=True)
+    entity_id = Column(UUID(as_uuid=True), nullable=True)
+    entity_type = Column(String, nullable=True)
     content = Column(String, nullable=False)
     properties = Column(JSONB, nullable=True)
     is_deleted = Column(Boolean, default=False)
@@ -215,6 +235,7 @@ class Comment(Base):
 
     workspace = relationship("Workspace", back_populates="comments")
     user = relationship("User", back_populates="comments")
+    task = relationship("Task", back_populates="comments")
 
 class Tag(Base):
     __tablename__ = "tags"
@@ -225,6 +246,8 @@ class Tag(Base):
     description = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    tasks = relationship("Task", secondary=task_tags, back_populates="tags")
 
 class Page(Base):
     __tablename__ = "pages"

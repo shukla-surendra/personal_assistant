@@ -9,28 +9,46 @@ services:
       - .:/app  # Mount current directory to /app in container
     environment:
       - ENVIRONMENT=dev
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/productify
       - STORAGE_TYPE=postgresql
       - AUTH_TYPE=jwt
-      - JWT_SECRET=your-secret-key
+      - DB_HOST=db  # Use service name for internal Docker networking
+      - DB_PORT=5432
+      - DB_NAME=productify
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
     depends_on:
       - db
+    networks:
+      - app-network
 
   db:
     image: postgres:15
     ports:
-      - "5432:5432"
+      - "5432:5432"  # Expose to host machine
     volumes:
       - postgres_data:/var/lib/postgresql/data/
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=productify
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7
     ports:
       - "6379:6379"
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
 
 volumes:
   postgres_data: 

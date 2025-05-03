@@ -18,11 +18,15 @@ class Settings(BaseSettings):
     secret_key: str = "productify+secret"
     
     # Database settings
-    db_host: str = "assistant_backend-db-1"  # Changed from localhost to postgres for Docker compatibility
+    db_host: str = "db"  # Changed from assistant_backend-db-1 to localhostalhost        
     db_port: str = "5432"
     db_name: str = "productify"
     db_user: str = "postgres"
     db_password: str = "postgres"
+    # database_url: str = ""
+    
+    # Storage settings
+    storage_type: str = "postgresql"  # Must match StorageType enum values
     
     @computed_field
     @property
@@ -46,3 +50,5 @@ class Settings(BaseSettings):
 @lru_cache()
 def get_config():
     return Settings()
+
+settings = get_config()
