@@ -124,7 +124,15 @@ const TaskViewModal = ({ isOpen, onClose, task, onEdit }) => {
       setIsLoading(true);
       const workspace = ConfigService.getDefaultWorkspace();
       const userId = ConfigService.getUserId();
-      await CommentService.createComment(workspace.workspace_id, task.task_id, newComment, userId);
+      
+      const commentData = {
+        workspace_id: workspace.workspace_id,
+        content: newComment,
+        user_id: userId,
+        task_id: task.task_id
+      };
+
+      await CommentService.createComment(workspace.workspace_id, commentData);
       setNewComment('');
       fetchComments();
       toast({
