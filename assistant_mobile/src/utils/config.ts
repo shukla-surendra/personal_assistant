@@ -1,5 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+export const BASE_URL = 'http://192.168.29.93:8000';
+
 interface Workspace {
     workspace_id: string;
     name: string;
@@ -8,8 +10,8 @@ interface Workspace {
 
 class ConfigService {
     private static instance: ConfigService;
-    private token: string | null = null;
     private defaultWorkspace: Workspace | null = null;
+    private userId: string | null = null;
 
     private constructor() {}
 
@@ -18,22 +20,6 @@ class ConfigService {
             ConfigService.instance = new ConfigService();
         }
         return ConfigService.instance;
-    }
-
-    async setToken(token: string | null): Promise<void> {
-        this.token = token;
-        if (token) {
-            await AsyncStorage.setItem('token', token);
-        } else {
-            await AsyncStorage.removeItem('token');
-        }
-    }
-
-    async getToken(): Promise<string | null> {
-        if (!this.token) {
-            this.token = await AsyncStorage.getItem('token');
-        }
-        return this.token;
     }
 
     async setDefaultWorkspace(workspace: Workspace | null): Promise<void> {
@@ -55,9 +41,29 @@ class ConfigService {
         return this.defaultWorkspace;
     }
 
+    async setUserId(userId: string | null): Promise<void> {
+        this.userId = userId;
+        if (userId) {
+            await AsyncStorage.setItem('userId', userId);
+        } else {
+            await AsyncStorage.removeItem('userId');
+        }
+    }
+
+    async getUserId(): Promise<string> {
+        if (!this.userId) {
+            const userId = await AsyncStorage.getItem('userId');
+            if (!userId) {
+                throw new Error('No user ID found');
+            }
+            this.userId = userId;
+        }
+        return this.userId;
+    }
+
     async clear(): Promise<void> {
-        this.token = null;
         this.defaultWorkspace = null;
+        this.userId = null;
         await AsyncStorage.clear();
     }
 }

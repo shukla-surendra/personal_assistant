@@ -3,8 +3,8 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
-import { useColorScheme } from 'react-native';
+import { useEffect, useState } from 'react';
+import { useColorScheme, View, ActivityIndicator } from 'react-native';
 import 'react-native-reanimated';
 import { useRouter, useSegments } from 'expo-router';
 import Auth from '../src/utils/auth';
@@ -17,6 +17,7 @@ export default function RootLayout() {
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
+  const [isAuthChecked, setIsAuthChecked] = useState(false);
 
   const segments = useSegments();
   const router = useRouter();
@@ -40,14 +41,22 @@ export default function RootLayout() {
         }
       } catch (error) {
         console.error('Auth check failed:', error);
+      } finally {
+        setIsAuthChecked(true);
       }
     };
 
-    checkAuth();
-  }, [segments]);
+    if (loaded) {
+      checkAuth();
+    }
+  }, [segments, loaded]);
 
-  if (!loaded) {
-    return null;
+  if (!loaded || !isAuthChecked) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
   }
 
   return (

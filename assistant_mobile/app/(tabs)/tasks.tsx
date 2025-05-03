@@ -12,7 +12,6 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import taskService from '../../src/services/taskService';
 import { useThemeColor } from '../../hooks/useThemeColor';
-import Config from '../../src/utils/config';
 
 interface Task {
     id: string;
@@ -27,24 +26,19 @@ export default function TasksScreen() {
     const router = useRouter();
     const [tasks, setTasks] = useState<Task[]>([]);
     const [loading, setLoading] = useState(true);
-    const [workspaceId, setWorkspaceId] = useState<string | null>(null);
 
     const backgroundColor = useThemeColor({ light: '#fff', dark: '#000' }, 'background');
     const textColor = useThemeColor({ light: '#000', dark: '#fff' }, 'text');
     const borderColor = useThemeColor({ light: '#f0f0f0', dark: '#38383A' }, 'border');
 
     useEffect(() => {
-        loadWorkspaceAndTasks();
+        loadTasks();
     }, []);
 
-    const loadWorkspaceAndTasks = async () => {
+    const loadTasks = async () => {
         try {
-            const workspace = await Config.getDefaultWorkspace();
-            if (workspace) {
-                setWorkspaceId(workspace.workspace_id);
-                const tasks = await taskService.getTasks(workspace.workspace_id);
-                setTasks(tasks);
-            }
+            const tasks = await taskService.getAll();
+            setTasks(tasks);
         } catch (error) {
             console.error('Error loading tasks:', error);
             Alert.alert('Error', 'Failed to load tasks');
@@ -56,14 +50,13 @@ export default function TasksScreen() {
     const handleTaskPress = (task: Task) => {
         router.push({
             pathname: '/task-detail',
-            params: { taskId: task.id, workspaceId }
+            params: { taskId: task.id }
         });
     };
 
     const handleAddTask = () => {
         router.push({
-            pathname: '/task-detail',
-            params: { workspaceId }
+            pathname: '/task-detail'
         });
     };
 

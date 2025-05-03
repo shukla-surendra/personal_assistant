@@ -13,9 +13,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import userService from '../../src/services/userService';
 import { useThemeColor } from '../../hooks/useThemeColor';
-import Config from '../../src/utils/config';
 import Auth from '../../src/utils/auth';
 
 export default function LoginScreen() {
@@ -28,6 +26,8 @@ export default function LoginScreen() {
     const backgroundColor = useThemeColor({ light: '#fff', dark: '#000' }, 'background');
     const textColor = useThemeColor({ light: '#000', dark: '#fff' }, 'text');
     const borderColor = useThemeColor({ light: '#f0f0f0', dark: '#38383A' }, 'border');
+    const inputBgColor = useThemeColor({ light: '#f8f8f8', dark: '#1c1c1e' }, 'background');
+    const iconColor = useThemeColor({ light: '#666', dark: '#999' }, 'text');
 
     const handleLogin = async () => {
         if (!email || !password) {
@@ -37,14 +37,13 @@ export default function LoginScreen() {
 
         setLoading(true);
         try {
-            const response = await userService.login({ email, password });
-            await Auth.login(response);
+            await Auth.login(email, password);
             router.replace('/(tabs)');
         } catch (error: any) {
             console.error('Login error:', error);
             Alert.alert(
                 'Login Failed',
-                error.response?.data?.detail || 'Invalid email or password'
+                error.message || 'Invalid email or password'
             );
         } finally {
             setLoading(false);
@@ -63,12 +62,12 @@ export default function LoginScreen() {
                 </View>
 
                 <View style={styles.formContainer}>
-                    <View style={[styles.inputContainer, { borderColor }]}>
-                        <Ionicons name="mail-outline" size={20} color="#666" style={styles.inputIcon} />
+                    <View style={[styles.inputContainer, { borderColor, backgroundColor: inputBgColor }]}>
+                        <Ionicons name="mail-outline" size={20} color={iconColor} style={styles.inputIcon} />
                         <TextInput
                             style={[styles.input, { color: textColor }]}
                             placeholder="Email"
-                            placeholderTextColor="#999"
+                            placeholderTextColor={iconColor}
                             value={email}
                             onChangeText={setEmail}
                             autoCapitalize="none"
@@ -77,12 +76,12 @@ export default function LoginScreen() {
                         />
                     </View>
 
-                    <View style={[styles.inputContainer, { borderColor }]}>
-                        <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
+                    <View style={[styles.inputContainer, { borderColor, backgroundColor: inputBgColor }]}>
+                        <Ionicons name="lock-closed-outline" size={20} color={iconColor} style={styles.inputIcon} />
                         <TextInput
                             style={[styles.input, { color: textColor }]}
                             placeholder="Password"
-                            placeholderTextColor="#999"
+                            placeholderTextColor={iconColor}
                             value={password}
                             onChangeText={setPassword}
                             secureTextEntry={!showPassword}
@@ -95,7 +94,7 @@ export default function LoginScreen() {
                             <Ionicons
                                 name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                                 size={20}
-                                color="#666"
+                                color={iconColor}
                             />
                         </TouchableOpacity>
                     </View>
@@ -166,7 +165,6 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderRadius: 8,
         marginBottom: 15,
-        backgroundColor: '#f8f8f8',
     },
     inputIcon: {
         marginLeft: 15,
