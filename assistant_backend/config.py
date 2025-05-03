@@ -1,7 +1,8 @@
 from pydantic_settings import BaseSettings
+from pydantic import model_validator, computed_field
 from functools import lru_cache
-import os
 import logging
+from typing import Optional
 
 # Configure logging
 logging.basicConfig(
@@ -14,31 +15,34 @@ class Settings(BaseSettings):
     # Common settings
     environment: str = "development"
     frontend_site_url: str = "http://127.0.0.1:3000/"
-    secret_key: str = "xyzhello"
+    secret_key: str = "productify+secret"
     
     # Database settings
-    user_name: str = "productifyuser"
-    password: str = "LJv8MCgLhL8bOiHe"
-    app_name: str = "Cluster0"
-    host_name: str = "cluster0.aljvnng.mongodb.net"
-    storage_type: str = "postgresql"
-    database_url: str = "postgresql://postgres:postgres@localhost:5432/productify"
+    db_host: str = "assistant_backend-db-1"  # Changed from localhost to postgres for Docker compatibility
+    db_port: str = "5432"
+    db_name: str = "productify"
+    db_user: str = "postgres"
+    db_password: str = "postgres"
+    
+    @computed_field
+    @property
+    def database_url(self) -> str:
+        return f"postgresql://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
     
     # Auth settings
     auth_type: str = "jwt"
-    jwt_secret: str = "your-secret-key"
-    app_client_name: str = "productify_user_pool"
-    client_id: str = "7pj10osqhuc3ifjv06oah22rdg"
-    user_pool_id: str = "ap-south-1_sB1Gu0QIx"
-    client_secret: str = "5h7v9pjpg20hurgb4sd05bjfbi7ucohfuhtkn1oslj0o6h9gemj"
-    cognito_region: str = "ap-south-1"
+    jwt_secret: str = "productify+secret"
+    jwt_algorithm: str = "HS256"
+    jwt_expire_minutes: int = 120
     
     # AWS settings
     aws_region: str = "ap-south-1"
     
     class Config:
         env_file = ".env"
+        case_sensitive = True
+        extra = "ignore"  # Allow extra fields
 
 @lru_cache()
 def get_config():
-    return Settings() 
+    return Settings()

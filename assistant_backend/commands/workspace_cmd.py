@@ -7,6 +7,7 @@ from uuid import UUID
 class WorkspaceCreateCommand(BaseModel):
     name: str
     description: Optional[str] = None
+    is_default: Optional[bool] = False
     owner_id: str
     members: List[str] = []
     settings: Optional[dict] = None
