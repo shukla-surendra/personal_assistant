@@ -36,6 +36,7 @@ class TaskType(Enum):
     DOCUMENT = "document"            # Long-form content
     RESEARCH = "research"            # Exploration or investigation
     QUESTION = "question"            # Open item requiring answer
+    TIME_BLOCK = "time_block"        # Time block
     CUSTOM = "custom"                # User-defined or unclassified type
 
 

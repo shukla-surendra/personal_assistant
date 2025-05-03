@@ -1,0 +1,31 @@
+from pydantic import BaseModel, Field
+from typing import Optional, Dict, Any, List
+from uuid import UUID
+
+class NotificationDto(BaseModel):
+    notification_id: str
+    workspace_id: str
+    user_id: str
+    title: str
+    message: str
+    type: str
+    entity_id: Optional[str] = None
+    entity_type: Optional[str] = None
+    read: bool = False
+    properties: Optional[Dict[str, Any]] = None
+
+class NotificationDtoMapper:
+    @staticmethod
+    def map_to_notification_dto(notification) -> NotificationDto:
+        return NotificationDto(
+            notification_id=str(notification.notification_id),
+            workspace_id=str(notification.workspace_id),
+            user_id=str(notification.user_id),
+            title=notification.title,
+            message=notification.message,
+            type=notification.type,
+            entity_id=str(notification.entity_id) if notification.entity_id else None,
+            entity_type=notification.entity_type,
+            read=notification.read,
+            properties=notification.properties
+        ) 

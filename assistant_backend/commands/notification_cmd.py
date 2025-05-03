@@ -1,0 +1,27 @@
+from pydantic import BaseModel
+from typing import Optional
+from datetime import datetime
+from uuid import UUID
+
+
+class NotificationCommand(BaseModel):
+    workspace_id: str
+    title: str
+    message: str
+    type: str  # info, warning, error, success
+    entity_id: Optional[str] = None  # ID of the related entity
+    entity_type: Optional[str] = None  # Type of the related entity
+    properties: Optional[dict] = None
+
+
+class NotificationUpdateCommand(BaseModel):
+    notification_id: str
+    title: Optional[str] = None
+    message: Optional[str] = None
+    type: Optional[str] = None
+    properties: Optional[dict] = None
+
+
+class NotificationDeleteCommand(BaseModel):
+    notification_id: str
+    workspace_id: str 

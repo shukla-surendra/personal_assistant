@@ -1,20 +1,25 @@
 from typing import List, Dict, Optional
 from pydantic import BaseModel
+from datetime import datetime
+from uuid import UUID
 
 
 class WorkspaceCreateCommand(BaseModel):
     name: str
     description: Optional[str] = None
     owner_id: str
-    settings: Optional[Dict] = None
-    is_default: bool = False
+    members: List[str] = []
+    settings: Optional[dict] = None
+    properties: Optional[dict] = None
 
 
 class WorkspaceUpdateCommand(BaseModel):
     workspace_id: str
     name: Optional[str] = None
     description: Optional[str] = None
-    settings: Optional[Dict] = None
+    members: Optional[List[str]] = None
+    settings: Optional[dict] = None
+    properties: Optional[dict] = None
 
 
 class WorkspaceDeleteCommand(BaseModel):

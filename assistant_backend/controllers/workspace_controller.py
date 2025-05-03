@@ -1,12 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException
-from starlette import status
+from fastapi import APIRouter, Depends, HTTPException, status
 from starlette.responses import Response
-from commands.workspace_cmd import WorkspaceCreateCommand, WorkspaceUpdateCommand
+from commands.workspace_cmd import WorkspaceCreateCommand, WorkspaceUpdateCommand, WorkspaceDeleteCommand
 from handlers.workspace_handlers import WorkspaceHandler
 from authorization.auth import get_auth_details
 from config import logger
 from pydantic import BaseModel
 from typing import List, Optional
+from uuid import UUID
+from dto.workspace_dto import WorkspaceDto, WorkspaceDtoMapper
 
 router = APIRouter(
     prefix="/api/v1/workspaces",
@@ -22,21 +23,17 @@ router = APIRouter(
 class MemberRoleUpdate(BaseModel):
     role: str
 
-@router.post("", status_code=status.HTTP_201_CREATED)
-async def create_workspace(
-    workspace_cmd: WorkspaceCreateCommand,
-    user: dict = Depends(get_auth_details)
-):
+@router.post("/", response_model=WorkspaceDto, status_code=status.HTTP_201_CREATED)
+async def create_workspace(command: WorkspaceCreateCommand):
     """Create a new workspace"""
     try:
-        workspace_cmd.owner_id = user.get("user_id")
-        return WorkspaceHandler().create_workspace(workspace_cmd)
-    except HTTPException as he:
-        raise he
+        workspace = WorkspaceHandler().create_workspace(command)
+        return WorkspaceDtoMapper.map_to_workspace_dto(workspace)
     except Exception as e:
         logger.error(f"Error creating workspace: {e}")
-        raise HTTPException(status_code=500, detail="Failed to create workspace")
+        raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/", response_model=List[WorkspaceDto])
 @router.get("", status_code=status.HTTP_200_OK)
 async def list_workspaces(
     user: dict = Depends(get_auth_details)

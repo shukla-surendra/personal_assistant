@@ -6,6 +6,7 @@ from uuid import UUID
 
 
 class TaskCommand(BaseModel):
+    task_id: Optional[str] = None  # Will be generated if not provided
     workspace_id: str
     user_id: str
     title: str
@@ -16,6 +17,18 @@ class TaskCommand(BaseModel):
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
     published: bool = False
+    slug: Optional[str] = None
+    board_id: Optional[str] = None
+    completed: bool = False
+    is_deleted: bool = False
+    due_on: Optional[datetime] = None
+    assignee_id: Optional[str] = None
+    reporter_id: Optional[str] = None
+    watchers: Optional[list] = []
+    labels: Optional[list] = []
+    meta_data: Optional[dict] = {}
+    settings: Optional[dict] = {}
+    public: bool = False
 
 
 class TaskDeleteCommand(BaseModel):
