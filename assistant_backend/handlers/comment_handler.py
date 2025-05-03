@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 from uuid import UUID
 from adapters.orm.models.pg_models import Comment
 from adapters.orm.models.database import SessionLocal
@@ -65,6 +65,21 @@ class CommentHandler:
             self.db.rollback()
             logger.error(f"Error deleting comment: {str(e)}")
             raise HTTPException(status_code=500, detail="Failed to delete comment")
+
+    def list_comments(self, workspace_id: str, task_id: str, user_id: str) -> List[Comment]:
+        """List all comments for a specific task"""
+        try:
+            comments = self.db.query(Comment).filter(
+                Comment.workspace_id == UUID(workspace_id),
+                Comment.task_id == UUID(task_id),
+                Comment.user_id == UUID(user_id),
+                Comment.is_deleted == False
+            ).order_by(Comment.created_at.desc()).all()
+            
+            return comments
+        except SQLAlchemyError as e:
+            logger.error(f"Error listing comments: {str(e)}")
+            raise HTTPException(status_code=500, detail="Failed to list comments")
 
     def __del__(self):
         self.db.close() 

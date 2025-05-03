@@ -11,7 +11,7 @@ from authorization.auth import get_auth_details
 router = APIRouter(prefix="/api/v1/workspaces/{workspace_id}/comments", tags=["comments"])
 
 @router.post("/", response_model=CommentDto, status_code=status.HTTP_201_CREATED)
-async def create_comment(command: CommentCommand, workspace_id: str, user: dict = Depends(get_auth_details),):
+async def create_comment(command: CommentCommand, workspace_id: str, user: dict = Depends(get_auth_details)):
     handler = CommentHandler()
     assert command.workspace_id == workspace_id
     assert command.user_id == user.get("user_id")
@@ -55,11 +55,11 @@ async def get_comment(comment_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/", response_model=List[CommentDto])
-async def list_comments(workspace_id: str, parent_id: str, parent_type: str):
+@router.get("/tasks/{task_id}", response_model=List[CommentDto])
+async def list_comments(workspace_id: str, task_id: str, user: dict = Depends(get_auth_details)):
     handler = CommentHandler()
     try:
-        comments = handler.list_comments(workspace_id, parent_id, parent_type)
+        comments = handler.list_comments(workspace_id, task_id, user.get("user_id"))
         return [CommentDtoMapper.map_to_comment_dto(comment) for comment in comments]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) 
