@@ -6,11 +6,10 @@ from adapters.orm.models.pg_models import Task, Comment, Tag
 from datetime import datetime
 
 class CommentDto(BaseModel):
-    id: str
+    comment_id: str
     task_id: str
     user_id: str
     content: str
-    parent_id: Optional[str] = None
     is_deleted: bool
     created_at: datetime
     updated_at: datetime
@@ -123,11 +122,10 @@ class CommentDtoMapper:
     @staticmethod
     def map_to_comment_dto(comment: Comment) -> CommentDto:
         return CommentDto(
-            id=str(comment.id),
+            comment_id=str(comment.comment_id),
             task_id=str(comment.task_id),
             user_id=str(comment.user_id),
             content=comment.content,
-            parent_id=str(comment.parent_id) if comment.parent_id else None,
             is_deleted=comment.is_deleted,
             created_at=comment.created_at,
             updated_at=comment.updated_at,
@@ -135,8 +133,7 @@ class CommentDtoMapper:
                 'user_id': str(comment.user.user_id),
                 'first_name': comment.user.first_name,
                 'last_name': comment.user.last_name
-            } if comment.user else None,
-            replies=[CommentDtoMapper.map_to_comment_dto(reply) for reply in comment.replies]
+            } if comment.user else None
         )
 
 

@@ -30,6 +30,7 @@ import {
   Textarea,
   Button,
   AvatarBadge,
+  useToast,
 } from "@chakra-ui/react";
 import { 
   FaCalendarAlt, 
@@ -44,36 +45,15 @@ import {
   FaEdit
 } from "react-icons/fa";
 import { formatLocalDateTime } from '../../../utils/locale';
-
-// Sample comments data
-const sampleComments = [
-  {
-    id: 1,
-    author: "John Doe",
-    avatar: "https://bit.ly/dan-abramov",
-    content: "I've completed the initial setup for the project. Please review the changes.",
-    timestamp: "2024-03-15T10:30:00",
-  },
-  {
-    id: 2,
-    author: "Jane Smith",
-    avatar: "https://bit.ly/ryan-florence",
-    content: "The changes look good. I've added some additional requirements in the documentation.",
-    timestamp: "2024-03-15T11:45:00",
-  },
-  {
-    id: 3,
-    author: "Mike Johnson",
-    avatar: "https://bit.ly/kent-c-dodds",
-    content: "I've reviewed the documentation and started working on the implementation.",
-    timestamp: "2024-03-15T14:20:00",
-  },
-];
+import CommentService from '../../../services/CommentService';
+import ConfigService from '../../../utils/config';
 
 const TaskViewModal = ({ isOpen, onClose, task, onEdit }) => {
   const [newComment, setNewComment] = useState("");
-  const [comments, setComments] = useState(sampleComments);
+  const [comments, setComments] = useState([]);
   const [content, setContent] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const toast = useToast();
   
   const bg = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.700");
@@ -87,6 +67,29 @@ const TaskViewModal = ({ isOpen, onClose, task, onEdit }) => {
       setContent(task.description);
     }
   }, [task?.description]);
+
+  useEffect(() => {
+    if (task?.task_id) {
+      fetchComments();
+    }
+  }, [task]);
+
+  const fetchComments = async () => {
+    try {
+      const workspace = ConfigService.getDefaultWorkspace();
+      const userId = ConfigService.getUserId();
+      const response = await CommentService.listComments(workspace.workspace_id, task.task_id, userId);
+      setComments(response.data);
+    } catch (error) {
+      toast({
+        title: "Error fetching comments",
+        description: error.message,
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+  };
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -114,17 +117,32 @@ const TaskViewModal = ({ isOpen, onClose, task, onEdit }) => {
     }
   };
 
-  const handleAddComment = () => {
-    if (newComment.trim()) {
-      const newCommentObj = {
-        id: comments.length + 1,
-        author: "Current User",
-        avatar: "https://bit.ly/code-beast",
-        content: newComment,
-        timestamp: new Date().toISOString(),
-      };
-      setComments([...comments, newCommentObj]);
-      setNewComment("");
+  const handleAddComment = async () => {
+    if (!newComment.trim()) return;
+
+    try {
+      setIsLoading(true);
+      const workspace = ConfigService.getDefaultWorkspace();
+      const userId = ConfigService.getUserId();
+      await CommentService.createComment(workspace.workspace_id, task.task_id, newComment, userId);
+      setNewComment('');
+      fetchComments();
+      toast({
+        title: 'Comment added',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+    } catch (error) {
+      toast({
+        title: 'Error adding comment',
+        description: error.message,
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -293,7 +311,7 @@ const TaskViewModal = ({ isOpen, onClose, task, onEdit }) => {
               <VStack align="start" spacing={4} mb={4}>
                 {comments.map((comment) => (
                   <Box
-                    key={comment.id}
+                    key={comment.comment_id}
                     w="100%"
                     p={3}
                     bg={commentBg}
@@ -303,13 +321,13 @@ const TaskViewModal = ({ isOpen, onClose, task, onEdit }) => {
                   >
                     <Flex justify="space-between" align="center" mb={2}>
                       <HStack>
-                        <Avatar size="sm" src={comment.avatar}>
+                        <Avatar size="sm" name="User">
                           <AvatarBadge boxSize="1.25em" bg="green.500" />
                         </Avatar>
-                        <Text fontWeight="bold">{comment.author}</Text>
+                        <Text fontWeight="bold">User</Text>
                       </HStack>
                       <Text fontSize="sm" color="gray.500">
-                        {new Date(comment.timestamp).toLocaleString()}
+                        Just now
                       </Text>
                     </Flex>
                     <Text>{comment.content}</Text>
@@ -330,7 +348,8 @@ const TaskViewModal = ({ isOpen, onClose, task, onEdit }) => {
                   colorScheme="blue"
                   size="sm"
                   onClick={handleAddComment}
-                  isDisabled={!newComment.trim()}
+                  isDisabled={!newComment.trim() || isLoading}
+                  isLoading={isLoading}
                 >
                   Add Comment
                 </Button>
