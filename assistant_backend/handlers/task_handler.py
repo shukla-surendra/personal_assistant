@@ -50,13 +50,13 @@ class TaskHandler:
                     logger.warning(f"Invalid task type: {task_cmd.task_type}. Defaulting to TODO")
                     task_type = TaskType.TODO
 
-            status = TaskStatus.TODO
+            task_status = TaskStatus.TODO
             if task_cmd.status:
                 try:
-                    status = TaskStatus(task_cmd.status.lower())
+                    task_status = TaskStatus(task_cmd.status.lower())
                 except ValueError:
                     logger.warning(f"Invalid status: {task_cmd.status}. Defaulting to TODO")
-                    status = TaskStatus.TODO
+                    task_status = TaskStatus.TODO
 
             # Generate slug if not provided
             slug = task_cmd.slug or self._generate_slug(task_cmd.title)
@@ -76,7 +76,7 @@ class TaskHandler:
                 description=task_cmd.description,
                 priority=priority,
                 task_type=task_type.value,  # Convert enum to string value
-                status=status.value,  # Convert enum to string value
+                status=task_status.value,  # Convert enum to string value
                 completed=task_cmd.completed,
                 is_deleted=task_cmd.is_deleted,
                 due_on=task_cmd.due_on,
@@ -97,7 +97,7 @@ class TaskHandler:
             self.db.add(task)
             self.db.commit()
             logger.info(f"Successfully created task with ID: {task.task_id}")
-            return TaskDtoMapper.to_dto(task)
+            return TaskDtoMapper.map_to_task_dto_mapper(task)
 
         except Exception as e:
             logger.error(f"Error creating task: {str(e)}")
@@ -203,7 +203,7 @@ class TaskHandler:
 
             self.db.commit()
             logger.info(f"Successfully updated task: {task_cmd.task_id}")
-            return TaskDtoMapper.to_dto(task)
+            return TaskDtoMapper.map_to_task_dto_mapper(task)
 
         except HTTPException:
             raise
@@ -254,7 +254,7 @@ class TaskHandler:
             # Apply pagination
             tasks = query.offset(skip).limit(limit).all()
             logger.info(f"Found {len(tasks)} tasks matching criteria")
-            return [TaskDtoMapper.to_dto(task) for task in tasks]
+            return [TaskDtoMapper.map_to_task_dto_mapper(task) for task in tasks]
 
         except Exception as e:
             logger.error(f"Error listing tasks: {str(e)}")
@@ -283,7 +283,7 @@ class TaskHandler:
                 )
 
             logger.info(f"Successfully retrieved task: {task_id}")
-            return TaskDtoMapper.to_dto(task)
+            return TaskDtoMapper.map_to_task_dto_mapper(task)
 
         except HTTPException:
             raise
@@ -313,7 +313,7 @@ class TaskHandler:
                 )
 
             logger.info(f"Successfully retrieved task with slug: {slug}")
-            return TaskDtoMapper.to_dto(task)
+            return TaskDtoMapper.map_to_task_dto_mapper(task)
 
         except HTTPException:
             raise
