@@ -6,12 +6,15 @@ from commands.comment_cmd import CommentCommand, CommentUpdateCommand, CommentDe
 from adapters.orm.models.pg_models import Comment
 from dto.comment_dto import CommentDto
 from dto.comment_dto import CommentDtoMapper
+from authorization.auth import get_auth_details
 
-router = APIRouter(prefix="/comments", tags=["comments"])
+router = APIRouter(prefix="/api/v1/workspaces/{workspace_id}/comments", tags=["comments"])
 
 @router.post("/", response_model=CommentDto, status_code=status.HTTP_201_CREATED)
-async def create_comment(command: CommentCommand):
+async def create_comment(command: CommentCommand, workspace_id: str, user: dict = Depends(get_auth_details),):
     handler = CommentHandler()
+    assert command.workspace_id == workspace_id
+    assert command.user_id == user.get("user_id")
     try:
         comment = handler.create_comment(command)
         return CommentDtoMapper.map_to_comment_dto(comment)

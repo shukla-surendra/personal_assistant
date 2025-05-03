@@ -7,9 +7,8 @@ from uuid import UUID
 class CommentCommand(BaseModel):
     workspace_id: str
     content: str
-    parent_id: str  # ID of the parent entity (page, task, etc.)
-    parent_type: str  # Type of the parent entity
-    properties: Optional[dict] = None
+    user_id: str
+    task_id: str
 
 
 class CommentUpdateCommand(BaseModel):

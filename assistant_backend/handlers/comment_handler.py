@@ -18,9 +18,8 @@ class CommentHandler:
             comment = Comment(
                 workspace_id=UUID(command.workspace_id),
                 content=command.content,
-                parent_id=UUID(command.parent_id),
-                parent_type=command.parent_type,
-                properties=command.properties
+                user_id=UUID(command.user_id),
+                task_id=UUID(command.task_id),
             )
             self.db.add(comment)
             self.db.commit()
