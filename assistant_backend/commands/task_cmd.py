@@ -40,6 +40,13 @@ class TaskUpdateCommand(BaseModel):
     task_id: str
     workspace_id: str
     user_id: str
+    assignee_id: Optional[str] = None
+    reporter_id: Optional[str] = None
+    watchers: Optional[list] = []
+    labels: Optional[list] = []
+    public: Optional[bool] = None
+    meta_data: Optional[dict] = {}
+    settings: Optional[dict] = {}
     title: Optional[str] = None
     description: Optional[str] = None
     priority: Optional[str] = None
