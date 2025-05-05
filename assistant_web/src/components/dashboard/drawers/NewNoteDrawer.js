@@ -17,6 +17,34 @@ import {
 import { FiMoreHorizontal, FiPlus, FiSearch } from "react-icons/fi";
 import RichTextEditor from '../editor/RichTextEditor';
 import ConfigService from "../../../utils/config";
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+
+// Function to extract text from Lexical JSON
+const extractTextFromLexicalJSON = (jsonString) => {
+  try {
+    const content = JSON.parse(jsonString);
+    let text = '';
+    
+    const processNode = (node) => {
+      if (node.text) {
+        text += node.text;
+      }
+      if (node.children) {
+        node.children.forEach(processNode);
+      }
+    };
+    
+    if (content.root && content.root.children) {
+      content.root.children.forEach(processNode);
+    }
+    
+    return text;
+  } catch (error) {
+    console.error('Error parsing Lexical JSON:', error);
+    return '';
+  }
+};
 
 // Note templates
 const NOTE_TEMPLATES = [
@@ -187,6 +215,82 @@ export default function NewNoteDrawer(props) {
     }));
   };
 
+  const handleExport = async (format) => {
+    if (format === 'pdf') {
+      try {
+        // Create a temporary div to render the content
+        const tempDiv = document.createElement('div');
+        tempDiv.style.padding = '20px';
+        tempDiv.style.backgroundColor = 'white';
+        tempDiv.style.color = 'black';
+        
+        // Add title
+        const title = document.createElement('h1');
+        title.textContent = currentTask.title || 'Untitled';
+        title.style.fontSize = '24px';
+        title.style.marginBottom = '20px';
+        tempDiv.appendChild(title);
+        
+        // Add content
+        const content = document.createElement('div');
+        content.innerHTML = extractTextFromLexicalJSON(currentTask.description);
+        content.style.fontSize = '14px';
+        tempDiv.appendChild(content);
+        
+        // Add metadata
+        const metadata = document.createElement('div');
+        metadata.style.marginTop = '20px';
+        metadata.style.fontSize = '12px';
+        metadata.style.color = '#666';
+        metadata.innerHTML = `
+          <p>Created: ${new Date().toLocaleString()}</p>
+          ${currentTask.tags?.length ? `<p>Tags: ${currentTask.tags.join(', ')}</p>` : ''}
+        `;
+        tempDiv.appendChild(metadata);
+        
+        // Add to document temporarily
+        document.body.appendChild(tempDiv);
+        
+        // Convert to canvas
+        const canvas = await html2canvas(tempDiv, {
+          scale: 2,
+          useCORS: true,
+          logging: false
+        });
+        
+        // Create PDF
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const imgWidth = 210; // A4 width in mm
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        
+        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, imgWidth, imgHeight);
+        
+        // Save the PDF
+        pdf.save(`${currentTask.title || 'note'}.pdf`);
+        
+        // Clean up
+        document.body.removeChild(tempDiv);
+        
+        toast({
+          title: "Success",
+          description: "Note exported as PDF successfully",
+          status: "success",
+          duration: 2000,
+          isClosable: true,
+        });
+      } catch (error) {
+        console.error('Error exporting to PDF:', error);
+        toast({
+          title: "Error",
+          description: "Failed to export note as PDF",
+          status: "error",
+          duration: 3000,
+          isClosable: true,
+        });
+      }
+    }
+  };
+
   const saveNote = async () => {
     setIsLoading(true);
     
@@ -288,7 +392,11 @@ export default function NewNoteDrawer(props) {
                     Share
                   </MenuItem>
                   <MenuDivider />
-                  <MenuItem icon={<Icon as={FaFilePdf} />} py={2}>
+                  <MenuItem 
+                    icon={<Icon as={FaFilePdf} />} 
+                    py={2}
+                    onClick={() => handleExport('pdf')}
+                  >
                     Export as PDF
                   </MenuItem>
                   <MenuItem icon={<Icon as={FaFileWord} />} py={2}>

@@ -329,7 +329,7 @@ export default function NotesPage() {
                 </TabList>
 
                 <TabPanels>
-                  <TabPanel p={0}>
+                  <TabPanel p={0} mt={4}>
                     <Grid 
                       templateColumns={{ 
                         base: "1fr", 
@@ -411,7 +411,7 @@ export default function NotesPage() {
                     </Grid>
                   </TabPanel>
 
-                  <TabPanel p={0}>
+                  <TabPanel p={0} mt={4}>
                     <Box overflowX="auto">
                       <Table variant="simple">
                         <Thead>
