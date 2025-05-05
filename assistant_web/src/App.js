@@ -32,7 +32,7 @@ import NewSignup from "./pages/landing/NewSignup"
 import TaskDetailPage from './pages/dashboard/TaskDetailPage';
 import SearchTasksPage from './pages/dashboard/SearchTasksPage';
 import SearchNotebookPage from './pages/dashboard/SearchNotebookPage';
-import TaskPage from './pages/TaskPage';
+import TaskPage from './pages/dashboard/TaskPage';
 
 function App() {
   return (

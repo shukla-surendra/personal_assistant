@@ -7,7 +7,6 @@ import {
   Button,
   VStack,
   HStack,
-  IconButton,
   Menu,
   MenuButton,
   MenuList,
@@ -40,8 +39,7 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import listPlugin from '@fullcalendar/list';
-import { FiCalendar, FiPlus, FiSettings, FiUsers, FiClock, FiVideo } from "react-icons/fi";
-import { formatLocalDateTime } from "../../utils/locale";
+import { FiCalendar, FiPlus, FiSettings, FiUsers, FiVideo } from "react-icons/fi";
 import Navbar from "../../components/dashboard/Navbar";
 import Header from "../../components/dashboard/Header";
 import { Helmet } from "react-helmet";

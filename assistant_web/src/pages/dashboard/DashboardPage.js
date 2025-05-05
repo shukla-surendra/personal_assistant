@@ -178,7 +178,7 @@ export default function DashboardResponsive() {
           </CardHeader>
           <CardBody>
             <Stack divider={<StackDivider />} spacing="4">
-              <Box>
+              {/* <Box>
                 <Box 
                   className="ProseMirror"
                   fontSize="sm" 
@@ -186,7 +186,7 @@ export default function DashboardResponsive() {
                   noOfLines={3}
                   dangerouslySetInnerHTML={{ __html: task.description || "No description provided." }}
                 />
-              </Box>
+              </Box> */}
               <Flex wrap="wrap" gap={2}>
                 <Badge colorScheme={priorityColorMapping[task.priority] || 'gray'}>
                   {task.priority || 'No Priority'}
@@ -251,7 +251,7 @@ export default function DashboardResponsive() {
           </CardHeader>
           <CardBody>
             <Stack divider={<StackDivider />} spacing="4">
-              <Box>
+              {/* <Box>
                 <Box 
                   className="ProseMirror"
                   fontSize="sm" 
@@ -259,7 +259,7 @@ export default function DashboardResponsive() {
                   noOfLines={3}
                   dangerouslySetInnerHTML={{ __html: note.description || "No content provided." }}
                 />
-              </Box>
+              </Box> */}
             </Stack>
           </CardBody>
           <CardFooter>

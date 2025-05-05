@@ -66,10 +66,10 @@ import {
   FaCheck,
   FaTimes
 } from "react-icons/fa";
-import { formatLocalDateTime } from '../utils/locale';
-import TaskService from '../services/taskservice';
-import CommentService from '../services/CommentService';
-import ConfigService from '../utils/config';
+import { formatLocalDateTime } from '../../utils/locale';
+import TaskService from '../../services/taskservice';
+import CommentService from '../../services/CommentService';
+import ConfigService from '../../utils/config';
 
 const TaskPage = () => {
   const { task_id } = useParams();
