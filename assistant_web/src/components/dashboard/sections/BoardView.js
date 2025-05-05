@@ -1,6 +1,7 @@
 import React from 'react';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-import { Box, Heading, VStack, Card, CardBody } from '@chakra-ui/react';
+import { Box, Heading, VStack } from '@chakra-ui/react';
+import TaskBoardViewBox from './TaskBoardViewBox';
 
 const columns = [
   { key: 'todo', label: 'Not Started' },
@@ -8,7 +9,7 @@ const columns = [
   { key: 'done', label: 'Done' },
 ];
 
-const BoardView = ({ tasks, onStatusChange }) => {
+const BoardView = ({ tasks, onStatusChange, onEdit, onDelete }) => {
   const tasksByStatus = columns.reduce((acc, col) => {
     acc[col.key] = tasks.filter(task => task.status === col.key);
     return acc;
@@ -21,8 +22,12 @@ const BoardView = ({ tasks, onStatusChange }) => {
     onStatusChange(draggableId, destination.droppableId);
   };
 
-  const handleStatusChange = (taskId, newStatus) => {
-    onStatusChange(taskId, newStatus);
+  const handleUpdateItem = (task) => {
+    onEdit(task);
+  };
+
+  const handleDeleteItem = (task) => {
+    onDelete(task);
   };
 
   return (
@@ -34,7 +39,7 @@ const BoardView = ({ tasks, onStatusChange }) => {
               <Box
                 ref={provided.innerRef}
                 {...provided.droppableProps}
-                minW="300px"
+                minW="320px"
                 bg={snapshot.isDraggingOver ? 'gray.100' : 'gray.50'}
                 borderRadius="md"
                 p={2}
@@ -44,18 +49,18 @@ const BoardView = ({ tasks, onStatusChange }) => {
                   {tasksByStatus[col.key].map((task, idx) => (
                     <Draggable draggableId={String(task.task_id)} index={idx} key={task.task_id}>
                       {(provided, snapshot) => (
-                        <Card
+                        <Box
                           ref={provided.innerRef}
                           {...provided.draggableProps}
                           {...provided.dragHandleProps}
-                          bg={snapshot.isDragging ? 'blue.100' : 'white'}
-                          boxShadow="md"
                         >
-                          <CardBody>
-                            <strong>{task.title}</strong>
-                            <div>{task.description}</div>
-                          </CardBody>
-                        </Card>
+                          <TaskBoardViewBox
+                            task={task}
+                            handleUpdateItem={handleUpdateItem}
+                            handleDeleteItem={handleDeleteItem}
+                            onEdit={onEdit}
+                          />
+                        </Box>
                       )}
                     </Draggable>
                   ))}

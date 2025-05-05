@@ -82,7 +82,7 @@ function TaskBoardViewBox({ task, handleUpdateItem, handleDeleteItem, priorityCo
   return (
     <>
       <Box
-        p={4}
+        p={3}
         borderRadius="lg"
         boxShadow="md"
         bg={tileBg}
@@ -94,11 +94,11 @@ function TaskBoardViewBox({ task, handleUpdateItem, handleDeleteItem, priorityCo
           transform: "translateY(-2px)",
           bg: tileHoverBg
         }}
-        minH="120px"
+        minH="60px"
         maxW="320px"
         w="100%"
       >
-        <Flex justify="space-between" align="flex-start" mb={2}>
+        <Flex justify="space-between" align="center">
           <HStack spacing={2}>
             <Badge colorScheme={task.status === "done" ? "green" : task.status === "in_progress" ? "orange" : "blue"}>
               {task.status === "todo" ? "Not Started" : task.status === "in_progress" ? "In Progress" : "Done"}
@@ -144,17 +144,10 @@ function TaskBoardViewBox({ task, handleUpdateItem, handleDeleteItem, priorityCo
             </Menu>
           </HStack>
         </Flex>
-        <Box onClick={handleViewItem} cursor="pointer">
-          <Text fontWeight="bold" fontSize="lg" mb={1} noOfLines={1}>
+        <Box onClick={handleViewItem} cursor="pointer" mt={2}>
+          <Text fontWeight="bold" fontSize="md" noOfLines={1}>
             {task.title}
           </Text>
-          <Box 
-            className="ProseMirror"
-            fontSize="sm" 
-            color={descColor} 
-            noOfLines={3}
-            dangerouslySetInnerHTML={{ __html: task.description || "No description provided." }}
-          />
         </Box>
       </Box>
       <TaskViewModal 

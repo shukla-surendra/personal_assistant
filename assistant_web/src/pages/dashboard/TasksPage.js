@@ -128,12 +128,12 @@ export default function TasksPage() {
           <Text fontWeight="bold" fontSize="lg">
             {task.title}
           </Text>
-          <Box 
+          {/* <Box 
             className="ProseMirror"
             color={textColor} 
             noOfLines={2}
             dangerouslySetInnerHTML={{ __html: task.description || "No description provided." }}
-          />
+          /> */}
           <Flex wrap="wrap" gap={2}>
             <Badge colorScheme={task.status === 'done' ? 'green' : task.status === 'in_progress' ? 'orange' : 'blue'}>
               {task.status === 'todo' ? 'To Do' : task.status === 'in_progress' ? 'In Progress' : 'Done'}
