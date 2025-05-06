@@ -65,6 +65,7 @@ import NewTaskDrawer from "../../components/dashboard/drawers/NewTaskDrawer";
 import NewNoteDrawer from "../../components/dashboard/drawers/NewNoteDrawer";
 import TaskViewModal from "../../components/dashboard/modals/TaskViewModal";
 import NoteViewModal from "../../components/dashboard/modals/NoteViewModal";
+import DeleteTaskNoteModal from "../../components/dashboard/modals/DeleteTaskNoteModal";
 
 export default function DashboardResponsive() {
   const dispatch = useDispatch();
@@ -73,9 +74,10 @@ export default function DashboardResponsive() {
   const { isOpen: isNoteEditOpen, onOpen: onNoteEditOpen, onClose: onNoteEditClose } = useDisclosure();
   const { isOpen: isNewTaskOpen, onOpen: onNewTaskOpen, onClose: onNewTaskClose } = useDisclosure();
   const { isOpen: isNewNoteOpen, onOpen: onNewNoteOpen, onClose: onNewNoteClose } = useDisclosure();
-  const [selectedTask, setSelectedTask] = useState(null);
+  const [selectedTask, setSelectedTask] = useState({ task_id: "", title: "", description: "", status: "" });
   const [isMenuCollapsed, setIsMenuCollapsed] = useState(false);
   const navigate = useNavigate();
+  const delete_modal = useDisclosure();
 
   useEffect(() => {
     dispatch(retrieveTasks());
@@ -88,8 +90,8 @@ export default function DashboardResponsive() {
   };
 
   const handleDeleteItem = (item) => {
-    // TODO: Implement delete functionality
-    console.log('Delete item:', item);
+    setSelectedTask(item);
+    delete_modal.onOpen();
   };
 
   const handleTaskUpdate = async (updatedTask) => {
@@ -321,6 +323,13 @@ export default function DashboardResponsive() {
         currentTask={{}} 
         disclosures={{ isOpen: isNewNoteOpen, onClose: onNewNoteClose }}
       />
+      {selectedTask && selectedTask.task_id && (
+        <DeleteTaskNoteModal 
+          currentTask={selectedTask} 
+          disclosures={delete_modal}
+          type="task"
+        />
+      )}
 
       <Box minH="100vh" bg={bgColor}>
         <Navbar isCollapsed={isMenuCollapsed} />
