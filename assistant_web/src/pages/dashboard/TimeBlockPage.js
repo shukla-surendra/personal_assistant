@@ -9,11 +9,12 @@ import {
   HStack,
   Select,
   VStack,
-  useToast
+  useToast,
+  useDisclosure
 } from '@chakra-ui/react';
 
 import React, { useState, useEffect } from "react";
-import { Flex, Text, useDisclosure } from "@chakra-ui/react";
+import { Flex, Text } from "@chakra-ui/react";
 import { FiPlus } from 'react-icons/fi';
 import Navbar from "../../components/dashboard/Navbar";
 import { Helmet } from 'react-helmet';
@@ -22,7 +23,7 @@ import Header from "../../components/dashboard/Header";
 import TaskDataService from "../../services/taskservice";
 
 export default function TimeBlockPage() {
-  const menu_open = useDisclosure();
+  const { isOpen, onOpen, onClose } = useDisclosure();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [blocks, setBlocks] = useState([]);
   const [viewMode, setViewMode] = useState('day'); // 'day', 'week', 'month'
@@ -109,14 +110,14 @@ export default function TimeBlockPage() {
 
       <Box as="section" bg={bgColor} minH="100vh">
         <Navbar display={{ base: 'none', md: 'unset' }} />
-        <Drawer isOpen={menu_open.isOpen} onClose={menu_open.onClose} placement="left">
+        <Drawer isOpen={isOpen} onClose={onClose} placement="left">
           <DrawerOverlay />
           <DrawerContent>
             <Navbar w="full" borderRight="none" />
           </DrawerContent>
         </Drawer>
         <Box ml={{ base: 0, md: 60 }} transition=".3s ease">
-          <Header menu_open={menu_open} />
+          <Header menu_open={{ isOpen, onOpen, onClose }} />
 
           <Box as="main" p={4} minH="25rem" bg={bgColor}>
             <VStack spacing={4} align="stretch">

@@ -182,14 +182,6 @@ const Navbar = ({ isCollapsed, onToggle }) => {
               Time Block
             </NavItem>
             <NavItem
-              icon={FiGrid}
-              to="/notion"
-              isActive={location.pathname === '/notion'}
-              isCollapsed={isCollapsed}
-            >
-              Notion Dashboard
-            </NavItem>
-            <NavItem
               icon={FiSearch}
               to="/search-tasks"
               isActive={location.pathname === '/search-tasks'}
