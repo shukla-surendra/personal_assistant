@@ -1,12 +1,16 @@
 from datetime import datetime
 from starlette import status
 from fastapi import HTTPException
-from commands.workspace_cmd import WorkspaceCreateCommand
+from commands.workspace_cmd import (
+    WorkspaceCreateCommand,
+    WorkspaceInviteMemberCommand
+)
 from dto.workspace_dto import WorkspaceDtoMapper
 from adapters.orm.models.pg_models import Workspace, workspace_users, User
 from config import logger
 from adapters.orm.models.database import get_db
 from sqlalchemy import select
+from uuid import UUID
 
 
 class WorkspaceHandler:
@@ -308,67 +312,67 @@ class WorkspaceHandler:
             logger.error(f"Error getting workspace members: {e}")
             raise HTTPException(status_code=500, detail="Failed to get workspace members")
 
-    def invite_member_to_workspace(self, workspace_id: str, owner_id: str, email: str):
-        """Invite a user to a workspace by email"""
+    def invite_member_to_workspace(self, command: WorkspaceInviteMemberCommand):
+        """Invite a member to a workspace"""
         try:
+            # Check if workspace exists and user is owner
             workspace = self.db.query(Workspace).filter(
-                Workspace.workspace_id == workspace_id,
-                Workspace.is_deleted == False
+                Workspace.workspace_id == UUID(command.workspace_id),
+                Workspace.owner_id == UUID(command.owner_id)
             ).first()
             
             if not workspace:
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
-                                 detail="Workspace not found")
+                raise HTTPException(
+                    status_code=404,
+                    detail="Workspace not found or you don't have permission"
+                )
 
-            if workspace.owner_id != owner_id:
-                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, 
-                                 detail="Not authorized to modify this workspace")
-
-            # Find user by email
-            user = self.db.query(User).filter(
-                User.email == email,
-                User.is_deleted == False
-            ).first()
-
+            # Check if user exists
+            user = self.db.query(User).filter(User.email == command.email).first()
             if not user:
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                                 detail="User not found")
+                raise HTTPException(
+                    status_code=404,
+                    detail="User not found"
+                )
 
             # Check if user is already a member
-            existing_member = self.db.execute(
-                select(workspace_users)
-                .where(workspace_users.c.workspace_id == workspace_id)
-                .where(workspace_users.c.user_id == user.user_id)
+            existing_member = self.db.query(workspace_users).filter(
+                workspace_users.c.workspace_id == UUID(command.workspace_id),
+                workspace_users.c.user_id == user.user_id
             ).first()
 
             if existing_member:
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                                 detail="User is already a member of this workspace")
-
-            # Add user to workspace with default role
-            self.db.execute(
-                workspace_users.insert().values(
-                    workspace_id=workspace_id,
-                    user_id=user.user_id,
-                    role='member'
+                raise HTTPException(
+                    status_code=400,
+                    detail="User is already a member of this workspace"
                 )
+
+            # Add user to workspace
+            stmt = workspace_users.insert().values(
+                workspace_id=UUID(command.workspace_id),
+                user_id=user.user_id,
+                role=command.role,
+                joined_at=datetime.utcnow()
             )
+            self.db.execute(stmt)
             self.db.commit()
 
             return {
+                "message": f"Successfully invited {command.email} to the workspace",
                 "user_id": str(user.user_id),
-                "name": f"{user.first_name} {user.last_name or ''}".strip(),
                 "email": user.email,
-                "role": "member",
-                "avatar": f"https://ui-avatars.com/api/?name={user.first_name}+{user.last_name or ''}"
+                "role": command.role
             }
+
         except HTTPException as he:
-            self.db.rollback()
             raise he
         except Exception as e:
             self.db.rollback()
             logger.error(f"Error inviting member to workspace: {e}")
-            raise HTTPException(status_code=500, detail="Failed to invite member to workspace")
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to invite member to workspace"
+            )
 
     def update_member_role(self, workspace_id: str, owner_id: str, user_id: str, role: str):
         """Update a member's role in a workspace"""

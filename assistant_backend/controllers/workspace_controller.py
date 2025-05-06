@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from starlette.responses import Response
-from commands.workspace_cmd import WorkspaceCreateCommand, WorkspaceUpdateCommand, WorkspaceDeleteCommand
+from commands.workspace_cmd import WorkspaceCreateCommand, WorkspaceUpdateCommand, WorkspaceDeleteCommand, WorkspaceInviteMemberCommand
 from handlers.workspace_handlers import WorkspaceHandler
 from authorization.auth import get_auth_details
 from config import logger
@@ -218,16 +218,14 @@ async def get_workspace_members(
 @router.post("/{workspace_id}/invite", status_code=status.HTTP_200_OK)
 async def invite_member_to_workspace(
     workspace_id: str,
-    email: str,
+    command: WorkspaceInviteMemberCommand,
     current_user: dict = Depends(get_auth_details)
 ):
     """Invite a user to a workspace by email"""
     try:
-        return WorkspaceHandler().invite_member_to_workspace(
-            workspace_id=workspace_id,
-            owner_id=current_user.get("user_id"),
-            email=email
-        )
+        command.workspace_id = workspace_id
+        command.owner_id = current_user.get("user_id")
+        return WorkspaceHandler().invite_member_to_workspace(command)
     except HTTPException as he:
         raise he
     except Exception as e:

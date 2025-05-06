@@ -56,7 +56,8 @@ class AuthService {
 		// Set default workspace
 		const default_workspace = {
 			workspace_id: loginResponse.user.default_workspace.workspace_id,
-			name: loginResponse.user.default_workspace.name
+			name: loginResponse.user.default_workspace.name,
+			owner_id: loginResponse.user.user_id
 		};
 		ConfigService.setDefaultWorkspace(default_workspace);
 		ConfigService.setUserId(loginResponse.user.user_id);

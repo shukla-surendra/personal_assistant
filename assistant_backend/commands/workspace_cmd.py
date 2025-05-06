@@ -1,5 +1,5 @@
 from typing import List, Dict, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from datetime import datetime
 from uuid import UUID
 
@@ -26,6 +26,13 @@ class WorkspaceUpdateCommand(BaseModel):
 class WorkspaceDeleteCommand(BaseModel):
     workspace_id: str
     owner_id: str
+
+
+class WorkspaceInviteMemberCommand(BaseModel):
+    workspace_id: str
+    owner_id: str
+    email: EmailStr
+    role: str = "member"
 
 
 

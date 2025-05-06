@@ -37,6 +37,19 @@ import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbLink,
+  Spinner,
+  Center,
+  Stack,
+  Card,
+  CardHeader,
+  CardBody,
+  Tabs,
+  TabList,
+  TabPanels,
+  Tab,
+  TabPanel,
+  Grid,
+  GridItem,
 } from '@chakra-ui/react';
 import { 
   FiUsers, 
@@ -48,7 +61,8 @@ import {
   FiHome,
   FiMail,
   FiUser,
-  FiX
+  FiX,
+  FiEye
 } from 'react-icons/fi';
 import { Helmet } from 'react-helmet';
 import Navbar from '../../components/dashboard/Navbar';
@@ -57,6 +71,7 @@ import MemberService from '../../services/MemberService';
 import ConfigService from '../../utils/config';
 
 const MembersPage = () => {
+  const [isMenuCollapsed, setIsMenuCollapsed] = useState(false);
   const menu_open = useDisclosure();
   const addMemberDrawer = useDisclosure();
   const toast = useToast();
@@ -64,6 +79,8 @@ const MembersPage = () => {
   const mainBg = useColorModeValue('white', 'gray.800');
   const cardBg = useColorModeValue('white', 'gray.700');
   const borderColor = useColorModeValue('gray.200', 'gray.600');
+  const textColor = useColorModeValue('gray.800', 'gray.200');
+  const subTextColor = useColorModeValue('gray.500', 'gray.400');
 
   const [members, setMembers] = useState([]);
   const [newMember, setNewMember] = useState({
@@ -102,23 +119,67 @@ const MembersPage = () => {
   }, [currentWorkspace?.workspace_id, toast]);
 
   const handleAddMember = async () => {
-    try {
-      const response = await MemberService.addMember(currentWorkspace.workspace_id, newMember.email);
-      setMembers([...members, response.data]);
-      setNewMember({ email: '', role: 'member' });
-      addMemberDrawer.onClose();
-      
+    if (!newMember.email) {
       toast({
-        title: 'Member added',
-        description: `${newMember.email} has been invited to the workspace`,
-        status: 'success',
+        title: 'Error',
+        description: 'Please enter an email address',
+        status: 'error',
         duration: 3000,
         isClosable: true,
       });
+      return;
+    }
+
+    // Debug log to check workspace data
+    console.log('Current workspace:', currentWorkspace);
+    console.log('User info:', ConfigService.getUserId());
+
+    try {
+      const ownerId = currentWorkspace.owner_id || ConfigService.getUserId();
+      console.log('Using owner_id:', ownerId);
+
+      const response = await MemberService.addMember(
+        currentWorkspace.workspace_id,
+        ownerId,
+        newMember.email,
+        newMember.role
+      );
+      
+      if (response.data) {
+        setMembers([...members, response.data]);
+        setNewMember({ email: '', role: 'member' });
+        addMemberDrawer.onClose();
+        
+        toast({
+          title: 'Member added',
+          description: `${newMember.email} has been invited to the workspace`,
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        });
+      }
     } catch (error) {
+      let errorMessage = 'Failed to add member';
+      
+      if (error.response?.data) {
+        if (typeof error.response.data === 'string') {
+          errorMessage = error.response.data;
+        } else if (error.response.data.detail) {
+          if (Array.isArray(error.response.data.detail)) {
+            errorMessage = error.response.data.detail.map(err => err.msg).join(', ');
+          } else {
+            errorMessage = error.response.data.detail;
+          }
+        } else if (error.response.data.message) {
+          errorMessage = error.response.data.message;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
       toast({
         title: 'Error adding member',
-        description: error.response?.data?.detail || 'Failed to add member',
+        description: errorMessage,
         status: 'error',
         duration: 3000,
         isClosable: true,
@@ -139,9 +200,23 @@ const MembersPage = () => {
         isClosable: true,
       });
     } catch (error) {
+      let errorMessage = 'Failed to remove member';
+      
+      if (error.response?.data) {
+        if (typeof error.response.data === 'string') {
+          errorMessage = error.response.data;
+        } else if (error.response.data.detail) {
+          errorMessage = error.response.data.detail;
+        } else if (error.response.data.message) {
+          errorMessage = error.response.data.message;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
       toast({
         title: 'Error removing member',
-        description: error.response?.data?.detail || 'Failed to remove member',
+        description: errorMessage,
         status: 'error',
         duration: 3000,
         isClosable: true,
@@ -164,9 +239,23 @@ const MembersPage = () => {
         isClosable: true,
       });
     } catch (error) {
+      let errorMessage = 'Failed to update role';
+      
+      if (error.response?.data) {
+        if (typeof error.response.data === 'string') {
+          errorMessage = error.response.data;
+        } else if (error.response.data.detail) {
+          errorMessage = error.response.data.detail;
+        } else if (error.response.data.message) {
+          errorMessage = error.response.data.message;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
       toast({
         title: 'Error updating role',
-        description: error.response?.data?.detail || 'Failed to update role',
+        description: errorMessage,
         status: 'error',
         duration: 3000,
         isClosable: true,
@@ -177,15 +266,17 @@ const MembersPage = () => {
   if (loading) {
     return (
       <Box minH="100vh" bg={pageBg}>
-        <Navbar />
+        <Navbar isCollapsed={isMenuCollapsed} />
         <Box
-          ml={{ base: 0, md: 60 }}
-          transition=".3s ease"
-          p={{ base: 4, md: 6, lg: 8 }}
+          ml={{ base: 0, md: isMenuCollapsed ? "60px" : "250px" }}
+          transition="all 0.3s ease"
+          minH="100vh"
         >
-          <Header menu_open={menu_open} />
+          <Header onMenuToggle={() => setIsMenuCollapsed(!isMenuCollapsed)} />
           <Container maxW="container.xl" py={4}>
-            <Text>Loading members...</Text>
+            <Center h="200px">
+              <Spinner size="xl" color="blue.500" />
+            </Center>
           </Container>
         </Box>
       </Box>
@@ -195,13 +286,13 @@ const MembersPage = () => {
   if (error) {
     return (
       <Box minH="100vh" bg={pageBg}>
-        <Navbar />
+        <Navbar isCollapsed={isMenuCollapsed} />
         <Box
-          ml={{ base: 0, md: 60 }}
-          transition=".3s ease"
-          p={{ base: 4, md: 6, lg: 8 }}
+          ml={{ base: 0, md: isMenuCollapsed ? "60px" : "250px" }}
+          transition="all 0.3s ease"
+          minH="100vh"
         >
-          <Header menu_open={menu_open} />
+          <Header onMenuToggle={() => setIsMenuCollapsed(!isMenuCollapsed)} />
           <Container maxW="container.xl" py={4}>
             <Text color="red.500">{error}</Text>
           </Container>
@@ -218,101 +309,207 @@ const MembersPage = () => {
       </Helmet>
 
       <Box minH="100vh" bg={pageBg}>
-        <Navbar />
+        <Navbar isCollapsed={isMenuCollapsed} />
         <Box
-          ml={{ base: 0, md: 60 }}
-          transition=".3s ease"
-          p={{ base: 4, md: 6, lg: 8 }}
+          ml={{ base: 0, md: isMenuCollapsed ? "60px" : "250px" }}
+          transition="all 0.3s ease"
+          minH="100vh"
         >
-          <Header menu_open={menu_open} />
-          <Container maxW="container.xl" py={4}>
-            {/* Breadcrumb Navigation */}
-            <Breadcrumb spacing="8px" separator={<FiChevronRight color="gray.500" />} mb={6}>
-              <BreadcrumbItem>
-                <BreadcrumbLink href="/dashboard">
-                  <HStack>
-                    <Icon as={FiHome} />
-                    <Text>Dashboard</Text>
-                  </HStack>
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbItem isCurrentPage>
-                <BreadcrumbLink>Members</BreadcrumbLink>
-              </BreadcrumbItem>
-            </Breadcrumb>
-
-            {/* Header Section */}
-            <Flex justify="space-between" align="center" mb={6}>
-              <Heading size="lg">Workspace Members</Heading>
-              <Button
-                leftIcon={<Icon as={FiPlus} />}
-                colorScheme="blue"
-                onClick={addMemberDrawer.onOpen}
+          <Header onMenuToggle={() => setIsMenuCollapsed(!isMenuCollapsed)} />
+          <Box p="4">
+            <Stack spacing={6}>
+              {/* Header Section */}
+              <Flex
+                justifyContent="space-between"
+                alignItems="center"
+                p={6}
+                bg={cardBg}
+                borderRadius="lg"
+                boxShadow="sm"
+                borderWidth="1px"
+                borderColor={borderColor}
               >
-                Add Member
-              </Button>
-            </Flex>
+                <VStack align="start" spacing={1}>
+                  <Heading size="lg" color={textColor}>Workspace Members</Heading>
+                  <Text color={subTextColor}>Manage your workspace members and their roles</Text>
+                </VStack>
 
-            {/* Members Table */}
-            <Box bg={mainBg} borderRadius="lg" boxShadow="sm" p={6}>
-              <Table variant="simple">
-                <Thead>
-                  <Tr>
-                    <Th>Member</Th>
-                    <Th>Email</Th>
-                    <Th>Role</Th>
-                    <Th>Actions</Th>
-                  </Tr>
-                </Thead>
-                <Tbody>
-                  {members.map((member) => (
-                    <Tr key={member.user_id}>
-                      <Td>
-                        <HStack>
-                          <Avatar size="sm" name={member.name} src={member.avatar} />
-                          <Text>{member.name}</Text>
-                        </HStack>
-                      </Td>
-                      <Td>{member.email}</Td>
-                      <Td>
-                        <Badge colorScheme={member.role === 'admin' ? 'purple' : 'blue'}>
-                          {member.role}
-                        </Badge>
-                      </Td>
-                      <Td>
-                        <Menu>
-                          <MenuButton
-                            as={IconButton}
-                            icon={<Icon as={FiMoreVertical} />}
-                            variant="ghost"
-                            size="sm"
-                          />
-                          <MenuList>
-                            <MenuItem 
-                              icon={<Icon as={FiEdit2} />}
-                              onClick={() => {
-                                const newRole = member.role === 'admin' ? 'member' : 'admin';
-                                handleUpdateRole(member.user_id, newRole);
-                              }}
-                            >
-                              {member.role === 'admin' ? 'Make Member' : 'Make Admin'}
-                            </MenuItem>
-                            <MenuItem
-                              icon={<Icon as={FiTrash2} />}
-                              color="red.500"
-                              onClick={() => handleRemoveMember(member.user_id)}
-                            >
-                              Remove
-                            </MenuItem>
-                          </MenuList>
-                        </Menu>
-                      </Td>
-                    </Tr>
-                  ))}
-                </Tbody>
-              </Table>
-            </Box>
-          </Container>
+                <Button
+                  leftIcon={<Icon as={FiPlus} />}
+                  colorScheme="blue"
+                  onClick={addMemberDrawer.onOpen}
+                >
+                  Add Member
+                </Button>
+              </Flex>
+
+              <Tabs variant="enclosed" colorScheme="blue">
+                <TabList>
+                  <Tab>All Members</Tab>
+                  <Tab>By Role</Tab>
+                </TabList>
+
+                <TabPanels>
+                  <TabPanel p={0} mt={4}>
+                    <Box bg={cardBg} borderRadius="lg" boxShadow="sm" p={6}>
+                      <Table variant="simple">
+                        <Thead>
+                          <Tr>
+                            <Th>Member</Th>
+                            <Th>Email</Th>
+                            <Th>Role</Th>
+                            <Th>Actions</Th>
+                          </Tr>
+                        </Thead>
+                        <Tbody>
+                          {members.map((member) => (
+                            <Tr key={member.user_id}>
+                              <Td>
+                                <HStack>
+                                  <Avatar size="sm" name={member.name} src={member.avatar} />
+                                  <Text>{member.name}</Text>
+                                </HStack>
+                              </Td>
+                              <Td>{member.email}</Td>
+                              <Td>
+                                <Badge colorScheme={member.role === 'admin' ? 'purple' : 'blue'}>
+                                  {member.role}
+                                </Badge>
+                              </Td>
+                              <Td>
+                                <Menu>
+                                  <MenuButton
+                                    as={IconButton}
+                                    icon={<Icon as={FiMoreVertical} />}
+                                    variant="ghost"
+                                    size="sm"
+                                  />
+                                  <MenuList>
+                                    <MenuItem 
+                                      icon={<Icon as={FiEdit2} />}
+                                      onClick={() => {
+                                        const newRole = member.role === 'admin' ? 'member' : 'admin';
+                                        handleUpdateRole(member.user_id, newRole);
+                                      }}
+                                    >
+                                      {member.role === 'admin' ? 'Make Member' : 'Make Admin'}
+                                    </MenuItem>
+                                    <MenuItem
+                                      icon={<Icon as={FiTrash2} />}
+                                      color="red.500"
+                                      onClick={() => handleRemoveMember(member.user_id)}
+                                    >
+                                      Remove
+                                    </MenuItem>
+                                  </MenuList>
+                                </Menu>
+                              </Td>
+                            </Tr>
+                          ))}
+                        </Tbody>
+                      </Table>
+                    </Box>
+                  </TabPanel>
+
+                  <TabPanel p={0} mt={4}>
+                    <Grid templateColumns="repeat(2, 1fr)" gap={6}>
+                      <GridItem>
+                        <Box bg={cardBg} p={4} borderRadius="md">
+                          <Text fontSize="lg" fontWeight="semibold" mb={4}>Admins</Text>
+                          <VStack spacing={4} align="stretch">
+                            {members.filter(member => member.role === 'admin').map((member) => (
+                              <Card key={member.user_id} variant="outline">
+                                <CardBody>
+                                  <HStack justify="space-between">
+                                    <HStack>
+                                      <Avatar size="sm" name={member.name} src={member.avatar} />
+                                      <VStack align="start" spacing={0}>
+                                        <Text fontWeight="medium">{member.name}</Text>
+                                        <Text fontSize="sm" color={subTextColor}>{member.email}</Text>
+                                      </VStack>
+                                    </HStack>
+                                    <Menu>
+                                      <MenuButton
+                                        as={IconButton}
+                                        icon={<Icon as={FiMoreVertical} />}
+                                        variant="ghost"
+                                        size="sm"
+                                      />
+                                      <MenuList>
+                                        <MenuItem 
+                                          icon={<Icon as={FiEdit2} />}
+                                          onClick={() => handleUpdateRole(member.user_id, 'member')}
+                                        >
+                                          Make Member
+                                        </MenuItem>
+                                        <MenuItem
+                                          icon={<Icon as={FiTrash2} />}
+                                          color="red.500"
+                                          onClick={() => handleRemoveMember(member.user_id)}
+                                        >
+                                          Remove
+                                        </MenuItem>
+                                      </MenuList>
+                                    </Menu>
+                                  </HStack>
+                                </CardBody>
+                              </Card>
+                            ))}
+                          </VStack>
+                        </Box>
+                      </GridItem>
+
+                      <GridItem>
+                        <Box bg={cardBg} p={4} borderRadius="md">
+                          <Text fontSize="lg" fontWeight="semibold" mb={4}>Members</Text>
+                          <VStack spacing={4} align="stretch">
+                            {members.filter(member => member.role === 'member').map((member) => (
+                              <Card key={member.user_id} variant="outline">
+                                <CardBody>
+                                  <HStack justify="space-between">
+                                    <HStack>
+                                      <Avatar size="sm" name={member.name} src={member.avatar} />
+                                      <VStack align="start" spacing={0}>
+                                        <Text fontWeight="medium">{member.name}</Text>
+                                        <Text fontSize="sm" color={subTextColor}>{member.email}</Text>
+                                      </VStack>
+                                    </HStack>
+                                    <Menu>
+                                      <MenuButton
+                                        as={IconButton}
+                                        icon={<Icon as={FiMoreVertical} />}
+                                        variant="ghost"
+                                        size="sm"
+                                      />
+                                      <MenuList>
+                                        <MenuItem 
+                                          icon={<Icon as={FiEdit2} />}
+                                          onClick={() => handleUpdateRole(member.user_id, 'admin')}
+                                        >
+                                          Make Admin
+                                        </MenuItem>
+                                        <MenuItem
+                                          icon={<Icon as={FiTrash2} />}
+                                          color="red.500"
+                                          onClick={() => handleRemoveMember(member.user_id)}
+                                        >
+                                          Remove
+                                        </MenuItem>
+                                      </MenuList>
+                                    </Menu>
+                                  </HStack>
+                                </CardBody>
+                              </Card>
+                            ))}
+                          </VStack>
+                        </Box>
+                      </GridItem>
+                    </Grid>
+                  </TabPanel>
+                </TabPanels>
+              </Tabs>
+            </Stack>
+          </Box>
         </Box>
       </Box>
 
