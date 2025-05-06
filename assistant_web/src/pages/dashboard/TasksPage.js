@@ -31,7 +31,8 @@ import {
   MenuList,
   MenuItem,
   StackDivider,
-  Heading
+  Heading,
+  Button
 } from '@chakra-ui/react';
 import { Link } from 'react-router-dom';
 // Here we have used react-icons package for the icons
@@ -54,7 +55,7 @@ import TaskViewModal from "../../components/dashboard/modals/TaskViewModal";
 import UnifiedEditButton from "../../components/dashboard/UnifiedEditButton";
 import UnifiedCreateButton from "../../components/dashboard/UnifiedCreateButton";
 import { ChevronRightIcon } from '@chakra-ui/icons';
-import { FiEye, FiMoreVertical, FiEdit2, FiTrash2, FiExternalLink } from 'react-icons/fi';
+import { FiEye, FiMoreVertical, FiEdit2, FiTrash2, FiExternalLink, FiPlus } from 'react-icons/fi';
 
 export default function TasksPage() {
   const [isMenuCollapsed, setIsMenuCollapsed] = useState(false);
@@ -67,6 +68,7 @@ export default function TasksPage() {
   const tasks = useSelector(state => state.tasks.tasks);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const handleDeleteItem = (task) => {
     setCurrentTask(task);
@@ -105,6 +107,7 @@ export default function TasksPage() {
   const cardBg = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
   const textColor = useColorModeValue('gray.800', 'gray.200');
+  const subTextColor = useColorModeValue('gray.500', 'gray.400');
 
   const initFetch = useCallback(() => {
     dispatch(retrieveTasks());
@@ -222,143 +225,144 @@ export default function TasksPage() {
         >
           <Header onMenuToggle={() => setIsMenuCollapsed(!isMenuCollapsed)} />
           <Box p="4">
-            <VStack spacing={6}>
+            <Stack spacing={6}>
+              {/* Header Section */}
               <Flex
                 justifyContent="space-between"
                 alignItems="center"
-                w="full"
-                mb={4}
+                p={6}
+                bg={cardBg}
+                borderRadius="lg"
+                boxShadow="sm"
+                borderWidth="1px"
+                borderColor={borderColor}
               >
-                <Text
-                  fontSize="lg"
-                  fontWeight="bold"
-                  color="blue.600"
-                  display="flex"
-                  alignItems="center"
-                  gap={2}
+                <VStack align="start" spacing={1}>
+                  <Heading size="lg" color={textColor}>Tasks</Heading>
+                  <Text color={subTextColor}>Manage your tasks and to-dos</Text>
+                </VStack>
+
+                <Button
+                  leftIcon={<FiPlus />}
+                  colorScheme="blue"
+                  onClick={() => new_task_drawer.onOpen()}
                 >
-                  <ChevronRightIcon /> TASKS
-                </Text>
-                <UnifiedCreateButton 
-                  onCreateNote={() => navigate('/notes')}
-                  onCreateTask={handleAddItem}
-                />
+                  Add Task
+                </Button>
               </Flex>
 
-              <Stack spacing={6} w="full">
-                <Tabs variant="enclosed" colorScheme="blue">
-                  <TabList>
-                    <Tab>Board View</Tab>
-                    <Tab>Table View</Tab>
-                  </TabList>
+              <Tabs variant="enclosed" colorScheme="blue">
+                <TabList>
+                  <Tab>Board View</Tab>
+                  <Tab>Table View</Tab>
+                </TabList>
 
-                  <TabPanels>
-                    <TabPanel p={0} mt={4}>
-                      <Grid templateColumns="repeat(3, 1fr)" gap={6}>
-                        <GridItem>
-                          <Box bg={useColorModeValue('gray.50', 'gray.700')} p={4} borderRadius="md">
-                            <Text fontSize="lg" fontWeight="semibold" mb={4}>To Do</Text>
-                            <VStack spacing={4} align="stretch">
-                              {tasks.filter(task => task.status === 'todo').map((task, index) => (
-                                <TaskCard key={index} task={task} />
-                              ))}
-                            </VStack>
-                          </Box>
-                        </GridItem>
-
-                        <GridItem>
-                          <Box bg={useColorModeValue('gray.50', 'gray.700')} p={4} borderRadius="md">
-                            <Text fontSize="lg" fontWeight="semibold" mb={4}>In Progress</Text>
-                            <VStack spacing={4} align="stretch">
-                              {tasks.filter(task => task.status === 'in_progress').map((task, index) => (
-                                <TaskCard key={index} task={task} />
-                              ))}
-                            </VStack>
-                          </Box>
-                        </GridItem>
-
-                        <GridItem>
-                          <Box bg={useColorModeValue('gray.50', 'gray.700')} p={4} borderRadius="md">
-                            <Text fontSize="lg" fontWeight="semibold" mb={4}>Done</Text>
-                            <VStack spacing={4} align="stretch">
-                              {tasks.filter(task => task.status === 'done').map((task, index) => (
-                                <TaskCard key={index} task={task} />
-                              ))}
-                            </VStack>
-                          </Box>
-                        </GridItem>
-                      </Grid>
-                    </TabPanel>
-
-                    <TabPanel p={0} mt={4}>
-                      <Box overflowX="auto">
-                        <Table variant="simple">
-                          <Thead>
-                            <Tr>
-                              <Th>Title</Th>
-                              <Th>Due On</Th>
-                              <Th>Created At</Th>
-                              <Th>Status</Th>
-                              <Th>Actions</Th>
-                            </Tr>
-                          </Thead>
-                          <Tbody>
-                            {tasks.map((task, index) => (
-                              <Tr key={index}>
-                                <Td>
-                                  <Text 
-                                    fontWeight="medium" 
-                                    cursor="pointer"
-                                    onClick={() => handleUpdateItem(task)}
-                                  >
-                                    {task.title}
-                                  </Text>
-                                </Td>
-                                <Td>{formatLocalDateTime(task.due_on)}</Td>
-                                <Td>{formatLocalDateTime(task.created_at)}</Td>
-                                <Td>
-                                  <StatusIndicator status={task.status} />
-                                </Td>
-                                <Td>
-                                  <HStack spacing={2}>
-                                    <IconButton
-                                      icon={<FiEye />}
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={() => handleViewItem(task)}
-                                      aria-label="View Task"
-                                    />
-                                    <IconButton
-                                      icon={<FiExternalLink />}
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={() => navigate(`/page/${task.task_id}`)}
-                                      aria-label="Open in new page"
-                                    />
-                                    <UnifiedEditButton 
-                                      item={task} 
-                                      type="task" 
-                                      onEdit={handleUpdateItem}
-                                    />
-                                    <IconButton
-                                      icon={<FiTrash2 />}
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={() => handleDeleteItem(task)}
-                                      aria-label="Delete Task"
-                                    />
-                                  </HStack>
-                                </Td>
-                              </Tr>
+                <TabPanels>
+                  <TabPanel p={0} mt={4}>
+                    <Grid templateColumns="repeat(3, 1fr)" gap={6}>
+                      <GridItem>
+                        <Box bg={useColorModeValue('gray.50', 'gray.700')} p={4} borderRadius="md">
+                          <Text fontSize="lg" fontWeight="semibold" mb={4}>To Do</Text>
+                          <VStack spacing={4} align="stretch">
+                            {tasks.filter(task => task.status === 'todo').map((task, index) => (
+                              <TaskCard key={index} task={task} />
                             ))}
-                          </Tbody>
-                        </Table>
-                      </Box>
-                    </TabPanel>
-                  </TabPanels>
-                </Tabs>
-              </Stack>
-            </VStack>
+                          </VStack>
+                        </Box>
+                      </GridItem>
+
+                      <GridItem>
+                        <Box bg={useColorModeValue('gray.50', 'gray.700')} p={4} borderRadius="md">
+                          <Text fontSize="lg" fontWeight="semibold" mb={4}>In Progress</Text>
+                          <VStack spacing={4} align="stretch">
+                            {tasks.filter(task => task.status === 'in_progress').map((task, index) => (
+                              <TaskCard key={index} task={task} />
+                            ))}
+                          </VStack>
+                        </Box>
+                      </GridItem>
+
+                      <GridItem>
+                        <Box bg={useColorModeValue('gray.50', 'gray.700')} p={4} borderRadius="md">
+                          <Text fontSize="lg" fontWeight="semibold" mb={4}>Done</Text>
+                          <VStack spacing={4} align="stretch">
+                            {tasks.filter(task => task.status === 'done').map((task, index) => (
+                              <TaskCard key={index} task={task} />
+                            ))}
+                          </VStack>
+                        </Box>
+                      </GridItem>
+                    </Grid>
+                  </TabPanel>
+
+                  <TabPanel p={0} mt={4}>
+                    <Box overflowX="auto">
+                      <Table variant="simple">
+                        <Thead>
+                          <Tr>
+                            <Th>Title</Th>
+                            <Th>Due On</Th>
+                            <Th>Created At</Th>
+                            <Th>Status</Th>
+                            <Th>Actions</Th>
+                          </Tr>
+                        </Thead>
+                        <Tbody>
+                          {tasks.map((task, index) => (
+                            <Tr key={index}>
+                              <Td>
+                                <Text 
+                                  fontWeight="medium" 
+                                  cursor="pointer"
+                                  onClick={() => handleUpdateItem(task)}
+                                >
+                                  {task.title}
+                                </Text>
+                              </Td>
+                              <Td>{formatLocalDateTime(task.due_on)}</Td>
+                              <Td>{formatLocalDateTime(task.created_at)}</Td>
+                              <Td>
+                                <StatusIndicator status={task.status} />
+                              </Td>
+                              <Td>
+                                <HStack spacing={2}>
+                                  <IconButton
+                                    icon={<FiEye />}
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => handleViewItem(task)}
+                                    aria-label="View Task"
+                                  />
+                                  <IconButton
+                                    icon={<FiExternalLink />}
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => navigate(`/page/${task.task_id}`)}
+                                    aria-label="Open in new page"
+                                  />
+                                  <UnifiedEditButton 
+                                    item={task} 
+                                    type="task" 
+                                    onEdit={handleUpdateItem}
+                                  />
+                                  <IconButton
+                                    icon={<FiTrash2 />}
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => handleDeleteItem(task)}
+                                    aria-label="Delete Task"
+                                  />
+                                </HStack>
+                              </Td>
+                            </Tr>
+                          ))}
+                        </Tbody>
+                      </Table>
+                    </Box>
+                  </TabPanel>
+                </TabPanels>
+              </Tabs>
+            </Stack>
           </Box>
         </Box>
       </Box>
@@ -385,6 +389,16 @@ export default function TasksPage() {
         task={currentTask}
         onEdit={handleUpdateItem}
       />
+
+      {/* Task Drawer */}
+      <Drawer
+        isOpen={isDrawerOpen}
+        placement="right"
+        onClose={() => setIsDrawerOpen(false)}
+        size="md"
+      >
+        {/* ... existing drawer content ... */}
+      </Drawer>
     </>
   );
 }

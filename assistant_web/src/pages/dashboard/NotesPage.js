@@ -64,7 +64,7 @@ import UnifiedEditButton from "../../components/dashboard/UnifiedEditButton";
 import UnifiedCreateButton from "../../components/dashboard/UnifiedCreateButton";
 import { useNavigate } from "react-router-dom";
 import NoteViewModal from "../../components/dashboard/modals/NoteViewModal";
-import { FiEye, FiMoreVertical, FiEdit2, FiTrash2, FiExternalLink } from "react-icons/fi";
+import { FiEye, FiMoreVertical, FiEdit2, FiTrash2, FiExternalLink, FiPlus } from "react-icons/fi";
 
 export default function NotesPage() {
   const [isMenuCollapsed, setIsMenuCollapsed] = useState(false);
@@ -89,6 +89,7 @@ export default function NotesPage() {
   const borderColor = useColorModeValue('gray.200', 'gray.700');
   const textColor = useColorModeValue('gray.800', 'gray.200');
   const contentColor = useColorModeValue('gray.600', 'gray.400');
+  const subTextColor = useColorModeValue('gray.500', 'gray.400');
 
   const extractTextFromLexicalJSON = (json) => {
     if (!json || !json.root || !json.root.children) return '';
@@ -286,6 +287,8 @@ export default function NotesPage() {
     );
   });
 
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
   return (
     <>
       <Helmet>
@@ -312,26 +315,29 @@ export default function NotesPage() {
         >
           <Header onMenuToggle={() => setIsMenuCollapsed(!isMenuCollapsed)} />
           <Box p="4">
-            <VStack spacing={6}>
+            <Stack spacing={6}>
               <Flex
                 justifyContent="space-between"
                 alignItems="center"
-                w="full"
+                p={6}
+                bg={cardBg}
+                borderRadius="lg"
+                boxShadow="sm"
+                borderWidth="1px"
+                borderColor={borderColor}
               >
-                <Text
-                  fontSize="lg"
-                  fontWeight="bold"
-                  color="blue.600"
-                  display="flex"
-                  alignItems="center"
-                  gap={2}
+                <VStack align="start" spacing={1}>
+                  <Heading size="lg" color={textColor}>Notes</Heading>
+                  <Text color={subTextColor}>Manage your notes and documents</Text>
+                </VStack>
+
+                <Button
+                  leftIcon={<FiPlus />}
+                  colorScheme="blue"
+                  onClick={() => new_note_drawer.onOpen()}
                 >
-                  <ChevronRightIcon /> NOTES
-                </Text>
-                <UnifiedCreateButton 
-                  onCreateNote={handleAddItem}
-                  onCreateTask={() => navigate('/tasks')}
-                />
+                  Add Note
+                </Button>
               </Flex>
 
               <Tabs variant="enclosed" colorScheme="blue" w="full">
@@ -512,10 +518,19 @@ export default function NotesPage() {
                   </TabPanel>
                 </TabPanels>
               </Tabs>
-            </VStack>
+            </Stack>
           </Box>
         </Box>
       </Box>
+
+      <Drawer
+        isOpen={isDrawerOpen}
+        placement="right"
+        onClose={() => setIsDrawerOpen(false)}
+        size="md"
+      >
+        {/* ... existing drawer content ... */}
+      </Drawer>
     </>
   );
 }
