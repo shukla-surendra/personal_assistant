@@ -23,6 +23,7 @@ import Header from "../../components/dashboard/Header";
 import TaskDataService from "../../services/taskservice";
 
 export default function TimeBlockPage() {
+  const [isMenuCollapsed, setIsMenuCollapsed] = useState(false);
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [blocks, setBlocks] = useState([]);
@@ -109,17 +110,15 @@ export default function TimeBlockPage() {
       </Helmet>
 
       <Box as="section" bg={bgColor} minH="100vh">
-        <Navbar display={{ base: 'none', md: 'unset' }} />
-        <Drawer isOpen={isOpen} onClose={onClose} placement="left">
-          <DrawerOverlay />
-          <DrawerContent>
-            <Navbar w="full" borderRight="none" />
-          </DrawerContent>
-        </Drawer>
-        <Box ml={{ base: 0, md: 60 }} transition=".3s ease">
-          <Header menu_open={{ isOpen, onOpen, onClose }} />
+        <Navbar isCollapsed={isMenuCollapsed} />
+        <Box
+          ml={{ base: 0, md: isMenuCollapsed ? "60px" : "250px" }}
+          transition="all 0.3s ease"
+          minH="100vh"
+        >
+          <Header onMenuToggle={() => setIsMenuCollapsed(!isMenuCollapsed)} />
 
-          <Box as="main" p={4} minH="25rem" bg={bgColor}>
+          <Box p="4">
             <VStack spacing={4} align="stretch">
               {/* Header Section */}
               <Flex 

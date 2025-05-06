@@ -30,6 +30,7 @@ import {
   MenuList,
   MenuItem,
   MenuDivider,
+  VStack,
 } from "@chakra-ui/react";
 import { FiSearch, FiFilter, FiCalendar, FiTag, FiUser, FiChevronDown, FiArrowUp, FiArrowDown } from 'react-icons/fi';
 import Navbar from "../../components/dashboard/Navbar";
@@ -37,6 +38,7 @@ import Header from "../../components/dashboard/Header";
 import { formatLocalDateTime } from "../../utils/locale";
 
 export default function SearchTasksPage() {
+  const [isMenuCollapsed, setIsMenuCollapsed] = useState(false);
   const menu_open = useDisclosure();
   const filterDrawer = useDisclosure();
   const dispatch = useDispatch();
@@ -47,6 +49,8 @@ export default function SearchTasksPage() {
   const mainBg = useColorModeValue('gray.50', 'gray.800');
   const cardBg = useColorModeValue('white', 'gray.700');
   const textColor = useColorModeValue('gray.600', 'gray.300');
+  const subTextColor = useColorModeValue('gray.500', 'gray.400');
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
 
   // Search and filter states
   const [searchQuery, setSearchQuery] = useState('');
@@ -112,28 +116,31 @@ export default function SearchTasksPage() {
   return (
     <>
       <Box minH="100vh" bg={pageBg}>
-        <Navbar />
+        <Navbar isCollapsed={isMenuCollapsed} />
         <Box
-          ml={{ base: 0, md: 60 }}
-          transition=".3s ease"
-          p={{ base: 4, md: 6, lg: 8 }}
+          ml={{ base: 0, md: isMenuCollapsed ? "60px" : "250px" }}
+          transition="all 0.3s ease"
+          minH="100vh"
         >
-          <Header menu_open={menu_open} />
-          <Box
-            as="main"
-            p={{ base: 4, md: 6 }}
-            minH="calc(100vh - 4rem)"
-            bg={mainBg}
-            borderRadius="lg"
-            boxShadow="sm"
-          >
+          <Header onMenuToggle={() => setIsMenuCollapsed(!isMenuCollapsed)} />
+          <Box p="4">
             <Stack spacing={6}>
+              {/* Header Section */}
               <Flex
                 justifyContent="space-between"
                 alignItems="center"
-                mb={6}
+                p={6}
+                bg={cardBg}
+                borderRadius="lg"
+                boxShadow="sm"
+                borderWidth="1px"
+                borderColor={borderColor}
               >
-                <Heading size="lg">Search Tasks</Heading>
+                <VStack align="start" spacing={1}>
+                  <Heading size="lg" color={textColor}>Search Tasks</Heading>
+                  <Text color={subTextColor}>Find and filter your tasks</Text>
+                </VStack>
+
                 <Flex gap={2}>
                   <Menu>
                     <MenuButton as={Button} rightIcon={<FiChevronDown />} variant="outline">
@@ -170,65 +177,150 @@ export default function SearchTasksPage() {
                 </Flex>
               </Flex>
 
-              <InputGroup maxW="400px">
-                <InputLeftElement pointerEvents="none">
-                  <Icon as={FiSearch} color="gray.400" />
-                </InputLeftElement>
-                <Input
-                  placeholder="Search tasks..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </InputGroup>
-
-              <Grid
-                templateColumns={{
-                  base: "1fr",
-                  sm: "repeat(2, 1fr)",
-                  md: "repeat(3, 1fr)",
-                  lg: "repeat(4, 1fr)"
-                }}
-                gap={6}
+              {/* Search Section */}
+              <Box
+                p={6}
+                bg={cardBg}
+                borderRadius="lg"
+                boxShadow="sm"
+                borderWidth="1px"
+                borderColor={borderColor}
               >
-                {filteredTasks.map((task) => (
-                  <Box
-                    key={task.task_id}
-                    p={4}
-                    bg={cardBg}
-                    borderRadius="md"
-                    boxShadow="sm"
-                    _hover={{ transform: 'translateY(-2px)', transition: 'all 0.2s' }}
-                  >
-                    <Stack spacing={3}>
-                      <Text fontWeight="bold" fontSize="lg">
-                        {task.title}
-                      </Text>
-                      <Box 
-                        className="ProseMirror"
-                        color={textColor} 
-                        noOfLines={2}
-                        dangerouslySetInnerHTML={{ __html: task.description || "No description provided." }}
-                      />
-                      <Flex wrap="wrap" gap={2}>
-                        <Badge colorScheme={task.status === 'done' ? 'green' : task.status === 'in_progress' ? 'orange' : 'blue'}>
-                          {task.status === 'todo' ? 'To Do' : task.status === 'in_progress' ? 'In Progress' : 'Done'}
+                <Stack spacing={6}>
+                  <InputGroup maxW="600px">
+                    <InputLeftElement pointerEvents="none">
+                      <Icon as={FiSearch} color="gray.400" />
+                    </InputLeftElement>
+                    <Input
+                      placeholder="Search tasks by title or description..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      bg={cardBg}
+                      borderColor={borderColor}
+                      _hover={{ borderColor: 'blue.400' }}
+                      _focus={{ borderColor: 'blue.500', boxShadow: '0 0 0 1px var(--chakra-colors-blue-500)' }}
+                    />
+                  </InputGroup>
+
+                  {/* Active Filters Display */}
+                  {(selectedTags.length > 0 || statusFilter !== 'all' || priorityFilter !== 'all') && (
+                    <Flex wrap="wrap" gap={2}>
+                      {statusFilter !== 'all' && (
+                        <Badge colorScheme="blue" p={2} borderRadius="md">
+                          Status: {statusFilter}
                         </Badge>
-                        <Badge colorScheme={task.priority === 'high' ? 'red' : 'yellow'}>
-                          {task.priority}
+                      )}
+                      {priorityFilter !== 'all' && (
+                        <Badge colorScheme="purple" p={2} borderRadius="md">
+                          Priority: {priorityFilter}
                         </Badge>
-                        {task.tags?.map((tag, index) => (
-                          <Badge key={index} colorScheme="purple">
-                            {tag}
+                      )}
+                      {selectedTags.map((tag) => (
+                        <Badge key={tag} colorScheme="green" p={2} borderRadius="md">
+                          Tag: {tag}
+                        </Badge>
+                      ))}
+                    </Flex>
+                  )}
+                </Stack>
+              </Box>
+
+              {/* Results Section */}
+              <Box
+                p={6}
+                bg={cardBg}
+                borderRadius="lg"
+                boxShadow="sm"
+                borderWidth="1px"
+                borderColor={borderColor}
+              >
+                <Grid
+                  templateColumns={{
+                    base: "1fr",
+                    sm: "repeat(2, 1fr)",
+                    md: "repeat(3, 1fr)",
+                    lg: "repeat(3, 1fr)"
+                  }}
+                  gap={6}
+                >
+                  {filteredTasks.map((task) => (
+                    <Box
+                      key={task.task_id}
+                      p={6}
+                      bg={cardBg}
+                      borderRadius="lg"
+                      boxShadow="sm"
+                      borderWidth="1px"
+                      borderColor={borderColor}
+                      _hover={{ 
+                        transform: 'translateY(-2px)', 
+                        transition: 'all 0.2s',
+                        boxShadow: 'md'
+                      }}
+                    >
+                      <Stack spacing={4}>
+                        <Heading size="md" color={textColor}>
+                          {task.title}
+                        </Heading>
+                        <Box 
+                          color={subTextColor} 
+                          noOfLines={2}
+                          fontSize="sm"
+                        >
+                          {task.description}
+                        </Box>
+                        <Flex wrap="wrap" gap={2}>
+                          <Badge 
+                            colorScheme={
+                              task.status === 'done' ? 'green' : 
+                              task.status === 'in_progress' ? 'orange' : 
+                              'blue'
+                            }
+                            px={2}
+                            py={1}
+                            borderRadius="full"
+                          >
+                            {task.status === 'todo' ? 'To Do' : 
+                             task.status === 'in_progress' ? 'In Progress' : 
+                             'Done'}
                           </Badge>
-                        ))}
-                      </Flex>
-                      <Text fontSize="sm" color="gray.500">
-                        Due: {formatLocalDateTime(task.due_date)}
-                      </Text>
-                    </Stack>
-                  </Box>
-                ))}
-              </Grid>
+                          <Badge 
+                            colorScheme={
+                              task.priority === 'high' ? 'red' : 
+                              task.priority === 'medium' ? 'yellow' : 
+                              'gray'
+                            }
+                            px={2}
+                            py={1}
+                            borderRadius="full"
+                          >
+                            {task.priority}
+                          </Badge>
+                        </Flex>
+                        {task.tags && task.tags.length > 0 && (
+                          <Flex wrap="wrap" gap={1}>
+                            {task.tags.map((tag, index) => (
+                              <Badge 
+                                key={index} 
+                                colorScheme="purple"
+                                px={2}
+                                py={1}
+                                borderRadius="full"
+                                fontSize="xs"
+                              >
+                                {tag}
+                              </Badge>
+                            ))}
+                          </Flex>
+                        )}
+                        <Text fontSize="sm" color={subTextColor}>
+                          Due: {formatLocalDateTime(task.due_date)}
+                        </Text>
+                      </Stack>
+                    </Box>
+                  ))}
+                </Grid>
+              </Box>
             </Stack>
           </Box>
         </Box>
@@ -239,65 +331,67 @@ export default function SearchTasksPage() {
         isOpen={filterDrawer.isOpen}
         placement="right"
         onClose={filterDrawer.onClose}
+        size="md"
       >
         <DrawerOverlay />
-        <DrawerContent>
-          <DrawerCloseButton />
-          <DrawerHeader>Filter Tasks</DrawerHeader>
+        <DrawerContent bg={cardBg}>
+          <DrawerCloseButton color={textColor} />
+          <DrawerHeader 
+            borderBottomWidth="1px" 
+            borderColor={borderColor}
+            color={textColor}
+          >
+            Filter Tasks
+          </DrawerHeader>
           <DrawerBody>
             <Stack spacing={6}>
               <Box>
-                <Text mb={2}>Status</Text>
+                <Text mb={2} color={textColor} fontWeight="medium">Status</Text>
                 <Select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
+                  bg={cardBg}
+                  color={textColor}
+                  borderColor={borderColor}
                 >
                   <option value="all">All Statuses</option>
-                  <option value="pending">Pending</option>
+                  <option value="todo">To Do</option>
                   <option value="in_progress">In Progress</option>
-                  <option value="completed">Completed</option>
+                  <option value="done">Done</option>
                 </Select>
               </Box>
 
               <Box>
-                <Text mb={2}>Priority</Text>
+                <Text mb={2} color={textColor} fontWeight="medium">Priority</Text>
                 <Select
                   value={priorityFilter}
                   onChange={(e) => setPriorityFilter(e.target.value)}
+                  bg={cardBg}
+                  color={textColor}
+                  borderColor={borderColor}
                 >
                   <option value="all">All Priorities</option>
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
                   <option value="high">High</option>
+                  <option value="medium">Medium</option>
+                  <option value="low">Low</option>
                 </Select>
               </Box>
 
               <Box>
-                <Text mb={2}>Tags</Text>
+                <Text mb={2} color={textColor} fontWeight="medium">Tags</Text>
                 <CheckboxGroup
                   value={selectedTags}
                   onChange={setSelectedTags}
+                  colorScheme="blue"
                 >
                   <Stack spacing={2}>
                     {allTags.map((tag) => (
-                      <Checkbox key={tag} value={tag}>
+                      <Checkbox 
+                        key={tag} 
+                        value={tag}
+                        color={textColor}
+                      >
                         {tag}
-                      </Checkbox>
-                    ))}
-                  </Stack>
-                </CheckboxGroup>
-              </Box>
-
-              <Box>
-                <Text mb={2}>Assigned To</Text>
-                <CheckboxGroup
-                  value={selectedUsers}
-                  onChange={setSelectedUsers}
-                >
-                  <Stack spacing={2}>
-                    {allUsers.map((user) => (
-                      <Checkbox key={user} value={user}>
-                        {user}
                       </Checkbox>
                     ))}
                   </Stack>
