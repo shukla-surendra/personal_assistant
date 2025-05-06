@@ -12,7 +12,6 @@ import TimeBlockPage from "./pages/dashboard/TimeBlockPage";
 import ReportsPage from "./pages/dashboard/ReportsPage";
 import WikiPage from "./pages/dashboard/WikiPage";
 import DatabasePage from "./pages/dashboard/DatabasePage";
-import NotionPage from "./pages/dashboard/NotionPage";
 import MembersPage from "./pages/dashboard/MembersPage";
 import NotificationsPage from "./pages/dashboard/NotificationsPage";
 // landing pages some page might require login
@@ -64,7 +63,6 @@ function App() {
           <Route path="/reports" element={<ReportsPage/>}/>
           <Route path="/wiki" element={<WikiPage/>}/>
           <Route path="/database" element={<DatabasePage/>}/>
-          <Route path="/notion" element={<NotionPage/>}/>
           <Route path="/task/:id" element={<TaskDetailPage/>} />
           <Route path="/search-tasks" element={<SearchTasksPage />} />
           <Route path="/search-notebooks" element={<SearchNotebookPage />} />

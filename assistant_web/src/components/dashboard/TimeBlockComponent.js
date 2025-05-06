@@ -28,17 +28,29 @@ import {
   NumberInputStepper,
   NumberIncrementStepper,
   NumberDecrementStepper,
-  SimpleGrid
+  SimpleGrid,
+  useColorModeValue
 } from '@chakra-ui/react';
 import { useDispatch } from "react-redux";
 import TimeBlock from './TimeBlock';
 import { createGeneralTask } from '../../slices/tasks';
-import { FiEdit2, FiTrash2, FiClock, FiChevronUp, FiChevronDown } from 'react-icons/fi';
+import { FiEdit2, FiTrash2, FiClock, FiChevronUp, FiChevronDown, FiPlus } from 'react-icons/fi';
 
 const TimeBlockComponent = ({ isDrawerOpen, setIsDrawerOpen, blocks, setBlocks, viewMode, selectedDate }) => {
   const dispatch = useDispatch();
   const toast = useToast();
   const [editingBlock, setEditingBlock] = useState(null);
+
+  // Color mode values
+  const cardBg = useColorModeValue('white', 'gray.800');
+  const textColor = useColorModeValue('gray.900', 'white');
+  const subTextColor = useColorModeValue('gray.500', 'gray.400');
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const hoverBg = useColorModeValue('gray.50', 'gray.700');
+  const iconColor = useColorModeValue('gray.400', 'gray.500');
+  const drawerBg = useColorModeValue('white', 'gray.800');
+  const inputBg = useColorModeValue('white', 'gray.700');
+  const inputBorder = useColorModeValue('gray.200', 'gray.600');
 
   const [newBlock, setNewBlock] = useState({
     startTime: '',
@@ -205,21 +217,46 @@ const TimeBlockComponent = ({ isDrawerOpen, setIsDrawerOpen, blocks, setBlocks, 
     <VStack spacing={4} align="stretch">
       {/* Time Blocks List */}
       {blocks.length === 0 ? (
-        <Box textAlign="center" py={10}>
-          <Icon as={FiClock} boxSize={10} color="gray.400" mb={4} />
-          <Text color="gray.500">No time blocks scheduled</Text>
-          <Text color="gray.400" fontSize="sm">Click "New Block" to add your first time block</Text>
+        <Box 
+          textAlign="center" 
+          py={12} 
+          px={6} 
+          bg={cardBg} 
+          borderRadius="xl" 
+          borderWidth="1px" 
+          borderColor={borderColor}
+          borderStyle="dashed"
+        >
+          <Icon as={FiClock} boxSize={12} color={iconColor} mb={4} />
+          <Text color={textColor} fontSize="lg" fontWeight="medium" mb={2}>No Time Blocks Yet</Text>
+          <Text color={subTextColor}>Get started by creating your first time block</Text>
+          <Button
+            leftIcon={<FiPlus />}
+            colorScheme="blue"
+            size="md"
+            mt={6}
+            onClick={() => setIsDrawerOpen(true)}
+          >
+            Create Time Block
+          </Button>
         </Box>
       ) : (
         blocks.map((block) => (
           <Box
             key={block.id}
-            p={4}
-            bg="white"
-            borderRadius="md"
+            p={6}
+            bg={cardBg}
+            borderRadius="xl"
             boxShadow="sm"
             position="relative"
-            _hover={{ boxShadow: 'md' }}
+            borderWidth="1px"
+            borderColor={borderColor}
+            _hover={{ 
+              boxShadow: 'md',
+              bg: hoverBg,
+              transform: 'translateY(-2px)',
+              transition: 'all 0.2s ease-in-out'
+            }}
           >
             <Flex justify="space-between" align="center">
               <TimeBlock
@@ -227,8 +264,14 @@ const TimeBlockComponent = ({ isDrawerOpen, setIsDrawerOpen, blocks, setBlocks, 
                 endTime={block.endTime}
                 description={block.description}
               />
-              <HStack spacing={2}>
-                <Badge colorScheme={getStatusColor(block.status)}>
+              <HStack spacing={3}>
+                <Badge 
+                  colorScheme={getStatusColor(block.status)}
+                  px={3}
+                  py={1}
+                  borderRadius="full"
+                  fontSize="sm"
+                >
                   {block.status}
                 </Badge>
                 <Tooltip label="Edit">
@@ -236,6 +279,8 @@ const TimeBlockComponent = ({ isDrawerOpen, setIsDrawerOpen, blocks, setBlocks, 
                     icon={<FiEdit2 />}
                     size="sm"
                     variant="ghost"
+                    color={textColor}
+                    _hover={{ bg: hoverBg }}
                     onClick={() => handleEditBlock(block)}
                   />
                 </Tooltip>
@@ -245,6 +290,7 @@ const TimeBlockComponent = ({ isDrawerOpen, setIsDrawerOpen, blocks, setBlocks, 
                     size="sm"
                     variant="ghost"
                     colorScheme="red"
+                    _hover={{ bg: 'red.50' }}
                     onClick={() => handleDeleteBlock(block.id)}
                   />
                 </Tooltip>
@@ -255,44 +301,67 @@ const TimeBlockComponent = ({ isDrawerOpen, setIsDrawerOpen, blocks, setBlocks, 
       )}
 
       {/* Add/Edit Time Block Drawer */}
-      <Drawer isOpen={isDrawerOpen} placement="right" onClose={() => {
-        setIsDrawerOpen(false);
-        setEditingBlock(null);
-        setNewBlock({
-          startTime: '',
-          endTime: '',
-          description: '',
-          status: 'pending'
-        });
-      }}>
+      <Drawer
+        isOpen={isDrawerOpen}
+        placement="right"
+        onClose={() => {
+          setIsDrawerOpen(false);
+          setEditingBlock(null);
+          setNewBlock({
+            startTime: '',
+            endTime: '',
+            description: '',
+            status: 'pending'
+          });
+        }}
+      >
         <DrawerOverlay />
-        <DrawerContent>
-          <DrawerCloseButton />
-          <DrawerHeader>{editingBlock ? 'Edit Time Block' : 'New Time Block'}</DrawerHeader>
+        <DrawerContent bg={drawerBg}>
+          <DrawerCloseButton color={textColor} />
+          <DrawerHeader 
+            borderBottomWidth="1px" 
+            borderColor={borderColor}
+            color={textColor}
+          >
+            {editingBlock ? 'Edit Time Block' : 'New Time Block'}
+          </DrawerHeader>
+
           <DrawerBody>
-            <Stack spacing="24px">
-              <FormControl id="startTime">
-                <FormLabel>Start Time</FormLabel>
+            <Stack spacing={6}>
+              <FormControl>
+                <FormLabel color={textColor}>Start Time</FormLabel>
                 <TimePicker type="startTime" value={newBlock.startTime} />
               </FormControl>
-              <FormControl id="endTime">
-                <FormLabel>End Time</FormLabel>
+
+              <FormControl>
+                <FormLabel color={textColor}>End Time</FormLabel>
                 <TimePicker type="endTime" value={newBlock.endTime} />
               </FormControl>
-              <FormControl id="description">
-                <FormLabel>Description</FormLabel>
+
+              <FormControl>
+                <FormLabel color={textColor}>Description</FormLabel>
                 <Input
-                  type="text"
                   value={newBlock.description}
                   onChange={handleDescriptionChange}
-                  placeholder="Enter description"
+                  placeholder="Enter block description"
+                  bg={inputBg}
+                  color={textColor}
+                  borderColor={inputBorder}
+                  _hover={{ borderColor: 'blue.400' }}
+                  _focus={{ borderColor: 'blue.500', boxShadow: '0 0 0 1px var(--chakra-colors-blue-500)' }}
                 />
               </FormControl>
-              <FormControl id="status">
-                <FormLabel>Status</FormLabel>
+
+              <FormControl>
+                <FormLabel color={textColor}>Status</FormLabel>
                 <Select
                   value={newBlock.status}
                   onChange={(e) => setNewBlock({ ...newBlock, status: e.target.value })}
+                  bg={inputBg}
+                  color={textColor}
+                  borderColor={inputBorder}
+                  _hover={{ borderColor: 'blue.400' }}
+                  _focus={{ borderColor: 'blue.500', boxShadow: '0 0 0 1px var(--chakra-colors-blue-500)' }}
                 >
                   <option value="pending">Pending</option>
                   <option value="in-progress">In Progress</option>
@@ -301,21 +370,24 @@ const TimeBlockComponent = ({ isDrawerOpen, setIsDrawerOpen, blocks, setBlocks, 
               </FormControl>
             </Stack>
           </DrawerBody>
-          <DrawerFooter>
-            <Button variant="outline" mr={3} onClick={() => {
-              setIsDrawerOpen(false);
-              setEditingBlock(null);
-              setNewBlock({
-                startTime: '',
-                endTime: '',
-                description: '',
-                status: 'pending'
-              });
-            }}>
+
+          <DrawerFooter borderTopWidth="1px" borderColor={borderColor}>
+            <Button 
+              variant="outline" 
+              mr={3} 
+              onClick={() => setIsDrawerOpen(false)}
+              color={textColor}
+              borderColor={borderColor}
+              _hover={{ bg: hoverBg }}
+            >
               Cancel
             </Button>
-            <Button colorScheme="blue" onClick={handleAddBlock}>
-              {editingBlock ? 'Update' : 'Add'}
+            <Button 
+              colorScheme="blue" 
+              onClick={handleAddBlock}
+              _hover={{ transform: 'translateY(-1px)', boxShadow: 'md' }}
+            >
+              {editingBlock ? 'Save Changes' : 'Add Block'}
             </Button>
           </DrawerFooter>
         </DrawerContent>

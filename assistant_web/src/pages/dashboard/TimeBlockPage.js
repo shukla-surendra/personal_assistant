@@ -29,6 +29,14 @@ export default function TimeBlockPage() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const toast = useToast();
 
+  // Color mode values
+  const bgColor = useColorModeValue('gray.50', 'gray.800');
+  const cardBg = useColorModeValue('white', 'gray.700');
+  const textColor = useColorModeValue('gray.900', 'white');
+  const subTextColor = useColorModeValue('gray.500', 'gray.400');
+  const borderColor = useColorModeValue('gray.200', 'gray.600');
+  const headingColor = useColorModeValue('blue.600', 'blue.400');
+
   const getBlockList = () => {
     TaskDataService.getAllTimeBlocks()
       .then(response => {
@@ -99,7 +107,7 @@ export default function TimeBlockPage() {
         <meta name="theme-color" content="#008f68" />
       </Helmet>
 
-      <Box as="section" bg={useColorModeValue('gray.50', 'gray.700')} minH="100vh">
+      <Box as="section" bg={bgColor} minH="100vh">
         <Navbar display={{ base: 'none', md: 'unset' }} />
         <Drawer isOpen={menu_open.isOpen} onClose={menu_open.onClose} placement="left">
           <DrawerOverlay />
@@ -110,13 +118,22 @@ export default function TimeBlockPage() {
         <Box ml={{ base: 0, md: 60 }} transition=".3s ease">
           <Header menu_open={menu_open} />
 
-          <Box as="main" p={4} minH="25rem" bg={useColorModeValue('auto', 'gray.800')}>
+          <Box as="main" p={4} minH="25rem" bg={bgColor}>
             <VStack spacing={4} align="stretch">
               {/* Header Section */}
-              <Flex justifyContent="space-between" alignItems="center" p={4} borderRadius="lg" bg="white" boxShadow="sm">
+              <Flex 
+                justifyContent="space-between" 
+                alignItems="center" 
+                p={4} 
+                borderRadius="lg" 
+                bg={cardBg} 
+                boxShadow="sm"
+                borderWidth="1px"
+                borderColor={borderColor}
+              >
                 <VStack align="start" spacing={1}>
-                  <Heading size="md" color="blue.600">Time Blocks</Heading>
-                  <Text color="gray.500" fontSize="sm">Manage your daily schedule</Text>
+                  <Heading size="md" color={headingColor}>Time Blocks</Heading>
+                  <Text color={subTextColor} fontSize="sm">Manage your daily schedule</Text>
                 </VStack>
 
                 <HStack spacing={4}>
@@ -125,6 +142,9 @@ export default function TimeBlockPage() {
                     onChange={(e) => handleViewModeChange(e.target.value)}
                     size="sm"
                     width="120px"
+                    bg={cardBg}
+                    color={textColor}
+                    borderColor={borderColor}
                   >
                     <option value="day">Day View</option>
                     <option value="week">Week View</option>
@@ -143,7 +163,14 @@ export default function TimeBlockPage() {
               </Flex>
 
               {/* Time Blocks Section */}
-              <Box borderRadius="lg" p={4} bg="white" boxShadow="sm">
+              <Box 
+                borderRadius="lg" 
+                p={4} 
+                bg={cardBg} 
+                boxShadow="sm"
+                borderWidth="1px"
+                borderColor={borderColor}
+              >
                 <TimeBlockComponent
                   isDrawerOpen={isDrawerOpen}
                   setIsDrawerOpen={setIsDrawerOpen}
