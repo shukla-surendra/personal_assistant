@@ -21,7 +21,17 @@ import {
   VStack,
   HStack,
   Badge,
-  IconButton
+  IconButton,
+  Card,
+  CardHeader,
+  CardBody,
+  CardFooter,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
+  StackDivider,
+  Heading
 } from '@chakra-ui/react';
 // Here we have used react-icons package for the icons
 import { StatusIndicator } from '../../components/dashboard/StatusIndicator'
@@ -43,6 +53,7 @@ import TaskViewModal from "../../components/dashboard/modals/TaskViewModal";
 import UnifiedEditButton from "../../components/dashboard/UnifiedEditButton";
 import UnifiedCreateButton from "../../components/dashboard/UnifiedCreateButton";
 import { ChevronRightIcon } from '@chakra-ui/icons';
+import { FiEye, FiMoreVertical, FiEdit2, FiTrash2 } from 'react-icons/fi';
 
 export default function TasksPage() {
   const [isMenuCollapsed, setIsMenuCollapsed] = useState(false);
@@ -114,64 +125,78 @@ export default function TasksPage() {
     }
   }, [new_task_drawer.isOpen]);
 
-  const TaskCard = ({ task, onUpdate, onDelete, onView }) => {
+  const TaskCard = React.memo(({ task }) => {
+    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+
     return (
-      <Box
-        p={4}
-        bg={cardBg}
-        borderRadius="md"
-        borderWidth="1px"
-        borderColor={borderColor}
-        _hover={{ transform: 'translateY(-2px)', transition: 'all 0.2s' }}
-      >
-        <Stack spacing={3}>
-          <Text fontWeight="bold" fontSize="lg">
-            {task.title}
-          </Text>
-          {/* <Box 
-            className="ProseMirror"
-            color={textColor} 
-            noOfLines={2}
-            dangerouslySetInnerHTML={{ __html: task.description || "No description provided." }}
-          /> */}
-          <Flex wrap="wrap" gap={2}>
-            <Badge colorScheme={task.status === 'done' ? 'green' : task.status === 'in_progress' ? 'orange' : 'blue'}>
-              {task.status === 'todo' ? 'To Do' : task.status === 'in_progress' ? 'In Progress' : 'Done'}
-            </Badge>
-            <Badge colorScheme={priorityColorMapping[task.priority] || 'gray'}>
-              {task.priority}
-            </Badge>
-          </Flex>
-          <Text fontSize="sm" color="gray.500">
-            Due: {formatLocalDateTime(task.dueDate)}
-          </Text>
-        </Stack>
-      </Box>
+      <>
+        <Card key={task.task_id} bg={cardBg} borderWidth="1px" borderColor={borderColor}>
+          <CardHeader>
+            <Flex justify="space-between" align="center">
+              <Heading size="sm">{task.title}</Heading>
+              <HStack spacing={1}>
+                <IconButton
+                  aria-label="View Task"
+                  icon={<FiEye />}
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setIsViewModalOpen(true)}
+                />
+                <Menu>
+                  <MenuButton
+                    as={IconButton}
+                    icon={<FiMoreVertical />}
+                    variant="ghost"
+                    size="sm"
+                  />
+                  <MenuList>
+                    <MenuItem icon={<FiEdit2 />} onClick={() => handleUpdateItem(task)}>
+                      Edit
+                    </MenuItem>
+                    <MenuItem icon={<FiTrash2 />} onClick={() => handleDeleteItem(task)}>
+                      Delete
+                    </MenuItem>
+                  </MenuList>
+                </Menu>
+              </HStack>
+            </Flex>
+          </CardHeader>
+          <CardBody>
+            <Stack divider={<StackDivider />} spacing="4">
+              <Flex wrap="wrap" gap={2}>
+                <Badge colorScheme={priorityColorMapping[task.priority] || 'gray'}>
+                  {task.priority || 'No Priority'}
+                </Badge>
+                <Badge colorScheme="blue">
+                  {task.status || 'No Status'}
+                </Badge>
+              </Flex>
+            </Stack>
+          </CardBody>
+          <CardFooter>
+            <Text fontSize="xs" color="gray.500">
+              Updated: {formatLocalDateTime(task.updated_at)}
+            </Text>
+          </CardFooter>
+        </Card>
+        <TaskViewModal 
+          isOpen={isViewModalOpen} 
+          onClose={() => setIsViewModalOpen(false)} 
+          task={task}
+          onEdit={handleUpdateItem}
+        />
+      </>
     );
-  };
+  });
 
   return (
     <>
       <Helmet>
-        <title>Tasks</title>
-        <meta name="description" content="App Description" />
-        <meta name="theme-color" content="#008f68" />
+        <title>Tasks - Assistant AI</title>
+        <meta name="description" content="Task Management" />
       </Helmet>
-      <EditTaskDrawer
-        currentTask={currentTask}
-        setCurrentTask={setCurrentTask}
-        disclosures={edit_task_drawer}
-        onTaskUpdate={handleTaskUpdate}
-      />
-      <NewTaskDrawer currentTask={{}} disclosures={new_task_drawer}></NewTaskDrawer>
-      <DeleteTaskNoteModal currentTask={currentTask} disclosures={delete_modal} />
-      <TaskViewModal 
-        isOpen={view_task_modal.isOpen} 
-        onClose={view_task_modal.onClose} 
-        task={currentTask} 
-      />
 
-<Box minH="100vh" bg={bgColor}>
+      <Box minH="100vh" bg={bgColor}>
         <Navbar isCollapsed={isMenuCollapsed} />
         <Box
           ml={{ base: 0, md: isMenuCollapsed ? "60px" : "250px" }}
@@ -212,26 +237,13 @@ export default function TasksPage() {
 
                   <TabPanels>
                     <TabPanel p={0} mt={4}>
-                      <Grid 
-                        templateColumns={{ 
-                          base: "1fr", 
-                          md: "repeat(2, 1fr)", 
-                          lg: "repeat(3, 1fr)" 
-                        }} 
-                        gap={6}
-                      >
+                      <Grid templateColumns="repeat(3, 1fr)" gap={6}>
                         <GridItem>
                           <Box bg={useColorModeValue('gray.50', 'gray.700')} p={4} borderRadius="md">
-                            <Text fontSize="lg" fontWeight="semibold" mb={4}>Not Started</Text>
+                            <Text fontSize="lg" fontWeight="semibold" mb={4}>To Do</Text>
                             <VStack spacing={4} align="stretch">
                               {tasks.filter(task => task.status === 'todo').map((task, index) => (
-                                <TaskCard 
-                                  key={index}
-                                  task={task} 
-                                  onUpdate={handleUpdateItem}
-                                  onDelete={handleDeleteItem}
-                                  onView={handleViewItem}
-                                />
+                                <TaskCard key={index} task={task} />
                               ))}
                             </VStack>
                           </Box>
@@ -242,13 +254,7 @@ export default function TasksPage() {
                             <Text fontSize="lg" fontWeight="semibold" mb={4}>In Progress</Text>
                             <VStack spacing={4} align="stretch">
                               {tasks.filter(task => task.status === 'in_progress').map((task, index) => (
-                                <TaskCard 
-                                  key={index}
-                                  task={task} 
-                                  onUpdate={handleUpdateItem}
-                                  onDelete={handleDeleteItem}
-                                  onView={handleViewItem}
-                                />
+                                <TaskCard key={index} task={task} />
                               ))}
                             </VStack>
                           </Box>
@@ -259,13 +265,7 @@ export default function TasksPage() {
                             <Text fontSize="lg" fontWeight="semibold" mb={4}>Done</Text>
                             <VStack spacing={4} align="stretch">
                               {tasks.filter(task => task.status === 'done').map((task, index) => (
-                                <TaskCard 
-                                  key={index}
-                                  task={task} 
-                                  onUpdate={handleUpdateItem}
-                                  onDelete={handleDeleteItem}
-                                  onView={handleViewItem}
-                                />
+                                <TaskCard key={index} task={task} />
                               ))}
                             </VStack>
                           </Box>
@@ -338,6 +338,29 @@ export default function TasksPage() {
           </Box>
         </Box>
       </Box>
+
+      {/* Modals and Drawers */}
+      <EditTaskDrawer 
+        currentTask={currentTask} 
+        setCurrentTask={setCurrentTask} 
+        disclosures={edit_task_drawer}
+        onTaskUpdate={handleTaskUpdate}
+      />
+      <NewTaskDrawer 
+        currentTask={{}} 
+        disclosures={new_task_drawer}
+      />
+      <DeleteTaskNoteModal 
+        currentTask={currentTask} 
+        disclosures={delete_modal}
+        type="task"
+      />
+      <TaskViewModal 
+        isOpen={view_task_modal.isOpen} 
+        onClose={view_task_modal.onClose} 
+        task={currentTask}
+        onEdit={handleUpdateItem}
+      />
     </>
   );
 }
