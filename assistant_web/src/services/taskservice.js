@@ -34,7 +34,8 @@ const update = (task_id, data) => {
 };
 
 const remove = task_id => {
-  return http.delete(`/api/v1/workspaces/${ConfigService.getDefaultWorkspace().workspace_id}/tasks/${task_id}`);
+  const workspace_id = ConfigService.getDefaultWorkspace().workspace_id;
+  return http.delete(`/api/v1/workspaces/${workspace_id}/tasks/${task_id}`);
 };
 
 const removeAll = () => {

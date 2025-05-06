@@ -137,7 +137,8 @@ async def delete_task(
     try:
         task_cmd = TaskDeleteCommand(
             task_id=task_id,
-            user_id=user.get("user_id")
+            user_id=user.get("user_id"),
+            workspace_id=workspace_id
         )
         TaskHandler().delete_task(task_cmd)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -145,7 +146,7 @@ async def delete_task(
         raise he
     except Exception as e:
         logger.error(f"Error deleting task: {e}")
-        raise HTTPException(status_code=500, detail="Failed to delete task")
+        raise HTTPException(status_code=500, detail=f"Error deleting task: {str(e)}")
 
 
 

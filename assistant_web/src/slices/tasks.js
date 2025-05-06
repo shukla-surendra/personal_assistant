@@ -56,7 +56,7 @@ export const updateTask = createAsyncThunk(
 export const deleteTask = createAsyncThunk(
   "tasks/delete",
   async ({ task_id }) => {
-    await TaskService.remove(task_id);
+    const res = await TaskService.remove(task_id);
     return { task_id };
   }
 );
@@ -104,8 +104,13 @@ const taskSlice = createSlice({
       }
     },
     [deleteTask.fulfilled]: (state, action) => {
-      let index = state.findIndex(({ task_id }) => task_id === action.payload.task_id);
-      state.splice(index, 1);
+      const index = state.tasks.findIndex(task => task.task_id === action.payload.task_id);
+      if (index !== -1) {
+        state.tasks.splice(index, 1);
+      }
+    },
+    [deleteTask.rejected]: (state, action) => {
+      console.error('Failed to delete task:', action.error);
     }
   },
 });

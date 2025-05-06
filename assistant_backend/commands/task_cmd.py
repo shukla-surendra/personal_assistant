@@ -34,6 +34,7 @@ class TaskCommand(BaseModel):
 class TaskDeleteCommand(BaseModel):
     task_id: str
     user_id: str
+    workspace_id: str
 
 
 class TaskUpdateCommand(BaseModel):
