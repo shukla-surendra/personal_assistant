@@ -68,15 +68,20 @@ class UserSettings(Base):
 
     settings_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id"), nullable=False, unique=True)
-    preferences = Column(JSONB, nullable=True)
-    theme = Column(String, nullable=True)
-    language = Column(String, nullable=True)
-    timezone = Column(String, nullable=True)
-    notification_settings = Column(JSONB, nullable=True)
+    workspace_id = Column(UUID(as_uuid=True), ForeignKey("workspaces.workspace_id"), nullable=False)
+    email_notifications = Column(Boolean, default=True)
+    task_reminders = Column(Boolean, default=True)
+    weekly_digest = Column(Boolean, default=True)
+    language = Column(String, default="en")
+    timezone = Column(String, default="UTC")
+    theme = Column(String, default="light")
+    preferences = Column(JSONB, nullable=True, default={})
+    notification_settings = Column(JSONB, nullable=True, default={})
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = relationship("User", back_populates="settings")
+    workspace = relationship("Workspace")
 
 class Task(Base):
     __tablename__ = "tasks"

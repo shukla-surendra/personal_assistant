@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Container,
@@ -9,7 +9,6 @@ import {
   Switch,
   Select,
   Button,
-  Divider,
   useColorMode,
   useColorModeValue,
   IconButton,
@@ -23,36 +22,82 @@ import {
   TabPanels,
   Tab,
   TabPanel,
+  useToast,
+  Spinner,
 } from '@chakra-ui/react';
 import { FiArrowLeft, FiMoon, FiSun, FiBell, FiUser, FiGlobe } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import { retrieveSettings, updateSettings } from '../../slices/settings';
 
 const SettingsPage = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const toast = useToast();
   const { colorMode, toggleColorMode } = useColorMode();
-  const [settings, setSettings] = useState({
-    emailNotifications: true,
-    taskReminders: true,
-    weeklyDigest: false,
+  const { settings } = useSelector((state) => state.settings);
+  const [localSettings, setLocalSettings] = useState({
+    email_notifications: true,
+    task_reminders: true,
+    weekly_digest: false,
     language: 'en',
     timezone: 'UTC',
     theme: colorMode,
-    name: 'John Doe',
-    email: 'john@example.com',
-    bio: 'Product Manager at Tech Corp',
+    name: '',
+    email: '',
+    bio: '',
   });
 
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
 
+  useEffect(() => {
+    dispatch(retrieveSettings());
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (settings) {
+      setLocalSettings(prev => ({
+        ...prev,
+        ...settings,
+      }));
+    }
+  }, [settings]);
+
   const handleSettingChange = (key, value) => {
-    setSettings(prev => ({ ...prev, [key]: value }));
+    setLocalSettings(prev => ({ ...prev, [key]: value }));
   };
 
-  const handleSave = () => {
-    // TODO: Implement save functionality
-    console.log('Saving settings:', settings);
+  const handleSave = async () => {
+    try {
+      await dispatch(updateSettings(localSettings)).unwrap();
+      toast({
+        title: 'Success',
+        description: 'Settings updated successfully',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update settings',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    }
   };
+
+  if (!settings) {
+    return (
+      <Container maxW="container.xl" py={8}>
+        <Flex justify="center" align="center" h="50vh">
+          <Spinner size="xl" />
+        </Flex>
+      </Container>
+    );
+  }
 
   return (
     <Container maxW="container.xl" py={8}>
@@ -68,7 +113,11 @@ const SettingsPage = () => {
             />
             <Heading size="lg">Settings</Heading>
           </HStack>
-          <Button colorScheme="blue" onClick={handleSave}>
+          <Button
+            colorScheme="blue"
+            onClick={handleSave}
+            isLoading={!settings}
+          >
             Save Changes
           </Button>
         </Flex>
@@ -106,21 +155,21 @@ const SettingsPage = () => {
                     <FormControl>
                       <FormLabel>Name</FormLabel>
                       <Input
-                        value={settings.name}
+                        value={localSettings.name}
                         onChange={(e) => handleSettingChange('name', e.target.value)}
                       />
                     </FormControl>
                     <FormControl>
                       <FormLabel>Email</FormLabel>
                       <Input
-                        value={settings.email}
+                        value={localSettings.email}
                         onChange={(e) => handleSettingChange('email', e.target.value)}
                       />
                     </FormControl>
                     <FormControl>
                       <FormLabel>Bio</FormLabel>
                       <Textarea
-                        value={settings.bio}
+                        value={localSettings.bio}
                         onChange={(e) => handleSettingChange('bio', e.target.value)}
                       />
                     </FormControl>
@@ -138,22 +187,22 @@ const SettingsPage = () => {
                     <FormControl display="flex" alignItems="center" justifyContent="space-between">
                       <FormLabel mb="0">Email Notifications</FormLabel>
                       <Switch
-                        isChecked={settings.emailNotifications}
-                        onChange={(e) => handleSettingChange('emailNotifications', e.target.checked)}
+                        isChecked={localSettings.email_notifications}
+                        onChange={(e) => handleSettingChange('email_notifications', e.target.checked)}
                       />
                     </FormControl>
                     <FormControl display="flex" alignItems="center" justifyContent="space-between">
                       <FormLabel mb="0">Task Reminders</FormLabel>
                       <Switch
-                        isChecked={settings.taskReminders}
-                        onChange={(e) => handleSettingChange('taskReminders', e.target.checked)}
+                        isChecked={localSettings.task_reminders}
+                        onChange={(e) => handleSettingChange('task_reminders', e.target.checked)}
                       />
                     </FormControl>
                     <FormControl display="flex" alignItems="center" justifyContent="space-between">
                       <FormLabel mb="0">Weekly Digest</FormLabel>
                       <Switch
-                        isChecked={settings.weeklyDigest}
-                        onChange={(e) => handleSettingChange('weeklyDigest', e.target.checked)}
+                        isChecked={localSettings.weekly_digest}
+                        onChange={(e) => handleSettingChange('weekly_digest', e.target.checked)}
                       />
                     </FormControl>
                   </VStack>
@@ -179,7 +228,7 @@ const SettingsPage = () => {
                     <FormControl>
                       <FormLabel>Language</FormLabel>
                       <Select
-                        value={settings.language}
+                        value={localSettings.language}
                         onChange={(e) => handleSettingChange('language', e.target.value)}
                       >
                         <option value="en">English</option>
@@ -191,7 +240,7 @@ const SettingsPage = () => {
                     <FormControl>
                       <FormLabel>Timezone</FormLabel>
                       <Select
-                        value={settings.timezone}
+                        value={localSettings.timezone}
                         onChange={(e) => handleSettingChange('timezone', e.target.value)}
                       >
                         <option value="UTC">UTC</option>

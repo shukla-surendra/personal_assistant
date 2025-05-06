@@ -18,7 +18,7 @@ try:
     from controllers.workspace_controller import router as workspace_routers
     from controllers.board_controller import router as board_routers
     from controllers import timeblock_controller
-    from controllers.user_settings_controller import router as user_settings_router
+    from controllers.settings_controller import router as settings_router
     from controllers.page_controller import router as page_router
     from controllers.database_controller import router as database_router
     from controllers.template_controller import router as template_router
@@ -46,7 +46,7 @@ try:
     app.include_router(task_routers)
     app.include_router(board_routers)
     app.include_router(timeblock_controller.router, prefix="/api/v1", tags=["timeblocks"])
-    app.include_router(user_settings_router)
+    app.include_router(settings_router)
     app.include_router(page_router)
     app.include_router(database_router)
     app.include_router(template_router)
