@@ -33,6 +33,7 @@ import {
   StackDivider,
   Heading
 } from '@chakra-ui/react';
+import { Link } from 'react-router-dom';
 // Here we have used react-icons package for the icons
 import { StatusIndicator } from '../../components/dashboard/StatusIndicator'
 import React, { useState, useEffect, useCallback } from "react";
@@ -53,7 +54,7 @@ import TaskViewModal from "../../components/dashboard/modals/TaskViewModal";
 import UnifiedEditButton from "../../components/dashboard/UnifiedEditButton";
 import UnifiedCreateButton from "../../components/dashboard/UnifiedCreateButton";
 import { ChevronRightIcon } from '@chakra-ui/icons';
-import { FiEye, FiMoreVertical, FiEdit2, FiTrash2 } from 'react-icons/fi';
+import { FiEye, FiMoreVertical, FiEdit2, FiTrash2, FiExternalLink } from 'react-icons/fi';
 
 export default function TasksPage() {
   const [isMenuCollapsed, setIsMenuCollapsed] = useState(false);
@@ -133,7 +134,23 @@ export default function TasksPage() {
         <Card key={task.task_id} bg={cardBg} borderWidth="1px" borderColor={borderColor}>
           <CardHeader>
             <Flex justify="space-between" align="center">
-              <Heading size="sm">{task.title}</Heading>
+              <Heading size="sm">
+                <Link 
+                  to={`/page/${task.task_id}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  style={{ 
+                    color: textColor,
+                    textDecoration: 'none',
+                    '&:hover': {
+                      textDecoration: 'underline'
+                    }
+                  }}
+                >
+                  {task.title}
+                </Link>
+              </Heading>
               <HStack spacing={1}>
                 <IconButton
                   aria-label="View Task"
@@ -305,11 +322,18 @@ export default function TasksPage() {
                                 <Td>
                                   <HStack spacing={2}>
                                     <IconButton
-                                      icon={<Icon as={FaEye} />}
+                                      icon={<FiEye />}
                                       size="sm"
                                       variant="ghost"
                                       onClick={() => handleViewItem(task)}
                                       aria-label="View Task"
+                                    />
+                                    <IconButton
+                                      icon={<FiExternalLink />}
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => navigate(`/page/${task.task_id}`)}
+                                      aria-label="Open in new page"
                                     />
                                     <UnifiedEditButton 
                                       item={task} 
@@ -317,7 +341,7 @@ export default function TasksPage() {
                                       onEdit={handleUpdateItem}
                                     />
                                     <IconButton
-                                      icon={<Icon as={FaTrash} />}
+                                      icon={<FiTrash2 />}
                                       size="sm"
                                       variant="ghost"
                                       onClick={() => handleDeleteItem(task)}

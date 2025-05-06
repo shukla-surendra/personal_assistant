@@ -21,7 +21,8 @@ import {
   InputGroup,
   InputLeftElement,
 } from '@chakra-ui/react';
-import { FiBell, FiSearch, FiFilter, FiCheck, FiTrash2, FiMoreVertical } from 'react-icons/fi';
+import { FiBell, FiSearch, FiFilter, FiCheck, FiTrash2, FiMoreVertical, FiArrowLeft } from 'react-icons/fi';
+import { useNavigate } from 'react-router-dom';
 
 // Sample notifications data
 const sampleNotifications = [
@@ -73,6 +74,7 @@ const sampleNotifications = [
 ];
 
 const NotificationsPage = () => {
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState(sampleNotifications);
   const [filter, setFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -143,7 +145,15 @@ const NotificationsPage = () => {
       <VStack spacing={6} align="stretch">
         {/* Header */}
         <Flex justify="space-between" align="center">
-          <Heading size="lg">Notifications</Heading>
+          <HStack spacing={4}>
+            <IconButton
+              icon={<FiArrowLeft />}
+              variant="ghost"
+              onClick={() => navigate(-1)}
+              aria-label="Go back"
+            />
+            <Heading size="lg">Notifications</Heading>
+          </HStack>
           <HStack spacing={4}>
             <Button
               leftIcon={<FiCheck />}

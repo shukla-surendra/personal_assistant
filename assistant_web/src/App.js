@@ -34,6 +34,7 @@ import SearchTasksPage from './pages/dashboard/SearchTasksPage';
 import SearchNotebookPage from './pages/dashboard/SearchNotebookPage';
 import TaskPage from './pages/dashboard/TaskPage';
 import MemberPage from './pages/member/MemberPage';
+import NotePage from './pages/dashboard/NotePage';
 
 function App() {
   return (
@@ -70,6 +71,7 @@ function App() {
           <Route path="/workspace-members" element={<MemberPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/page/:task_id" element={<TaskPage />} />
+          <Route path="/note/:id" element={<NotePage />} />
         </Routes>
       </Router>
     </ChakraProvider>

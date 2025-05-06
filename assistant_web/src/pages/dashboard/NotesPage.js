@@ -46,6 +46,7 @@ import {
   Tbody,
   Td
 } from '@chakra-ui/react';
+import { Link } from 'react-router-dom';
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
@@ -63,7 +64,7 @@ import UnifiedEditButton from "../../components/dashboard/UnifiedEditButton";
 import UnifiedCreateButton from "../../components/dashboard/UnifiedCreateButton";
 import { useNavigate } from "react-router-dom";
 import NoteViewModal from "../../components/dashboard/modals/NoteViewModal";
-import { FiEye, FiMoreVertical, FiEdit2, FiTrash2 } from "react-icons/fi";
+import { FiEye, FiMoreVertical, FiEdit2, FiTrash2, FiExternalLink } from "react-icons/fi";
 
 export default function NotesPage() {
   const [isMenuCollapsed, setIsMenuCollapsed] = useState(false);
@@ -221,7 +222,18 @@ export default function NotesPage() {
         <Card key={note.task_id} bg={cardBg} borderWidth="1px" borderColor={borderColor}>
           <CardHeader>
             <Flex justify="space-between" align="center">
-              <Heading size="sm">{note.title}</Heading>
+              <Heading size="sm">
+                <Button
+                  variant="ghost"
+                  onClick={() => navigate(`/note/${note.task_id}`)}
+                  _hover={{ textDecoration: 'underline' }}
+                  p={0}
+                  h="auto"
+                  fontWeight="semibold"
+                >
+                  {note.title}
+                </Button>
+              </Heading>
               <HStack spacing={1}>
                 <IconButton
                   aria-label="View Note"
@@ -364,6 +376,13 @@ export default function NotesPage() {
                                   onClick={() => handleViewItem(note)}
                                   aria-label="View Note"
                                 />
+                                <IconButton
+                                  icon={<FiExternalLink />}
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => navigate(`/note/${note.task_id}`)}
+                                  aria-label="Open in new page"
+                                />
                                 <UnifiedEditButton 
                                   item={note} 
                                   type="note" 
@@ -463,6 +482,13 @@ export default function NotesPage() {
                                     variant="ghost"
                                     onClick={() => handleViewItem(note)}
                                     aria-label="View Note"
+                                  />
+                                  <IconButton
+                                    icon={<FiExternalLink />}
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => navigate(`/note/${note.task_id}`)}
+                                    aria-label="Open in new page"
                                   />
                                   <UnifiedEditButton 
                                     item={note} 
