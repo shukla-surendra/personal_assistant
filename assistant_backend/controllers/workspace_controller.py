@@ -206,6 +206,7 @@ async def get_workspace_members(
     user: dict = Depends(get_auth_details)
 ):
     """Get all members of a workspace"""
+    print(f"######################## Getting workspace members for workspace_id: {workspace_id} and user_id: {user.get('user_id')}")
     try:
         return WorkspaceHandler().get_workspace_members(workspace_id, user.get("user_id"))
     except HTTPException as he:

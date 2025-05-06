@@ -14,6 +14,7 @@ import WikiPage from "./pages/dashboard/WikiPage";
 import DatabasePage from "./pages/dashboard/DatabasePage";
 import NotionPage from "./pages/dashboard/NotionPage";
 import MembersPage from "./pages/dashboard/MembersPage";
+import NotificationsPage from "./pages/dashboard/NotificationsPage";
 // landing pages some page might require login
 import Login from "./pages/landing/Login"
 import Home from "./pages/landing/Home";
@@ -25,7 +26,6 @@ import PrivacyPolicyPage from './pages/landing/PrivacyPolicyPage'
 import TermsOfUse from './pages/landing/TermsOfUse'
 import Blog from "./pages/landing/Blog";
 import Pomodoro from "./pages/landing/Pomodoro";
-
 import BlogPage from "./pages/landing/BlogPage";
 import NewLogin from "./pages/landing/NewLogin"
 import NewSignup from "./pages/landing/NewSignup"
@@ -33,6 +33,7 @@ import TaskDetailPage from './pages/dashboard/TaskDetailPage';
 import SearchTasksPage from './pages/dashboard/SearchTasksPage';
 import SearchNotebookPage from './pages/dashboard/SearchNotebookPage';
 import TaskPage from './pages/dashboard/TaskPage';
+import MemberPage from './pages/member/MemberPage';
 
 function App() {
   return (
@@ -66,6 +67,8 @@ function App() {
           <Route path="/search-tasks" element={<SearchTasksPage />} />
           <Route path="/search-notebooks" element={<SearchNotebookPage />} />
           <Route path="/members" element={<MembersPage />} />
+          <Route path="/workspace-members" element={<MemberPage />} />
+          <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/page/:task_id" element={<TaskPage />} />
         </Routes>
       </Router>

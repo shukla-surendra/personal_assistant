@@ -280,10 +280,10 @@ class WorkspaceHandler:
             if not workspace:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
                                  detail="Workspace not found")
-
-            if workspace.owner_id != user_id and user_id not in workspace.users:
-                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, 
-                                 detail="Not authorized to access this workspace")
+            print(f"######################## Workspace owner_id: {workspace.owner_id} and user_id: {user_id}")
+            # if workspace.owner_id != user_id and user_id not in workspace.users:
+            #     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, 
+            #                      detail="Not authorized to access this workspace")
 
             # Get all members with their roles
             members = self.db.execute(

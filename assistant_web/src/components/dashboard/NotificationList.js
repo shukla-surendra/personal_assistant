@@ -7,7 +7,9 @@ import {
   Avatar,
   Badge,
   Button,
+  useColorModeValue,
 } from "@chakra-ui/react";
+import { useNavigate } from "react-router-dom";
 
 const notifications = [
   {
@@ -30,6 +32,27 @@ const notifications = [
 ];
 
 export default function NotificationList() {
+  const navigate = useNavigate();
+  const bgColor = useColorModeValue("white", "gray.800");
+  const borderColor = useColorModeValue("gray.200", "gray.700");
+
+  const getTypeColor = (type) => {
+    switch (type) {
+      case 'task':
+        return 'blue';
+      case 'meeting':
+        return 'purple';
+      case 'document':
+        return 'teal';
+      case 'comment':
+        return 'yellow';
+      case 'deadline':
+        return 'red';
+      default:
+        return 'gray';
+    }
+  };
+
   return (
     <Box w="340px" maxH="400px" overflowY="auto" p={3}>
       <VStack align="stretch" spacing={3}>
@@ -54,10 +77,25 @@ export default function NotificationList() {
             <Text fontSize="sm" color="gray.700" mt={1}>
               {n.description}
             </Text>
+            <HStack mt={2} spacing={2}>
+              <Badge colorScheme={getTypeColor(n.type)}>
+                {n.type}
+              </Badge>
+              {!n.read && (
+                <Badge colorScheme="blue">New</Badge>
+              )}
+            </HStack>
           </Box>
         ))}
       </VStack>
-      <Button mt={4} w="100%" size="sm" colorScheme="blue" variant="outline">
+      <Button 
+        mt={4} 
+        w="100%" 
+        size="sm" 
+        colorScheme="blue" 
+        variant="outline"
+        onClick={() => navigate('/notifications')}
+      >
         View all notifications
       </Button>
     </Box>

@@ -116,6 +116,7 @@ const Header = ({ onMenuToggle }) => {
                         isOpen={isNotificationsOpen}
                         onClose={onNotificationsClose}
                         placement="bottom-end"
+                        zIndex={1000}
                     >
                         <PopoverTrigger>
                             <IconButton
@@ -125,8 +126,13 @@ const Header = ({ onMenuToggle }) => {
                                 aria-label="Notifications"
                             />
                         </PopoverTrigger>
-                        <PopoverContent>
-                            <PopoverBody>
+                        <PopoverContent 
+                            width="340px" 
+                            position="relative"
+                            zIndex={1000}
+                            boxShadow="xl"
+                        >
+                            <PopoverBody p={0}>
                                 <NotificationList />
                             </PopoverBody>
                         </PopoverContent>
