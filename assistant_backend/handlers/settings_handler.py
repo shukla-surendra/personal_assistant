@@ -57,7 +57,6 @@ class SettingsHandler:
     def update_settings(self, command: SettingsUpdateCommand) -> UserSettings:
         try:
             settings = self.db.query(UserSettings).filter(
-                UserSettings.settings_id == UUID(command.settings_id) if command.settings_id else False,
                 UserSettings.user_id == UUID(command.user_id),
                 UserSettings.workspace_id == UUID(command.workspace_id)
             ).first()
