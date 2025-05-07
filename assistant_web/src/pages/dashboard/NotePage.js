@@ -25,18 +25,19 @@ import {
 import { FiArrowLeft, FiEdit2, FiTrash2, FiShare2 } from 'react-icons/fi';
 import { Helmet } from 'react-helmet';
 import { formatLocalDateTime } from '../../utils/locale';
-import { retrieveNotes } from '../../slices/tasks';
+import { retrieveNotes, updateTask } from '../../slices/tasks';
 import EditNoteDrawer from '../../components/dashboard/drawers/EditNoteDrawer';
 import DeleteTaskNoteModal from '../../components/dashboard/modals/DeleteTaskNoteModal';
 import NoteViewModal from '../../components/dashboard/modals/NoteViewModal';
-import { extractTextFromLexicalJSON } from '../../utils/lexical';
+import TipTapEditor from '../../components/editor/TipTapEditor';
 
 export default function NotePage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const [currentNote, setCurrentNote] = useState(null);
-  const [content, setContent] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   
   const edit_drawer = useDisclosure();
   const delete_modal = useDisclosure();
@@ -55,19 +56,6 @@ export default function NotePage() {
           const note = data.find(note => note.task_id === id);
           if (note) {
             setCurrentNote(note);
-            if (note?.description) {
-              try {
-                const jsonContent = typeof note.description === 'string' 
-                  ? JSON.parse(note.description) 
-                  : note.description;
-                
-                const textContent = extractTextFromLexicalJSON(jsonContent);
-                setContent(textContent);
-              } catch (error) {
-                console.error('Error parsing description:', error);
-                setContent(note.description);
-              }
-            }
           } else {
             console.error('Note not found');
             navigate('/notes');
@@ -81,7 +69,25 @@ export default function NotePage() {
   }, [dispatch, id, navigate]);
 
   const handleEdit = () => {
-    edit_drawer.onOpen();
+    setIsEditing(true);
+  };
+
+  const handleSave = async () => {
+    if (!currentNote) return;
+    
+    setIsSaving(true);
+    try {
+      await dispatch(updateTask({ 
+        task_id: currentNote.task_id, 
+        data: currentNote 
+      })).unwrap();
+      
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Error saving note:', error);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleDelete = () => {
@@ -90,6 +96,15 @@ export default function NotePage() {
 
   const handleView = () => {
     view_modal.onOpen();
+  };
+
+  const handleContentChange = (newContent) => {
+    if (isEditing) {
+      setCurrentNote(prev => ({
+        ...prev,
+        description: newContent
+      }));
+    }
   };
 
   if (!currentNote) {
@@ -106,7 +121,7 @@ export default function NotePage() {
     <>
       <Helmet>
         <title>{currentNote.title} - Note</title>
-        <meta name="description" content={content.substring(0, 160)} />
+        <meta name="description" content={currentNote.description?.substring(0, 160)} />
       </Helmet>
 
       <Box minH="100vh" bg={bgColor}>
@@ -124,14 +139,25 @@ export default function NotePage() {
                 <Heading size="lg">{currentNote.title}</Heading>
               </HStack>
               <HStack spacing={2}>
-                <Button
-                  leftIcon={<FiEdit2 />}
-                  colorScheme="blue"
-                  variant="outline"
-                  onClick={handleEdit}
-                >
-                  Edit
-                </Button>
+                {isEditing ? (
+                  <Button
+                    colorScheme="blue"
+                    onClick={handleSave}
+                    isLoading={isSaving}
+                    loadingText="Saving..."
+                  >
+                    Save
+                  </Button>
+                ) : (
+                  <Button
+                    leftIcon={<FiEdit2 />}
+                    colorScheme="blue"
+                    variant="outline"
+                    onClick={handleEdit}
+                  >
+                    Edit
+                  </Button>
+                )}
                 <Button
                   leftIcon={<FiTrash2 />}
                   colorScheme="red"
@@ -165,9 +191,12 @@ export default function NotePage() {
               <CardBody>
                 <Stack divider={<StackDivider />} spacing="4">
                   <Box>
-                    <Text fontSize="md" color={textColor} whiteSpace="pre-wrap">
-                      {content}
-                    </Text>
+                    <TipTapEditor
+                      key={`editor-${isEditing}`}
+                      content={currentNote.description || ''}
+                      onChange={handleContentChange}
+                      editable={isEditing}
+                    />
                   </Box>
                 </Stack>
               </CardBody>

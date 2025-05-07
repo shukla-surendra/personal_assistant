@@ -1,11 +1,10 @@
-import React, { useCallback, useEffect } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
-import Placeholder from '@tiptap/extension-placeholder';
-import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
-import { createLowlight } from 'lowlight';
+import TaskItem from '@tiptap/extension-task-item';
+import TaskList from '@tiptap/extension-task-list';
+import TextAlign from '@tiptap/extension-text-align';
+import Typography from '@tiptap/extension-typography';
 import { Box, HStack, IconButton, useColorModeValue, Menu, MenuButton, MenuList, MenuItem } from '@chakra-ui/react';
 import { 
   FiBold, 
@@ -23,9 +22,7 @@ import {
   FiArrowRight,
   FiLink
 } from 'react-icons/fi';
-import './RichTextEditor.css';
-
-const lowlight = createLowlight();
+import { useEffect } from 'react';
 
 const MenuBar = ({ editor }) => {
   const bgColor = useColorModeValue('white', 'gray.800');
@@ -183,22 +180,21 @@ const MenuBar = ({ editor }) => {
   );
 };
 
-const RichTextEditor = ({ value, onChange, editable = true }) => {
+const TipTapEditor = ({ content, onChange, editable = true }) => {
   const editor = useEditor({
     extensions: [
       StarterKit,
-      Link.configure({
-        openOnClick: false,
-      }),
       Image,
-      Placeholder.configure({
-        placeholder: 'Enter some text...',
+      TaskList,
+      TaskItem.configure({
+        nested: true,
       }),
-      CodeBlockLowlight.configure({
-        lowlight,
+      TextAlign.configure({
+        types: ['heading', 'paragraph'],
       }),
+      Typography,
     ],
-    content: value || '',
+    content: content || '',
     editable: editable,
     onUpdate: ({ editor }) => {
       if (onChange) {
@@ -224,10 +220,10 @@ const RichTextEditor = ({ value, onChange, editable = true }) => {
   }, [editor, editable]);
 
   useEffect(() => {
-    if (editor && value !== editor.getHTML()) {
-      editor.commands.setContent(value || '');
+    if (editor && content !== editor.getHTML()) {
+      editor.commands.setContent(content || '');
     }
-  }, [value, editor]);
+  }, [content, editor]);
 
   const borderColor = useColorModeValue('gray.200', 'gray.700');
   const editorBg = useColorModeValue('white', 'gray.800');
@@ -341,4 +337,4 @@ const RichTextEditor = ({ value, onChange, editable = true }) => {
   );
 };
 
-export default RichTextEditor; 
+export default TipTapEditor; 
