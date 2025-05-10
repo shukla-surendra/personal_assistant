@@ -1,5 +1,30 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import {
+  Box,
+  Button,
+  Flex,
+  Text,
+  VStack,
+  HStack,
+  useColorModeValue,
+  Input,
+  FormControl,
+  FormLabel,
+  IconButton,
+  Tooltip,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalFooter,
+  ModalBody,
+  ModalCloseButton,
+  useDisclosure,
+  Switch,
+  Divider,
+} from "@chakra-ui/react";
+import { FiPlay, FiPause, FiRefreshCw, FiVolume2, FiVolumeX, FiSettings } from "react-icons/fi";
 
 const MODES = {
   pomodoro: "Pomodoro",
@@ -8,12 +33,13 @@ const MODES = {
 };
 
 const MODE_COLORS = {
-  [MODES.pomodoro]: "#ef4444", // red-500
-  [MODES.short]: "#22c55e", // green-500
-  [MODES.long]: "#3b82f6", // blue-500
+  [MODES.pomodoro]: "brand.500",
+  [MODES.short]: "green.500",
+  [MODES.long]: "blue.500",
 };
 
 export default function PomodoroApp() {
+  const { isOpen, onOpen, onClose } = useDisclosure();
   const [mode, setMode] = useState(MODES.pomodoro);
   const [pomodoroTime, setPomodoroTime] = useState(25);
   const [shortBreakTime, setShortBreakTime] = useState(5);
@@ -21,9 +47,18 @@ export default function PomodoroApp() {
   const [isRunning, setIsRunning] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(pomodoroTime * 60);
   const [isMuted, setIsMuted] = useState(false);
+  const [autoStartBreaks, setAutoStartBreaks] = useState(false);
+  const [autoStartPomodoros, setAutoStartPomodoros] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(true);
   const alertSound = new Audio("/alerts/alert.mp3");
   const [completedPomodoros, setCompletedPomodoros] = useState(0);
   const [history, setHistory] = useState([]);
+
+  // Color mode values
+  const bgColor = useColorModeValue("white", "gray.800");
+  const borderColor = useColorModeValue("gray.200", "gray.700");
+  const textColor = useColorModeValue("gray.800", "gray.200");
+  const subTextColor = useColorModeValue("gray.500", "gray.400");
 
   useEffect(() => {
     if ("Notification" in window) {
@@ -106,146 +141,193 @@ export default function PomodoroApp() {
     (getDurationByMode(mode) * 60);
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-      <motion.div 
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden"
-      >
-        <div 
-          className="h-2 transition-colors duration-300"
-          style={{ backgroundColor: MODE_COLORS[mode] }}
-        />
-        
-        <div className="p-8">
-          <div className="flex justify-center space-x-2 mb-8">
+    <Box
+      bg={bgColor}
+      borderRadius="xl"
+      boxShadow="lg"
+      borderWidth="1px"
+      borderColor={borderColor}
+      overflow="hidden"
+    >
+      <Box
+        h="2"
+        bg={MODE_COLORS[mode]}
+        transition="background-color 0.3s"
+      />
+      
+      <VStack spacing={8} p={8}>
+        <HStack spacing={2} w="full" justify="space-between">
+          <HStack spacing={2}>
             {Object.values(MODES).map((m) => (
-              <motion.button
+              <Button
                 key={m}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  m === mode
-                    ? "text-white"
-                    : "text-gray-600 hover:text-gray-900"
-                }`}
-                style={{
-                  backgroundColor: m === mode ? MODE_COLORS[m] : "transparent",
-                }}
+                size="sm"
+                colorScheme={m === mode ? "brand" : "gray"}
+                variant={m === mode ? "solid" : "ghost"}
                 onClick={() => {
                   setMode(m);
                   setIsRunning(false);
                 }}
               >
                 {m}
-              </motion.button>
+              </Button>
             ))}
-          </div>
-
-          <motion.div 
-            className="text-center mb-8"
-            animate={{ scale: isRunning ? [1, 1.02, 1] : 1 }}
-            transition={{ duration: 2, repeat: Infinity }}
-          >
-            <h1 className="text-2xl font-bold text-gray-800 mb-2">{mode} Timer</h1>
-            <div className="text-6xl font-bold" style={{ color: MODE_COLORS[mode] }}>
-              {minutes}:{seconds}
-            </div>
-          </motion.div>
-
-          <div className="w-full bg-gray-200 rounded-full h-2.5 mb-8">
-            <motion.div
-              className="h-2.5 rounded-full transition-colors duration-300"
-              style={{ 
-                width: `${progress}%`,
-                backgroundColor: MODE_COLORS[mode]
-              }}
-              initial={{ width: 0 }}
-              animate={{ width: `${progress}%` }}
-              transition={{ duration: 1 }}
+          </HStack>
+          <Tooltip label="Settings">
+            <IconButton
+              aria-label="Settings"
+              icon={<FiSettings />}
+              variant="ghost"
+              colorScheme="gray"
+              onClick={onOpen}
             />
-          </div>
+          </Tooltip>
+        </HStack>
 
-          <div className="flex justify-center space-x-4 mb-8">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className={`px-6 py-3 rounded-lg font-medium text-white ${
-                isRunning ? "bg-yellow-500" : "bg-green-500"
-              }`}
+        <VStack spacing={4}>
+          <Text fontSize="2xl" fontWeight="bold" color={textColor}>
+            {mode} Timer
+          </Text>
+          <Text
+            fontSize="6xl"
+            fontWeight="bold"
+            color={MODE_COLORS[mode]}
+            fontFamily="mono"
+          >
+            {minutes}:{seconds}
+          </Text>
+        </VStack>
+
+        <Box w="full" h="2" bg="gray.100" borderRadius="full" overflow="hidden">
+          <Box
+            h="full"
+            bg={MODE_COLORS[mode]}
+            transition="width 1s"
+            width={`${progress}%`}
+          />
+        </Box>
+
+        <HStack spacing={4}>
+          <Tooltip label={isRunning ? "Pause" : "Start"}>
+            <IconButton
+              aria-label={isRunning ? "Pause" : "Start"}
+              icon={isRunning ? <FiPause /> : <FiPlay />}
+              colorScheme={isRunning ? "yellow" : "green"}
+              size="lg"
               onClick={() => setIsRunning(!isRunning)}
-            >
-              {isRunning ? "Pause" : "Start"}
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="px-6 py-3 rounded-lg font-medium bg-gray-500 text-white"
+            />
+          </Tooltip>
+          <Tooltip label="Reset">
+            <IconButton
+              aria-label="Reset"
+              icon={<FiRefreshCw />}
+              colorScheme="gray"
+              size="lg"
               onClick={handleReset}
-            >
-              Reset
-            </motion.button>
-          </div>
-
-          <div className="space-y-4 mb-8">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Pomodoro (min)
-              </label>
-              <input
-                type="number"
-                min={1}
-                value={pomodoroTime}
-                onChange={(e) => setPomodoroTime(Number(e.target.value))}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Short Break (min)
-              </label>
-              <input
-                type="number"
-                min={1}
-                value={shortBreakTime}
-                onChange={(e) => setShortBreakTime(Number(e.target.value))}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Long Break (min)
-              </label>
-              <input
-                type="number"
-                min={1}
-                value={longBreakTime}
-                onChange={(e) => setLongBreakTime(Number(e.target.value))}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-center">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className={`px-6 py-3 rounded-lg font-medium text-white ${
-                isMuted ? "bg-red-500" : "bg-green-500"
-              }`}
+            />
+          </Tooltip>
+          <Tooltip label={isMuted ? "Unmute" : "Mute"}>
+            <IconButton
+              aria-label={isMuted ? "Unmute" : "Mute"}
+              icon={isMuted ? <FiVolumeX /> : <FiVolume2 />}
+              colorScheme={isMuted ? "red" : "green"}
+              size="lg"
               onClick={() => setIsMuted(!isMuted)}
-            >
-              {isMuted ? "Unmute 🔇" : "Mute 🔔"}
-            </motion.button>
-          </div>
+            />
+          </Tooltip>
+        </HStack>
 
-          {mode === MODES.pomodoro && (
-            <p className="text-center text-gray-600 mt-4">
-              Long break in {4 - (completedPomodoros % 4)} Pomodoros
-            </p>
-          )}
-        </div>
-      </motion.div>
-    </div>
+        {mode === MODES.pomodoro && (
+          <Text color={subTextColor}>
+            Long break in {4 - (completedPomodoros % 4)} Pomodoros
+          </Text>
+        )}
+      </VStack>
+
+      <Modal isOpen={isOpen} onClose={onClose} size="md">
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Timer Settings</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <VStack spacing={6} align="stretch">
+              <Box>
+                <Text fontWeight="medium" mb={4}>Timer Duration (minutes)</Text>
+                <VStack spacing={4}>
+                  <FormControl>
+                    <FormLabel>Pomodoro</FormLabel>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={pomodoroTime}
+                      onChange={(e) => setPomodoroTime(Number(e.target.value))}
+                    />
+                  </FormControl>
+                  <FormControl>
+                    <FormLabel>Short Break</FormLabel>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={shortBreakTime}
+                      onChange={(e) => setShortBreakTime(Number(e.target.value))}
+                    />
+                  </FormControl>
+                  <FormControl>
+                    <FormLabel>Long Break</FormLabel>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={longBreakTime}
+                      onChange={(e) => setLongBreakTime(Number(e.target.value))}
+                    />
+                  </FormControl>
+                </VStack>
+              </Box>
+
+              <Divider />
+
+              <Box>
+                <Text fontWeight="medium" mb={4}>Auto Start</Text>
+                <VStack spacing={4}>
+                  <FormControl display="flex" alignItems="center" justifyContent="space-between">
+                    <FormLabel mb="0">Auto-start Pomodoros</FormLabel>
+                    <Switch
+                      isChecked={autoStartPomodoros}
+                      onChange={(e) => setAutoStartPomodoros(e.target.checked)}
+                    />
+                  </FormControl>
+                  <FormControl display="flex" alignItems="center" justifyContent="space-between">
+                    <FormLabel mb="0">Auto-start Breaks</FormLabel>
+                    <Switch
+                      isChecked={autoStartBreaks}
+                      onChange={(e) => setAutoStartBreaks(e.target.checked)}
+                    />
+                  </FormControl>
+                </VStack>
+              </Box>
+
+              <Divider />
+
+              <Box>
+                <Text fontWeight="medium" mb={4}>Notifications</Text>
+                <FormControl display="flex" alignItems="center" justifyContent="space-between">
+                  <FormLabel mb="0">Show Notifications</FormLabel>
+                  <Switch
+                    isChecked={showNotifications}
+                    onChange={(e) => setShowNotifications(e.target.checked)}
+                  />
+                </FormControl>
+              </Box>
+            </VStack>
+          </ModalBody>
+
+          <ModalFooter>
+            <Button colorScheme="brand" mr={3} onClick={onClose}>
+              Save Changes
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+    </Box>
   );
 }
