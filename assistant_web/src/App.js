@@ -73,7 +73,7 @@ function App() {
           <Route path="/page/:task_id" element={<TaskPage />} />
           <Route path="/note/:id" element={<NotePage />} />
           <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/share/note/:noteId" element={<SharedNoteView />} />
+          <Route path="/shared/note/:noteId" element={<SharedNoteView />} />
         </Routes>
       </Router>
     </ChakraProvider>

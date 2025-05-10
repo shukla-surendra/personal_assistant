@@ -123,7 +123,8 @@ const SharedNoteView = () => {
 
           <Box>
             <RichTextEditor
-              content={note.description || ''}
+              value={note.description || ''}
+              onChange={() => {}}
               editable={false}
             />
           </Box>

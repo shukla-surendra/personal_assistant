@@ -2,17 +2,22 @@ import axios from "axios";
 import ConfigService from "./utils/config";
 import auth from "./utils/auth";
 
-const getBackendUrl = () => {
+export const getBackendUrl = () => {
   return "http://127.0.0.1:8000";
 };
 
 // Get access token and workspace from localStorage
 const access_token = localStorage.getItem('access_token');
 let workspace = null;
-try {
-  workspace = ConfigService.getDefaultWorkspace();
-} catch (error) {
-  console.warn('No workspace selected:', error);
+
+// Only try to get workspace if we're not on a public route
+const isPublicRoute = window.location.pathname.startsWith('/shared/note/');
+if (!isPublicRoute) {
+  try {
+    workspace = ConfigService.getDefaultWorkspace();
+  } catch (error) {
+    console.warn('No workspace selected:', error);
+  }
 }
 
 // Create axios instance with default config

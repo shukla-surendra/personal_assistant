@@ -26,6 +26,7 @@ try:
     from controllers.reminder_controller import router as reminder_router
     from controllers.notification_controller import router as notification_router
     from controllers.activity_controller import router as activity_router
+    from controllers.public_controller import router as public_router
 
     # Import database configuration
     from adapters.orm.models.database import engine, Base
@@ -54,7 +55,7 @@ try:
     app.include_router(reminder_router)
     app.include_router(notification_router)
     app.include_router(activity_router)
-
+    app.include_router(public_router)
     # Configure CORS
     origins = ["*"]
     app.add_middleware(

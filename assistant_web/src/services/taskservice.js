@@ -1,4 +1,4 @@
-import http from "../http-common";
+import http, { getBackendUrl } from "../http-common";
 import ConfigService from "../utils/config";
 import axios from "axios";
 
@@ -20,11 +20,11 @@ const getAllTimeBlocks = () => {
 
 const get = task_id => {
   // For shared notes, we don't need authentication
-  const isSharedNote = window.location.pathname.startsWith('/share/note/');
+  const isSharedNote = window.location.pathname.startsWith('/shared/note/');
   
   if (isSharedNote) {
-    // Use axios directly for shared notes without authentication
-    return axios.get(`/api/v1/workspaces/${ConfigService.getDefaultWorkspace().workspace_id}/tasks/${task_id}`);
+    // Use the public note endpoint
+    return getPublicNote(task_id);
   } else {
     // Use the authenticated http client for regular requests
     return http.get(`/api/v1/workspaces/${ConfigService.getDefaultWorkspace().workspace_id}/tasks/${task_id}`);
@@ -58,7 +58,7 @@ const findByTitle = title => {
 
 const getPublicNote = task_id => {
   // Use axios for public access without authentication
-  return axios.get(`/api/v1/public/notes/${task_id}`);
+  return axios.get(`${getBackendUrl()}/api/v1/public/notes/${task_id}`);
 };
 
 const TaskService = {
