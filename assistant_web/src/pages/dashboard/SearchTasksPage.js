@@ -354,13 +354,7 @@ export default function SearchTasksPage() {
                         </Stack>
                       </CardHeader>
                       <CardBody>
-                        <Text 
-                          color={subTextColor} 
-                          noOfLines={2}
-                          fontSize="sm"
-                        >
-                          {task.description}
-                        </Text>
+
                         {task.tags && task.tags.length > 0 && (
                           <Flex wrap="wrap" gap={1} mt={2}>
                             {task.tags.map((tag, index) => (

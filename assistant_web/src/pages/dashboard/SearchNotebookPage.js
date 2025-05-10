@@ -249,13 +249,6 @@ export default function SearchNotebookPage() {
                         <Heading size="md" color={textColor}>
                           {note.title}
                         </Heading>
-                        <Text 
-                          color={subTextColor} 
-                          noOfLines={3}
-                          fontSize="sm"
-                        >
-                          {note.content}
-                        </Text>
                         <Flex wrap="wrap" gap={2}>
                           <Badge 
                             colorScheme="blue"
