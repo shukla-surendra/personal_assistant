@@ -1,5 +1,6 @@
 import axios from "axios";
 import ConfigService from "./utils/config";
+import auth from "./utils/auth";
 
 const getBackendUrl = () => {
   return "http://127.0.0.1:8000";
@@ -23,5 +24,22 @@ const http = axios.create({
     ...(workspace?.workspace_id && { "Workspace-Id": workspace.workspace_id })
   }
 });
+
+// Add response interceptor to handle errors
+http.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response) {
+      // Handle expired signature error
+      if (error.response.status === 403 && 
+          error.response.data?.detail === "Signature has expired") {
+        // Force logout
+        auth.logout();
+        return Promise.reject(error);
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 export default http;

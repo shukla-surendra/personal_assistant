@@ -54,6 +54,8 @@ export default function EditTaskDrawer(props) {
   const [loading, setLoading] = useState(false);
   const dispatch = useDispatch();
   const toast = useToast();
+  const [newLabel, setNewLabel] = useState('');
+  const [isAddingLabel, setIsAddingLabel] = useState(false);
 
   // Theme colors
   const bgColor = useColorModeValue("white", "gray.800");
@@ -121,6 +123,24 @@ export default function EditTaskDrawer(props) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAddLabel = () => {
+    if (newLabel.trim() && !currentTask.labels?.includes(newLabel.trim())) {
+      setCurrentTask(prev => ({
+        ...prev,
+        labels: [...(prev.labels || []), newLabel.trim()]
+      }));
+      setNewLabel('');
+    }
+    setIsAddingLabel(false);
+  };
+
+  const handleRemoveLabel = (labelToRemove) => {
+    setCurrentTask(prev => ({
+      ...prev,
+      labels: prev.labels?.filter(label => label !== labelToRemove) || []
+    }));
   };
 
   return (
@@ -316,15 +336,53 @@ export default function EditTaskDrawer(props) {
                       <Text fontSize="sm" fontWeight="medium" color={textColor}>
                         Labels
                       </Text>
-                      <IconButton
-                        icon={<Icon as={FaPlus} />}
-                        size="xs"
-                        variant="ghost"
-                        aria-label="Add label"
-                      />
+                      <Popover
+                        isOpen={isAddingLabel}
+                        onClose={() => setIsAddingLabel(false)}
+                        placement="bottom-start"
+                      >
+                        <PopoverTrigger>
+                          <IconButton
+                            icon={<Icon as={FaPlus} />}
+                            size="xs"
+                            variant="ghost"
+                            aria-label="Add label"
+                            onClick={() => setIsAddingLabel(true)}
+                          />
+                        </PopoverTrigger>
+                        <Portal>
+                          <PopoverContent>
+                            <PopoverArrow />
+                            <PopoverBody p={4}>
+                              <InputGroup size="sm">
+                                <Input
+                                  placeholder="Add new label"
+                                  value={newLabel}
+                                  onChange={(e) => setNewLabel(e.target.value)}
+                                  onKeyPress={(e) => {
+                                    if (e.key === 'Enter') {
+                                      handleAddLabel();
+                                    }
+                                  }}
+                                />
+                                <InputRightElement width="4.5rem">
+                                  <Button
+                                    h="1.75rem"
+                                    size="sm"
+                                    onClick={handleAddLabel}
+                                    colorScheme="blue"
+                                  >
+                                    Add
+                                  </Button>
+                                </InputRightElement>
+                              </InputGroup>
+                            </PopoverBody>
+                          </PopoverContent>
+                        </Portal>
+                      </Popover>
                     </HStack>
                     <Wrap>
-                      {sampleLabels.map(label => (
+                      {currentTask?.labels?.map(label => (
                         <Tag
                           key={label}
                           size="sm"
@@ -333,7 +391,7 @@ export default function EditTaskDrawer(props) {
                           colorScheme="blue"
                         >
                           <TagLabel>{label}</TagLabel>
-                          <TagCloseButton />
+                          <TagCloseButton onClick={() => handleRemoveLabel(label)} />
                         </Tag>
                       ))}
                     </Wrap>

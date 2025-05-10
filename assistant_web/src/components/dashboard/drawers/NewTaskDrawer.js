@@ -74,6 +74,8 @@ export default function NewTaskDrawer(props) {
   const dispatch = useDispatch();
   const toast = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [newLabel, setNewLabel] = useState('');
+  const [isAddingLabel, setIsAddingLabel] = useState(false);
 
   // Theme colors
   const bgColor = useColorModeValue("white", "gray.800");
@@ -93,72 +95,182 @@ export default function NewTaskDrawer(props) {
     let initialContent = "";
     switch (template.id) {
       case 'bug':
-        initialContent = {
-          root: {
-            children: [
-              {
-                type: "heading",
-                children: [{ text: "Bug Report" }],
-                tag: "h1"
-              },
-              {
-                type: "paragraph",
-                children: [{ text: "Description of the bug:" }]
-              },
-              {
-                type: "list",
-                children: [
-                  { text: "Expected behavior:" },
-                  { text: "Current behavior:" },
-                  { text: "Steps to reproduce:" }
-                ],
-                listType: "bullet"
-              }
-            ]
-          }
-        };
+        initialContent = `<h1>🐛 Bug Report</h1>
+<h2>Overview</h2>
+<p>Brief description of the bug and its impact.</p>
+
+<h2>Environment</h2>
+<ul>
+  <li>Browser/Device: </li>
+  <li>Operating System: </li>
+  <li>Version: </li>
+</ul>
+
+<h2>Steps to Reproduce</h2>
+<ol>
+  <li>Step 1</li>
+  <li>Step 2</li>
+  <li>Step 3</li>
+</ol>
+
+<h2>Expected Behavior</h2>
+<p>What should happen when following the steps above.</p>
+
+<h2>Actual Behavior</h2>
+<p>What actually happens when following the steps above.</p>
+
+<h2>Additional Context</h2>
+<ul>
+  <li>Screenshots/Videos: </li>
+  <li>Error Messages: </li>
+  <li>Related Issues: </li>
+</ul>
+
+<h2>Possible Solution</h2>
+<p>Any ideas on how to fix this issue.</p>`;
         break;
+
       case 'feature':
-        initialContent = {
-          root: {
-            children: [
-              {
-                type: "heading",
-                children: [{ text: "Feature Request" }],
-                tag: "h1"
-              },
-              {
-                type: "paragraph",
-                children: [{ text: "Feature description:" }]
-              },
-              {
-                type: "list",
-                children: [
-                  { text: "User story:" },
-                  { text: "Acceptance criteria:" },
-                  { text: "Technical requirements:" }
-                ],
-                listType: "bullet"
-              }
-            ]
-          }
-        };
+        initialContent = `<h1>✨ Feature Request</h1>
+<h2>Problem Statement</h2>
+<p>Describe the problem this feature would solve.</p>
+
+<h2>Proposed Solution</h2>
+<p>Describe your proposed solution in detail.</p>
+
+<h2>User Story</h2>
+<p>As a [type of user], I want [goal] so that [benefit].</p>
+
+<h2>Acceptance Criteria</h2>
+<ul>
+  <li>Given [context], when [action], then [result]</li>
+  <li>Given [context], when [action], then [result]</li>
+  <li>Given [context], when [action], then [result]</li>
+</ul>
+
+<h2>Technical Requirements</h2>
+<ul>
+  <li>Performance considerations</li>
+  <li>Security requirements</li>
+  <li>Integration points</li>
+</ul>
+
+<h2>Design Requirements</h2>
+<ul>
+  <li>UI/UX considerations</li>
+  <li>Accessibility requirements</li>
+  <li>Mobile responsiveness</li>
+</ul>
+
+<h2>Additional Context</h2>
+<p>Any other relevant information, examples, or references.</p>`;
         break;
+
+      case 'research':
+        initialContent = `<h1>🔍 Research Task</h1>
+<h2>Research Objective</h2>
+<p>Clear statement of what we're trying to learn or understand.</p>
+
+<h2>Key Questions</h2>
+<ul>
+  <li>Primary research question</li>
+  <li>Secondary questions</li>
+  <li>Hypotheses to test</li>
+</ul>
+
+<h2>Research Methodology</h2>
+<ul>
+  <li>Approach: [Qualitative/Quantitative/Mixed]</li>
+  <li>Data collection methods</li>
+  <li>Analysis methods</li>
+</ul>
+
+<h2>Resources to Review</h2>
+<ul>
+  <li>Academic papers</li>
+  <li>Industry reports</li>
+  <li>Competitor analysis</li>
+  <li>User feedback</li>
+</ul>
+
+<h2>Timeline</h2>
+<ul>
+  <li>Research phase: [dates]</li>
+  <li>Analysis phase: [dates]</li>
+  <li>Reporting phase: [dates]</li>
+</ul>
+
+<h2>Expected Deliverables</h2>
+<ul>
+  <li>Research report</li>
+  <li>Data analysis</li>
+  <li>Recommendations</li>
+  <li>Next steps</li>
+</ul>`;
+        break;
+
+      case 'review':
+        initialContent = `<h1>👀 Code Review</h1>
+<h2>Overview</h2>
+<p>Brief description of the changes and their purpose.</p>
+
+<h2>Files to Review</h2>
+<ul>
+  <li>File 1: [path] - [purpose]</li>
+  <li>File 2: [path] - [purpose]</li>
+</ul>
+
+<h2>Key Areas to Focus On</h2>
+<ul>
+  <li>Code quality and standards</li>
+  <li>Performance implications</li>
+  <li>Security considerations</li>
+  <li>Test coverage</li>
+</ul>
+
+<h2>Review Checklist</h2>
+<ul>
+  <li>✅ Code follows style guide</li>
+  <li>✅ Tests are included and passing</li>
+  <li>✅ Documentation is updated</li>
+  <li>✅ No security vulnerabilities</li>
+  <li>✅ Performance is considered</li>
+  <li>✅ Error handling is implemented</li>
+</ul>
+
+<h2>Testing Instructions</h2>
+<ol>
+  <li>Setup steps</li>
+  <li>Test cases to verify</li>
+  <li>Edge cases to consider</li>
+</ol>
+
+<h2>Additional Context</h2>
+<p>Any relevant background information or related changes.</p>`;
+        break;
+
       default:
-        initialContent = {
-          root: {
-            children: [
-              {
-                type: "paragraph",
-                children: [{ text: "Describe your task here..." }]
-              }
-            ]
-          }
-        };
+        initialContent = `<h1>📝 New Task</h1>
+<p>Describe your task here...</p>
+
+<h2>Objectives</h2>
+<ul>
+  <li>Key objective 1</li>
+  <li>Key objective 2</li>
+</ul>
+
+<h2>Requirements</h2>
+<ul>
+  <li>Requirement 1</li>
+  <li>Requirement 2</li>
+</ul>
+
+<h2>Notes</h2>
+<p>Additional information, context, or considerations.</p>`;
     }
     setCurrentTask({
       ...currentTask,
-      description: JSON.stringify(initialContent)
+      description: initialContent
     });
   };
 
@@ -198,6 +310,24 @@ export default function NewTaskDrawer(props) {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleAddLabel = () => {
+    if (newLabel.trim() && !currentTask.labels?.includes(newLabel.trim())) {
+      setCurrentTask(prev => ({
+        ...prev,
+        labels: [...(prev.labels || []), newLabel.trim()]
+      }));
+      setNewLabel('');
+    }
+    setIsAddingLabel(false);
+  };
+
+  const handleRemoveLabel = (labelToRemove) => {
+    setCurrentTask(prev => ({
+      ...prev,
+      labels: prev.labels?.filter(label => label !== labelToRemove) || []
+    }));
   };
 
   return (
@@ -392,12 +522,50 @@ export default function NewTaskDrawer(props) {
                       <Text fontSize="sm" fontWeight="medium" color={textColor}>
                         Labels
                       </Text>
-                      <IconButton
-                        icon={<Icon as={FaPlus} />}
-                        size="xs"
-                        variant="ghost"
-                        aria-label="Add label"
-                      />
+                      <Popover
+                        isOpen={isAddingLabel}
+                        onClose={() => setIsAddingLabel(false)}
+                        placement="bottom-start"
+                      >
+                        <PopoverTrigger>
+                          <IconButton
+                            icon={<Icon as={FaPlus} />}
+                            size="xs"
+                            variant="ghost"
+                            aria-label="Add label"
+                            onClick={() => setIsAddingLabel(true)}
+                          />
+                        </PopoverTrigger>
+                        <Portal>
+                          <PopoverContent>
+                            <PopoverArrow />
+                            <PopoverBody p={4}>
+                              <InputGroup size="sm">
+                                <Input
+                                  placeholder="Add new label"
+                                  value={newLabel}
+                                  onChange={(e) => setNewLabel(e.target.value)}
+                                  onKeyPress={(e) => {
+                                    if (e.key === 'Enter') {
+                                      handleAddLabel();
+                                    }
+                                  }}
+                                />
+                                <InputRightElement width="4.5rem">
+                                  <Button
+                                    h="1.75rem"
+                                    size="sm"
+                                    onClick={handleAddLabel}
+                                    colorScheme="blue"
+                                  >
+                                    Add
+                                  </Button>
+                                </InputRightElement>
+                              </InputGroup>
+                            </PopoverBody>
+                          </PopoverContent>
+                        </Portal>
+                      </Popover>
                     </HStack>
                     <Wrap>
                       {currentTask?.labels?.map(label => (
@@ -409,7 +577,7 @@ export default function NewTaskDrawer(props) {
                           colorScheme="blue"
                         >
                           <TagLabel>{label}</TagLabel>
-                          <TagCloseButton />
+                          <TagCloseButton onClick={() => handleRemoveLabel(label)} />
                         </Tag>
                       ))}
                     </Wrap>
