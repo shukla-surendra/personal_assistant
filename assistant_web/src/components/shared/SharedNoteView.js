@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Container, Heading, Text, VStack, HStack, Tag,
   TagLabel, Spinner, useToast, useColorModeValue, Divider,
-  Icon, Button, Alert, AlertIcon, AlertTitle, AlertDescription
+  Icon, Button, Alert, AlertIcon, AlertTitle, AlertDescription,
+  Image
 } from '@chakra-ui/react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FaArrowLeft } from 'react-icons/fa';
+import { FaArrowLeft, FaExclamationTriangle, FaLock } from 'react-icons/fa';
 import TaskDataService from '../../services/taskservice';
 import { formatLocalDateTime } from '../../utils/locale';
 import RichTextEditor from '../dashboard/editor/RichTextEditor';
@@ -30,15 +31,30 @@ const SharedNoteView = () => {
         const response = await TaskDataService.getPublicNote(noteId);
         if (response && response.data) {
           if (!response.data.public_access) {
-            throw new Error('This note is not publicly accessible');
+            throw new Error('PRIVATE_NOTE');
           }
           setNote(response.data);
         } else {
-          throw new Error('Note not found');
+          throw new Error('NOT_FOUND');
         }
       } catch (error) {
         console.error('Error fetching shared note:', error);
-        setError(error.response?.data?.detail || error.message || 'Failed to load the shared note');
+        if (error.message === 'PRIVATE_NOTE') {
+          setError({
+            type: 'private',
+            message: 'This note is not publicly accessible'
+          });
+        } else if (error.message === 'NOT_FOUND' || error.response?.status === 404) {
+          setError({
+            type: 'not_found',
+            message: 'The note you are looking for does not exist'
+          });
+        } else {
+          setError({
+            type: 'error',
+            message: error.response?.data?.detail || 'Failed to load the shared note'
+          });
+        }
       } finally {
         setIsLoading(false);
       }
@@ -46,6 +62,71 @@ const SharedNoteView = () => {
 
     fetchNote();
   }, [noteId]);
+
+  const renderError = () => {
+    const errorConfig = {
+      private: {
+        icon: FaLock,
+        title: 'Private Note',
+        description: 'This note is not publicly accessible. Please contact the note owner for access.',
+        status: 'warning'
+      },
+      not_found: {
+        icon: FaExclamationTriangle,
+        title: 'Note Not Found',
+        description: 'The note you are looking for does not exist or has been removed.',
+        status: 'error'
+      },
+      error: {
+        icon: FaExclamationTriangle,
+        title: 'Error Loading Note',
+        description: error?.message || 'An unexpected error occurred while loading the note.',
+        status: 'error'
+      }
+    };
+
+    const config = errorConfig[error?.type] || errorConfig.error;
+
+    return (
+      <Box
+        minH="100vh"
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
+        bg={bgColor}
+      >
+        <Alert
+          status={config.status}
+          variant="subtle"
+          flexDirection="column"
+          alignItems="center"
+          justifyContent="center"
+          textAlign="center"
+          height="300px"
+          maxW="500px"
+          borderRadius="lg"
+          boxShadow="md"
+        >
+          <Icon as={config.icon} boxSize="40px" mb={4} />
+          <AlertTitle mt={4} mb={1} fontSize="lg">
+            {config.title}
+          </AlertTitle>
+          <AlertDescription maxWidth="sm">
+            {config.description}
+          </AlertDescription>
+          <Button
+            leftIcon={<FaArrowLeft />}
+            mt={6}
+            colorScheme={config.status}
+            variant="outline"
+            onClick={() => navigate(-1)}
+          >
+            Go Back
+          </Button>
+        </Alert>
+      </Box>
+    );
+  };
 
   if (isLoading) {
     return (
@@ -62,35 +143,7 @@ const SharedNoteView = () => {
   }
 
   if (error) {
-    return (
-      <Box
-        minH="100vh"
-        display="flex"
-        alignItems="center"
-        justifyContent="center"
-        bg={bgColor}
-      >
-        <Alert
-          status="error"
-          variant="subtle"
-          flexDirection="column"
-          alignItems="center"
-          justifyContent="center"
-          textAlign="center"
-          height="200px"
-          maxW="500px"
-          borderRadius="lg"
-        >
-          <AlertIcon boxSize="40px" mr={0} />
-          <AlertTitle mt={4} mb={1} fontSize="lg">
-            Error Loading Note
-          </AlertTitle>
-          <AlertDescription maxWidth="sm">
-            {error}
-          </AlertDescription>
-        </Alert>
-      </Box>
-    );
+    return renderError();
   }
 
   return (
