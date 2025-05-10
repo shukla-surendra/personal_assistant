@@ -60,8 +60,7 @@ class TaskDto(BaseModel):
     labels: list
     meta_data: dict
     settings: dict
-    published: bool
-    public: bool
+    public_access: bool
     slug: Optional[str]
     created_at: datetime
     updated_at: datetime
@@ -175,8 +174,7 @@ class TaskDtoMapper:
             labels=task.labels,
             meta_data=task.meta_data,
             settings=task.settings,
-            published=task.published,
-            public=task.public,
+            public_access=task.public_access,
             slug=task.slug,
             created_at=task.created_at,
             updated_at=task.updated_at,

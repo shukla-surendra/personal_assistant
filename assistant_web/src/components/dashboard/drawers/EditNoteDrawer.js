@@ -6,12 +6,22 @@ import {
   Badge, Tooltip, useToast, IconButton, VStack, HStack, Divider, Tag,
   TagLabel, TagCloseButton, Wrap, Select, InputGroup, InputLeftElement,
   InputRightElement, Spinner, Portal, Popover, PopoverTrigger, PopoverContent,
-  PopoverBody, PopoverArrow, MenuDivider
+  PopoverBody, PopoverArrow, MenuDivider, Modal, ModalOverlay,
+  ModalContent, ModalHeader, ModalFooter, ModalBody, ModalCloseButton,
+  useDisclosure,
+  AlertDialog,
+  AlertDialogBody,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogContent,
+  AlertDialogOverlay,
+  Switch,
+  FormLabel,
 } from "@chakra-ui/react";
 import { useDispatch } from "react-redux";
 import { updateTask } from "../../../slices/tasks";
 import TaskDataService from "../../../services/taskservice";
-import { FaArrowLeft, FaSave, FaEye, FaEyeSlash, FaShare, FaDownload, FaFilePdf, FaFileWord, FaFileAlt, FaTags, FaFolder, FaEllipsisH } from "react-icons/fa";
+import { FaArrowLeft, FaSave, FaEye, FaEyeSlash, FaShare, FaDownload, FaFilePdf, FaFileWord, FaFileAlt, FaTags, FaFolder, FaEllipsisH, FaCopy, FaCheck } from "react-icons/fa";
 import { BiCommentDetail } from "react-icons/bi";
 import { BsGearFill, BsThreeDots } from "react-icons/bs";
 import { FiSearch, FiPlus, FiMoreHorizontal } from "react-icons/fi";
@@ -20,6 +30,8 @@ import { formatLocalDateTime } from "../../../utils/locale";
 import ConfigService from "../../../utils/config";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx';
+import TurndownService from 'turndown';
 
 // Function to extract text from Lexical JSON
 const extractTextFromLexicalJSON = (jsonString) => {
@@ -72,6 +84,11 @@ export default function EditNoteDrawer(props) {
   const [newTag, setNewTag] = useState("");
   const [newCategory, setNewCategory] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const { isOpen: isShareModalOpen, onOpen: onShareModalOpen, onClose: onShareModalClose } = useDisclosure();
+  const [shareLink, setShareLink] = useState('');
+  const [isCopied, setIsCopied] = useState(false);
+  const { isOpen: isPublishAlertOpen, onOpen: onPublishAlertOpen, onClose: onPublishAlertClose } = useDisclosure();
+  const cancelRef = React.useRef();
 
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.600');
@@ -116,134 +133,76 @@ export default function EditNoteDrawer(props) {
     setCurrentTask({ ...currentTask, [name]: value });
   };
 
-  const updateContent = () => {
-    setIsLoading(true);
-    setMessage("Saving ...");
-    
-    // Get workspace ID and user ID from config
-    const workspace_id = ConfigService.getDefaultWorkspace().workspace_id;
-    const user_id = ConfigService.getUserId();
-    
-    // Include workspace_id, user_id and default priority in the payload
-    const payload = {
-      ...currentTask,
-      workspace_id: workspace_id,
-      user_id: user_id,
-      priority: "Medium" // Default priority for notes
-    };
-
-    dispatch(updateTask({ task_id: currentTask.task_id, data: payload }))
-      .unwrap()
-      .then(response => {
-        setMessage("Saved !");
-        toast({
-          title: "Success",
-          description: "Note saved successfully",
-          status: "success",
-          duration: 2000,
-          isClosable: true,
-        });
-        setIsLoading(false);
-        setTimeout(() => setMessage(""), 1000);
-      })
-      .catch(e => {
-        setMessage("Error in Saving !");
-        toast({
-          title: "Error",
-          description: "Failed to save note",
-          status: "error",
-          duration: 3000,
-          isClosable: true,
-        });
-        setIsLoading(false);
-        setTimeout(() => setMessage(""), 2000);
+  const handlePublicAccessToggle = () => {
+    if (!currentTask.public_access) {
+      onPublishAlertOpen();
+    } else {
+      setCurrentTask(prev => ({ ...prev, public_access: false }));
+      toast({
+        title: "Note is now private",
+        description: "This note is no longer publicly accessible",
+        status: "info",
+        duration: 3000,
+        isClosable: true,
       });
+    }
   };
 
-  const handlePublishToggle = () => {
-    const updatedTask = {
-      ...currentTask,
-      published: !currentTask.published
-    };
-    setCurrentTask(updatedTask);
-    updateContent();
+  const handleShare = () => {
+    if (currentTask.public_access) {
+      const baseUrl = window.location.origin;
+      const shareUrl = `${baseUrl}/shared/note/${currentTask.task_id}`;
+      setShareLink(shareUrl);
+      onShareModalOpen();
+    } else {
+      toast({
+        title: "Note is not public",
+        description: "Enable public access to share this note",
+        status: "warning",
+        duration: 3000,
+        isClosable: true,
+      });
+    }
   };
 
-  const handleExport = async (format) => {
-    if (format === 'pdf') {
-      try {
-        // Create a temporary div to render the content
-        const tempDiv = document.createElement('div');
-        tempDiv.style.padding = '20px';
-        tempDiv.style.backgroundColor = 'white';
-        tempDiv.style.color = 'black';
-        
-        // Add title
-        const title = document.createElement('h1');
-        title.textContent = currentTask.title || 'Untitled';
-        title.style.fontSize = '24px';
-        title.style.marginBottom = '20px';
-        tempDiv.appendChild(title);
-        
-        // Add content
-        const content = document.createElement('div');
-        content.innerHTML = extractTextFromLexicalJSON(currentTask.description);
-        content.style.fontSize = '14px';
-        tempDiv.appendChild(content);
-        
-        // Add metadata
-        const metadata = document.createElement('div');
-        metadata.style.marginTop = '20px';
-        metadata.style.fontSize = '12px';
-        metadata.style.color = '#666';
-        metadata.innerHTML = `
-          <p>Created: ${formatLocalDateTime(currentTask.created_at)}</p>
-          <p>Updated: ${formatLocalDateTime(currentTask.updated_at)}</p>
-          ${currentTask.tags?.length ? `<p>Tags: ${currentTask.tags.join(', ')}</p>` : ''}
-        `;
-        tempDiv.appendChild(metadata);
-        
-        // Add to document temporarily
-        document.body.appendChild(tempDiv);
-        
-        // Convert to canvas
-        const canvas = await html2canvas(tempDiv, {
-          scale: 2,
-          useCORS: true,
-          logging: false
-        });
-        
-        // Create PDF
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        const imgWidth = 210; // A4 width in mm
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
-        
-        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, imgWidth, imgHeight);
-        
-        // Save the PDF
-        pdf.save(`${currentTask.title || 'note'}.pdf`);
-        
-        // Clean up
-        document.body.removeChild(tempDiv);
-        
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(shareLink);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
+
+  const handleSave = () => {
+    setIsLoading(true);
+    dispatch(updateTask({ 
+      task_id: currentTask.task_id, 
+      data: {
+        ...currentTask,
+        description: JSON.stringify(currentTask.description)
+      }
+    }))
+      .unwrap()
+      .then(() => {
         toast({
-          title: "Success",
-          description: "Note exported as PDF successfully",
+          title: "Note updated",
           status: "success",
-          duration: 2000,
+          duration: 3000,
           isClosable: true,
         });
-      } catch (error) {
-        console.error('Error exporting to PDF:', error);
+        onClose();
+      })
+      .catch(error => {
+        console.error('Error updating note:', error);
         toast({
-          title: "Error",
-          description: "Failed to export note as PDF",
+          title: "Error updating note",
+          description: error.message,
           status: "error",
           duration: 3000,
           isClosable: true,
         });
-      }
-    }
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   };
 
   const handleAddTag = () => {
@@ -271,373 +230,1026 @@ export default function EditNoteDrawer(props) {
     switch (template.id) {
       case 'meeting':
         initialContent = {
-          root: {
-            children: [
-              {
-                type: "heading",
-                children: [{ text: "Meeting Notes" }],
-                tag: "h1"
-              },
-              {
-                type: "paragraph",
-                children: [
-                  { text: "Date: " },
-                  { text: new Date().toLocaleDateString(), bold: true }
-                ]
-              },
-              {
-                type: "paragraph",
-                children: [{ text: "Attendees:" }]
-              },
-              {
-                type: "list",
-                children: [{ text: "Add attendee names here" }],
-                listType: "bullet"
-              },
-              {
-                type: "paragraph",
-                children: [{ text: "Agenda:" }]
-              },
-              {
-                type: "list",
-                children: [{ text: "Add agenda items here" }],
-                listType: "bullet"
-              }
-            ]
-          }
+          type: 'doc',
+          content: [
+            {
+              type: 'heading',
+              attrs: { level: 1 },
+              content: [{ type: 'text', text: 'Meeting Notes' }]
+            },
+            {
+              type: 'paragraph',
+              content: [
+                { type: 'text', text: 'Date: ' },
+                { type: 'text', text: new Date().toLocaleDateString(), marks: [{ type: 'bold' }] }
+              ]
+            },
+            {
+              type: 'paragraph',
+              content: [{ type: 'text', text: 'Attendees:' }]
+            },
+            {
+              type: 'bulletList',
+              content: [
+                {
+                  type: 'listItem',
+                  content: [
+                    {
+                      type: 'paragraph',
+                      content: [{ type: 'text', text: 'Add attendee names here' }]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              type: 'paragraph',
+              content: [{ type: 'text', text: 'Agenda:' }]
+            },
+            {
+              type: 'bulletList',
+              content: [
+                {
+                  type: 'listItem',
+                  content: [
+                    {
+                      type: 'paragraph',
+                      content: [{ type: 'text', text: 'Add agenda items here' }]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              type: 'paragraph',
+              content: [{ type: 'text', text: 'Action Items:' }]
+            },
+            {
+              type: 'bulletList',
+              content: [
+                {
+                  type: 'listItem',
+                  content: [
+                    {
+                      type: 'paragraph',
+                      content: [{ type: 'text', text: 'Add action items here' }]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              type: 'paragraph',
+              content: [{ type: 'text', text: 'Notes:' }]
+            },
+            {
+              type: 'paragraph',
+              content: [{ type: 'text', text: 'Add additional notes here' }]
+            }
+          ]
         };
         break;
       case 'todo':
         initialContent = {
-          root: {
-            children: [
-              {
-                type: "heading",
-                children: [{ text: "To-Do List" }],
-                tag: "h1"
-              },
-              {
-                type: "list",
-                children: [{ text: "Add tasks here" }],
-                listType: "check"
-              }
-            ]
-          }
+          type: 'doc',
+          content: [
+            {
+              type: 'heading',
+              attrs: { level: 1 },
+              content: [{ type: 'text', text: 'To-Do List' }]
+            },
+            {
+              type: 'paragraph',
+              content: [{ type: 'text', text: 'Priority Tasks:' }]
+            },
+            {
+              type: 'bulletList',
+              content: [
+                {
+                  type: 'listItem',
+                  content: [
+                    {
+                      type: 'paragraph',
+                      content: [
+                        {
+                          type: 'text',
+                          marks: [{ type: 'bold' }],
+                          text: '☐ '
+                        },
+                        {
+                          type: 'text',
+                          text: 'Add high-priority tasks here'
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              type: 'paragraph',
+              content: [{ type: 'text', text: 'Regular Tasks:' }]
+            },
+            {
+              type: 'bulletList',
+              content: [
+                {
+                  type: 'listItem',
+                  content: [
+                    {
+                      type: 'paragraph',
+                      content: [
+                        {
+                          type: 'text',
+                          marks: [{ type: 'bold' }],
+                          text: '☐ '
+                        },
+                        {
+                          type: 'text',
+                          text: 'Add regular tasks here'
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              type: 'paragraph',
+              content: [{ type: 'text', text: 'Completed Tasks:' }]
+            },
+            {
+              type: 'bulletList',
+              content: [
+                {
+                  type: 'listItem',
+                  content: [
+                    {
+                      type: 'paragraph',
+                      content: [
+                        {
+                          type: 'text',
+                          marks: [{ type: 'bold' }],
+                          text: '☑ '
+                        },
+                        {
+                          type: 'text',
+                          text: 'Add completed tasks here'
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        };
+        break;
+      case 'project':
+        initialContent = {
+          type: 'doc',
+          content: [
+            {
+              type: 'heading',
+              attrs: { level: 1 },
+              content: [{ type: 'text', text: 'Project Documentation' }]
+            },
+            {
+              type: 'paragraph',
+              content: [{ type: 'text', text: 'Project Overview:' }]
+            },
+            {
+              type: 'paragraph',
+              content: [{ type: 'text', text: 'Add project description here' }]
+            },
+            {
+              type: 'paragraph',
+              content: [{ type: 'text', text: 'Goals:' }]
+            },
+            {
+              type: 'bulletList',
+              content: [
+                {
+                  type: 'listItem',
+                  content: [
+                    {
+                      type: 'paragraph',
+                      content: [{ type: 'text', text: 'Add project goals here' }]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              type: 'paragraph',
+              content: [{ type: 'text', text: 'Timeline:' }]
+            },
+            {
+              type: 'bulletList',
+              content: [
+                {
+                  type: 'listItem',
+                  content: [
+                    {
+                      type: 'paragraph',
+                      content: [{ type: 'text', text: 'Add project timeline here' }]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              type: 'paragraph',
+              content: [{ type: 'text', text: 'Resources:' }]
+            },
+            {
+              type: 'bulletList',
+              content: [
+                {
+                  type: 'listItem',
+                  content: [
+                    {
+                      type: 'paragraph',
+                      content: [{ type: 'text', text: 'Add project resources here' }]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
         };
         break;
       case 'code':
         initialContent = {
-          root: {
-            children: [
-              {
-                type: "heading",
-                children: [{ text: "Code Documentation" }],
-                tag: "h1"
-              },
-              {
-                type: "paragraph",
-                children: [{ text: "Description:" }]
-              },
-              {
-                type: "code",
-                children: [{ text: "// Add your code here" }],
-                language: "javascript"
-              }
-            ]
-          }
+          type: 'doc',
+          content: [
+            {
+              type: 'heading',
+              attrs: { level: 1 },
+              content: [{ type: 'text', text: 'Code Documentation' }]
+            },
+            {
+              type: 'paragraph',
+              content: [{ type: 'text', text: 'Description:' }]
+            },
+            {
+              type: 'paragraph',
+              content: [{ type: 'text', text: 'Add code description here' }]
+            },
+            {
+              type: 'paragraph',
+              content: [{ type: 'text', text: 'Implementation:' }]
+            },
+            {
+              type: 'codeBlock',
+              attrs: { language: 'javascript' },
+              content: [{ type: 'text', text: '// Add your code here' }]
+            },
+            {
+              type: 'paragraph',
+              content: [{ type: 'text', text: 'Usage:' }]
+            },
+            {
+              type: 'codeBlock',
+              attrs: { language: 'javascript' },
+              content: [{ type: 'text', text: '// Add usage examples here' }]
+            },
+            {
+              type: 'paragraph',
+              content: [{ type: 'text', text: 'Notes:' }]
+            },
+            {
+              type: 'paragraph',
+              content: [{ type: 'text', text: 'Add additional notes here' }]
+            }
+          ]
         };
         break;
       default:
         initialContent = {
-          root: {
-            children: [
-              {
-                type: "paragraph",
-                children: [{ text: "Start writing..." }]
-              }
-            ]
-          }
+          type: 'doc',
+          content: [
+            {
+              type: 'paragraph',
+              content: [{ type: 'text', text: 'Start writing...' }]
+            }
+          ]
         };
     }
-    setCurrentTask({
-      ...currentTask,
-      description: JSON.stringify(initialContent)
-    });
+    
+    // Update the task state with the raw JSON object
+    setCurrentTask(prev => ({
+      ...prev,
+      description: initialContent
+    }));
+  };
+
+  const handleExport = async (format) => {
+    if (format === 'pdf') {
+      try {
+        // Create a temporary div to render the content
+        const tempDiv = document.createElement('div');
+        tempDiv.style.padding = '20px';
+        tempDiv.style.backgroundColor = 'white';
+        tempDiv.style.color = 'black';
+        
+        // Add title
+        const title = document.createElement('h1');
+        title.textContent = currentTask.title || 'Untitled';
+        title.style.fontSize = '24px';
+        title.style.marginBottom = '20px';
+        tempDiv.appendChild(title);
+        
+        // Add content - directly use the HTML content
+        const content = document.createElement('div');
+        content.innerHTML = currentTask.description || '';
+        content.style.fontSize = '14px';
+        content.style.lineHeight = '1.6';
+        content.style.fontFamily = 'Arial, sans-serif';
+        
+        // Style the content
+        const style = document.createElement('style');
+        style.textContent = `
+          h1 { font-size: 24px; margin-bottom: 20px; }
+          h2 { font-size: 20px; margin: 15px 0; }
+          p { margin: 10px 0; }
+          ul, ol { margin: 10px 0; padding-left: 20px; }
+          li { margin: 5px 0; }
+          code { background: #f5f5f5; padding: 2px 4px; border-radius: 3px; }
+        `;
+        tempDiv.appendChild(style);
+        tempDiv.appendChild(content);
+        
+        // Add metadata
+        const metadata = document.createElement('div');
+        metadata.style.marginTop = '20px';
+        metadata.style.fontSize = '12px';
+        metadata.style.color = '#666';
+        metadata.style.borderTop = '1px solid #eee';
+        metadata.style.paddingTop = '10px';
+        metadata.innerHTML = `
+          <p>Created: ${new Date().toLocaleString()}</p>
+          ${currentTask.tags?.length ? `<p>Tags: ${currentTask.tags.join(', ')}</p>` : ''}
+        `;
+        tempDiv.appendChild(metadata);
+        
+        // Add to document temporarily
+        document.body.appendChild(tempDiv);
+        
+        // Convert to canvas with better quality
+        const canvas = await html2canvas(tempDiv, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff',
+          windowWidth: tempDiv.scrollWidth,
+          windowHeight: tempDiv.scrollHeight
+        });
+        
+        // Create PDF with proper dimensions
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const imgWidth = 210; // A4 width in mm
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        
+        // Add image with better quality
+        pdf.addImage(canvas.toDataURL('image/png', 1.0), 'PNG', 0, 0, imgWidth, imgHeight);
+        
+        // Save the PDF
+        pdf.save(`${currentTask.title || 'note'}.pdf`);
+        
+        // Clean up
+        document.body.removeChild(tempDiv);
+        
+        toast({
+          title: "Success",
+          description: "Note exported as PDF successfully",
+          status: "success",
+          duration: 2000,
+          isClosable: true,
+        });
+      } catch (error) {
+        console.error('Error exporting to PDF:', error);
+        toast({
+          title: "Error",
+          description: "Failed to export note as PDF",
+          status: "error",
+          duration: 3000,
+          isClosable: true,
+        });
+      }
+    } else if (format === 'docx') {
+      try {
+        // Create a temporary div to parse HTML content
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = currentTask.description || '';
+        
+        // Function to convert HTML to Word document elements
+        const convertHtmlToWordElements = (element) => {
+          const elements = [];
+          
+          // Process each child node
+          Array.from(element.childNodes).forEach(node => {
+            if (node.nodeType === Node.TEXT_NODE) {
+              // Handle text nodes
+              if (node.textContent.trim()) {
+                elements.push(
+                  new Paragraph({
+                    text: node.textContent,
+                    spacing: { after: 100 }
+                  })
+                );
+              }
+            } else if (node.nodeType === Node.ELEMENT_NODE) {
+              // Handle different HTML elements
+              switch (node.tagName.toLowerCase()) {
+                case 'h1':
+                  elements.push(
+                    new Paragraph({
+                      text: node.textContent,
+                      heading: HeadingLevel.HEADING_1,
+                      spacing: { after: 200 }
+                    })
+                  );
+                  break;
+                case 'h2':
+                  elements.push(
+                    new Paragraph({
+                      text: node.textContent,
+                      heading: HeadingLevel.HEADING_2,
+                      spacing: { after: 150 }
+                    })
+                  );
+                  break;
+                case 'h3':
+                  elements.push(
+                    new Paragraph({
+                      text: node.textContent,
+                      heading: HeadingLevel.HEADING_3,
+                      spacing: { after: 100 }
+                    })
+                  );
+                  break;
+                case 'p':
+                  elements.push(
+                    new Paragraph({
+                      text: node.textContent,
+                      spacing: { after: 100 }
+                    })
+                  );
+                  break;
+                case 'ul':
+                case 'ol':
+                  Array.from(node.children).forEach(li => {
+                    elements.push(
+                      new Paragraph({
+                        text: `• ${li.textContent}`,
+                        spacing: { after: 50 }
+                      })
+                    );
+                  });
+                  break;
+                case 'li':
+                  elements.push(
+                    new Paragraph({
+                      text: `• ${node.textContent}`,
+                      spacing: { after: 50 }
+                    })
+                  );
+                  break;
+                case 'code':
+                  elements.push(
+                    new Paragraph({
+                      text: node.textContent,
+                      spacing: { after: 100 },
+                      style: 'code'
+                    })
+                  );
+                  break;
+                default:
+                  // Recursively process other elements
+                  elements.push(...convertHtmlToWordElements(node));
+              }
+            }
+          });
+          
+          return elements;
+        };
+
+        // Create a new document
+        const doc = new Document({
+          styles: {
+            paragraphStyles: [
+              {
+                id: 'code',
+                name: 'Code',
+                run: {
+                  font: 'Courier New',
+                  size: 24,
+                  color: '333333',
+                },
+                paragraph: {
+                  spacing: {
+                    before: 100,
+                    after: 100,
+                  },
+                  border: {
+                    bottom: {
+                      color: 'auto',
+                      space: 1,
+                      style: 'single',
+                      size: 6,
+                    },
+                  },
+                },
+              },
+            ],
+          },
+          sections: [{
+            properties: {},
+            children: [
+              // Title
+              new Paragraph({
+                text: currentTask.title || 'Untitled',
+                heading: HeadingLevel.HEADING_1,
+                alignment: AlignmentType.CENTER,
+                spacing: {
+                  after: 200,
+                },
+              }),
+              // Content
+              ...convertHtmlToWordElements(tempDiv),
+              // Metadata
+              new Paragraph({
+                text: `Created: ${new Date().toLocaleString()}`,
+                spacing: {
+                  after: 100,
+                },
+              }),
+              ...(currentTask.tags?.length ? [
+                new Paragraph({
+                  text: `Tags: ${currentTask.tags.join(', ')}`,
+                  spacing: {
+                    after: 100,
+                  },
+                })
+              ] : []),
+            ],
+          }],
+        });
+
+        // Generate and download the document
+        const blob = await Packer.toBlob(doc);
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${currentTask.title || 'note'}.docx`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+
+        toast({
+          title: "Success",
+          description: "Note exported as Word document successfully",
+          status: "success",
+          duration: 2000,
+          isClosable: true,
+        });
+      } catch (error) {
+        console.error('Error exporting to Word:', error);
+        toast({
+          title: "Error",
+          description: "Failed to export note as Word document",
+          status: "error",
+          duration: 3000,
+          isClosable: true,
+        });
+      }
+    } else if (format === 'md') {
+      try {
+        // Create a temporary div to parse HTML content
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = currentTask.description || '';
+        
+        // Initialize Turndown service
+        const turndownService = new TurndownService({
+          headingStyle: 'atx',
+          codeBlockStyle: 'fenced',
+          emDelimiter: '*',
+          bulletListMarker: '-',
+          strongDelimiter: '**'
+        });
+
+        // Add custom rules for better Markdown conversion
+        turndownService.addRule('codeBlocks', {
+          filter: ['pre', 'code'],
+          replacement: function(content, node) {
+            const language = node.getAttribute('class')?.replace('language-', '') || '';
+            return `\n\`\`\`${language}\n${content}\n\`\`\`\n`;
+          }
+        });
+
+        // Convert HTML to Markdown
+        const markdown = turndownService.turndown(tempDiv.innerHTML);
+
+        // Create the full Markdown content
+        const fullMarkdown = `# ${currentTask.title || 'Untitled'}\n\n${markdown}\n\n---\n\nCreated: ${new Date().toLocaleString()}\n${currentTask.tags?.length ? `Tags: ${currentTask.tags.join(', ')}` : ''}`;
+
+        // Create and download the file
+        const blob = new Blob([fullMarkdown], { type: 'text/markdown' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${currentTask.title || 'note'}.md`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+
+        toast({
+          title: "Success",
+          description: "Note exported as Markdown successfully",
+          status: "success",
+          duration: 2000,
+          isClosable: true,
+        });
+      } catch (error) {
+        console.error('Error exporting to Markdown:', error);
+        toast({
+          title: "Error",
+          description: "Failed to export note as Markdown",
+          status: "error",
+          duration: 3000,
+          isClosable: true,
+        });
+      }
+    }
   };
 
   return (
-    <Drawer 
-      onClose={onClose} 
-      isOpen={isOpen} 
-      size={size}
-      placement="right"
-    >
-      <DrawerOverlay backdropFilter="blur(4px)" />
-      <DrawerContent 
-        bg={bgColor} 
-        borderLeft="1px" 
-        borderColor={borderColor}
-        boxShadow="xl"
+    <>
+      <Drawer 
+        onClose={onClose} 
+        isOpen={isOpen} 
+        size={size}
+        placement="right"
       >
-        <DrawerCloseButton top={4} right={4} zIndex={2} />
-        
-        {/* Header */}
-        <DrawerHeader 
-          borderBottomWidth="1px" 
+        <DrawerOverlay backdropFilter="blur(4px)" />
+        <DrawerContent 
+          bg={bgColor} 
+          borderLeft="1px" 
           borderColor={borderColor}
-          py={4}
-          px={6}
+          boxShadow="xl"
         >
-          <Flex justify="space-between" align="center" position="relative">
-            <HStack spacing={4}>
-              <IconButton
-                icon={<Icon as={FaArrowLeft} />}
-                variant="ghost"
-                size="sm"
-                onClick={onClose}
-                aria-label="Back"
-              />
-              <Badge 
-                colorScheme={currentTask?.published ? "green" : "gray"}
-                px={2}
-                py={1}
-                borderRadius="full"
-                fontSize="xs"
-              >
-                {currentTask?.published ? "Published" : "Draft"}
-              </Badge>
-            </HStack>
-            <HStack spacing={2} position="absolute" right="4" zIndex={1}>
-              <Tooltip label="Comments" hasArrow>
+          <DrawerCloseButton top={4} right={4} zIndex={2} />
+          
+          {/* Header */}
+          <DrawerHeader 
+            borderBottomWidth="1px" 
+            borderColor={borderColor}
+            py={4}
+            px={6}
+          >
+            <Flex justify="space-between" align="center" position="relative">
+              <HStack spacing={4}>
                 <IconButton
-                  icon={<Icon as={BiCommentDetail} />}
+                  icon={<Icon as={FaArrowLeft} />}
                   variant="ghost"
                   size="sm"
-                  aria-label="Comments"
+                  onClick={onClose}
+                  aria-label="Back"
                 />
-              </Tooltip>
-              <Menu>
-                <MenuButton
-                  as={IconButton}
-                  icon={<Icon as={FiMoreHorizontal} />}
-                  variant="ghost"
-                  size="sm"
-                  aria-label="More options"
+                <Badge 
+                  colorScheme={currentTask?.public_access ? "green" : "gray"}
+                  px={2}
+                  py={1}
+                  borderRadius="full"
+                  fontSize="xs"
+                >
+                  {currentTask?.public_access ? "Public" : "Private"}
+                </Badge>
+              </HStack>
+              <HStack spacing={2} position="absolute" right="4" zIndex={1}>
+                <Tooltip label="Comments" hasArrow>
+                  <IconButton
+                    icon={<Icon as={BiCommentDetail} />}
+                    variant="ghost"
+                    size="sm"
+                    aria-label="Comments"
+                  />
+                </Tooltip>
+                <Menu>
+                  <MenuButton
+                    as={IconButton}
+                    icon={<Icon as={FiMoreHorizontal} />}
+                    variant="ghost"
+                    size="sm"
+                    aria-label="More options"
+                  />
+                  <MenuList shadow="lg" py={2}>
+                    <MenuItem 
+                      icon={<Icon as={currentTask?.public_access ? FaEyeSlash : FaEye} />}
+                      onClick={handlePublicAccessToggle}
+                      py={2}
+                    >
+                      {currentTask?.public_access ? "Unpublish" : "Publish"}
+                    </MenuItem>
+                    <MenuItem 
+                      icon={<Icon as={FaShare} />} 
+                      py={2}
+                      onClick={handleShare}
+                    >
+                      Share
+                    </MenuItem>
+                    <MenuDivider />
+                    <MenuItem 
+                      icon={<Icon as={FaFilePdf} />} 
+                      py={2}
+                      onClick={() => handleExport('pdf')}
+                    >
+                      Export as PDF
+                    </MenuItem>
+                    <MenuItem 
+                      icon={<Icon as={FaFileWord} />} 
+                      py={2}
+                      onClick={() => handleExport('docx')}
+                    >
+                      Export as Word
+                    </MenuItem>
+                    <MenuItem 
+                      icon={<Icon as={FaFileAlt} />} 
+                      py={2}
+                      onClick={() => handleExport('md')}
+                    >
+                      Export as Markdown
+                    </MenuItem>
+                  </MenuList>
+                </Menu>
+              </HStack>
+            </Flex>
+          </DrawerHeader>
+
+          {/* Body */}
+          <DrawerBody px={6} py={4}>
+            <VStack spacing={6} align="stretch">
+              {/* Title Input */}
+              <FormControl>
+                <Input
+                  ref={initialRef}
+                  placeholder="Untitled"
+                  id="title"
+                  required
+                  value={currentTask?.title || ''}
+                  onChange={handleInputChange}
+                  name="title"
+                  size="lg"
+                  fontSize="2xl"
+                  fontWeight="bold"
+                  variant="unstyled"
+                  px={0}
+                  _placeholder={{ color: mutedColor }}
+                  mb={2}
                 />
-                <MenuList shadow="lg" py={2}>
-                  <MenuItem 
-                    icon={<Icon as={currentTask?.published ? FaEyeSlash : FaEye} />}
-                    onClick={handlePublishToggle}
-                    py={2}
-                  >
-                    {currentTask?.published ? "Unpublish" : "Publish"}
-                  </MenuItem>
-                  <MenuItem icon={<Icon as={FaShare} />} py={2}>
-                    Share
-                  </MenuItem>
-                  <MenuDivider />
-                  <MenuItem 
-                    icon={<Icon as={FaFilePdf} />} 
-                    py={2}
-                    onClick={() => handleExport('pdf')}
-                  >
-                    Export as PDF
-                  </MenuItem>
-                  <MenuItem icon={<Icon as={FaFileWord} />} py={2}>
-                    Export as Word
-                  </MenuItem>
-                  <MenuItem icon={<Icon as={FaFileAlt} />} py={2}>
-                    Export as Markdown
-                  </MenuItem>
-                </MenuList>
-              </Menu>
-            </HStack>
-          </Flex>
-        </DrawerHeader>
+                <Text fontSize="sm" color={mutedColor}>
+                  Last updated: {formatLocalDateTime(currentTask?.updated_at)}
+                </Text>
+              </FormControl>
 
-        {/* Body */}
-        <DrawerBody px={6} py={4}>
-          <VStack spacing={6} align="stretch">
-            {/* Title Input */}
-            <FormControl>
-              <Input
-                ref={initialRef}
-                placeholder="Untitled"
-                id="title"
-                required
-                value={currentTask?.title || ''}
-                onChange={handleInputChange}
-                name="title"
-                size="lg"
-                fontSize="2xl"
-                fontWeight="bold"
-                variant="unstyled"
-                px={0}
-                _placeholder={{ color: mutedColor }}
-                mb={2}
-              />
-              <Text fontSize="sm" color={mutedColor}>
-                Last updated: {formatLocalDateTime(currentTask?.updated_at)}
-              </Text>
-            </FormControl>
+              <Divider />
 
-            <Divider />
+              {/* Metadata Section */}
+              <VStack spacing={4} align="stretch">
+                {/* Category */}
+                <HStack spacing={3}>
+                  <Icon as={FaFolder} color={mutedColor} />
+                  <Popover placement="bottom-start">
+                    <PopoverTrigger>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        rightIcon={<Icon as={FiPlus} />}
+                        color={mutedColor}
+                        _hover={{ bg: hoverBg }}
+                      >
+                        {currentTask?.category || "Add category"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent width="200px" shadow="lg">
+                      <PopoverArrow />
+                      <PopoverBody p={2}>
+                        <VStack align="stretch" spacing={1}>
+                          {AVAILABLE_CATEGORIES.map(category => (
+                            <Button
+                              key={category}
+                              size="sm"
+                              variant="ghost"
+                              justifyContent="flex-start"
+                              onClick={() => {
+                                setNewCategory(category);
+                                handleAddCategory();
+                              }}
+                              _hover={{ bg: hoverBg }}
+                            >
+                              {category}
+                            </Button>
+                          ))}
+                        </VStack>
+                      </PopoverBody>
+                    </PopoverContent>
+                  </Popover>
+                </HStack>
 
-            {/* Metadata Section */}
-            <VStack spacing={4} align="stretch">
-              {/* Category */}
-              <HStack spacing={3}>
-                <Icon as={FaFolder} color={mutedColor} />
-                <Popover placement="bottom-start">
-                  <PopoverTrigger>
+                {/* Tags */}
+                <HStack spacing={3} align="flex-start">
+                  <Icon as={FaTags} color={mutedColor} mt={2} />
+                  <VStack align="stretch" spacing={2} flex={1}>
+                    <Wrap spacing={2}>
+                      {currentTask?.tags?.map((tag) => (
+                        <Tag
+                          key={tag}
+                          size="md"
+                          borderRadius="full"
+                          variant="subtle"
+                          colorScheme="blue"
+                        >
+                          <TagLabel>{tag}</TagLabel>
+                          <TagCloseButton onClick={() => handleRemoveTag(tag)} />
+                        </Tag>
+                      ))}
+                      <InputGroup size="sm" width="150px" display="inline-flex">
+                        <Input
+                          placeholder="Add tag"
+                          value={newTag}
+                          onChange={(e) => setNewTag(e.target.value)}
+                          onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
+                          borderRadius="full"
+                          pl={8}
+                        />
+                        <InputLeftElement pointerEvents="none">
+                          <Icon as={FiSearch} color={mutedColor} />
+                        </InputLeftElement>
+                      </InputGroup>
+                    </Wrap>
+                  </VStack>
+                </HStack>
+              </VStack>
+
+              <Divider />
+
+              {/* Templates */}
+              <VStack align="stretch" spacing={3}>
+                <Text fontSize="sm" fontWeight="medium" color={textColor}>
+                  Templates
+                </Text>
+                <Wrap spacing={2}>
+                  {NOTE_TEMPLATES.map(template => (
                     <Button
-                      variant="ghost"
+                      key={template.id}
                       size="sm"
-                      rightIcon={<Icon as={FiPlus} />}
-                      color={mutedColor}
+                      variant="outline"
+                      onClick={() => handleApplyTemplate(template)}
                       _hover={{ bg: hoverBg }}
                     >
-                      {currentTask?.category || "Add category"}
+                      {template.name}
                     </Button>
-                  </PopoverTrigger>
-                  <PopoverContent width="200px" shadow="lg">
-                    <PopoverArrow />
-                    <PopoverBody p={2}>
-                      <VStack align="stretch" spacing={1}>
-                        {AVAILABLE_CATEGORIES.map(category => (
-                          <Button
-                            key={category}
-                            size="sm"
-                            variant="ghost"
-                            justifyContent="flex-start"
-                            onClick={() => {
-                              setNewCategory(category);
-                              handleAddCategory();
-                            }}
-                            _hover={{ bg: hoverBg }}
-                          >
-                            {category}
-                          </Button>
-                        ))}
-                      </VStack>
-                    </PopoverBody>
-                  </PopoverContent>
-                </Popover>
-              </HStack>
+                  ))}
+                </Wrap>
+              </VStack>
 
-              {/* Tags */}
-              <HStack spacing={3} align="flex-start">
-                <Icon as={FaTags} color={mutedColor} mt={2} />
-                <VStack align="stretch" spacing={2} flex={1}>
-                  <Wrap spacing={2}>
-                    {currentTask?.tags?.map((tag) => (
-                      <Tag
-                        key={tag}
-                        size="md"
-                        borderRadius="full"
-                        variant="subtle"
-                        colorScheme="blue"
-                      >
-                        <TagLabel>{tag}</TagLabel>
-                        <TagCloseButton onClick={() => handleRemoveTag(tag)} />
-                      </Tag>
-                    ))}
-                    <InputGroup size="sm" width="150px" display="inline-flex">
-                      <Input
-                        placeholder="Add tag"
-                        value={newTag}
-                        onChange={(e) => setNewTag(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
-                        borderRadius="full"
-                        pl={8}
-                      />
-                      <InputLeftElement pointerEvents="none">
-                        <Icon as={FiSearch} color={mutedColor} />
-                      </InputLeftElement>
-                    </InputGroup>
-                  </Wrap>
-                </VStack>
-              </HStack>
+              <Divider />
+
+              {/* Editor */}
+              <Box flex={1}>
+                <RichTextEditor
+                  value={currentTask?.description || ''}
+                  onChange={(newContent) => {
+                    setCurrentTask(prev => ({
+                      ...prev,
+                      description: newContent
+                    }));
+                  }}
+                />
+              </Box>
             </VStack>
+          </DrawerBody>
 
-            <Divider />
-
-            {/* Templates */}
-            <VStack align="stretch" spacing={3}>
-              <Text fontSize="sm" fontWeight="medium" color={textColor}>
-                Templates
-              </Text>
-              <Wrap spacing={2}>
-                {NOTE_TEMPLATES.map(template => (
-                  <Button
-                    key={template.id}
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleApplyTemplate(template)}
-                    _hover={{ bg: hoverBg }}
-                  >
-                    {template.name}
-                  </Button>
-                ))}
-              </Wrap>
-            </VStack>
-
-            <Divider />
-
-            {/* Editor */}
-            <Box flex={1}>
-              <RichTextEditor
-                value={currentTask?.description || ''}
-                onChange={(newContent) => {
-                  setCurrentTask(prev => ({
-                    ...prev,
-                    description: newContent
-                  }));
-                }}
-              />
-            </Box>
-          </VStack>
-        </DrawerBody>
-
-        {/* Footer */}
-        <DrawerFooter 
-          borderTopWidth="1px" 
-          borderColor={borderColor}
-          py={4}
-          px={6}
-        >
-          <Flex w="100%" justify="space-between" align="center">
-            <Box color={isLoading ? "blue.500" : mutedColor}>
-              {isLoading ? (
-                <HStack>
-                  <Spinner size="sm" />
+          {/* Footer */}
+          <DrawerFooter 
+            borderTopWidth="1px" 
+            borderColor={borderColor}
+            py={4}
+            px={6}
+          >
+            <Flex w="100%" justify="space-between" align="center">
+              <Box color={isLoading ? "blue.500" : mutedColor}>
+                {isLoading ? (
+                  <HStack>
+                    <Spinner size="sm" />
+                    <Text fontSize="sm">{message}</Text>
+                  </HStack>
+                ) : (
                   <Text fontSize="sm">{message}</Text>
-                </HStack>
-              ) : (
-                <Text fontSize="sm">{message}</Text>
-              )}
-            </Box>
-            <HStack spacing={3}>
-              <Button
-                variant="ghost"
-                onClick={onClose}
-                size="md"
-              >
-                Close
+                )}
+              </Box>
+              <HStack spacing={3}>
+                <Button
+                  variant="ghost"
+                  onClick={onClose}
+                  size="md"
+                >
+                  Close
+                </Button>
+                <Button
+                  colorScheme="blue"
+                  onClick={handleSave}
+                  isLoading={isLoading}
+                  leftIcon={<Icon as={FaSave} />}
+                  size="md"
+                >
+                  Save
+                </Button>
+              </HStack>
+            </Flex>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+
+      {/* Share Modal */}
+      <Modal isOpen={isShareModalOpen} onClose={onShareModalClose}>
+        <ModalOverlay backdropFilter="blur(4px)" />
+        <ModalContent>
+          <ModalHeader>Share Note</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <VStack spacing={4} align="stretch">
+              <Text fontSize="sm" color={mutedColor}>
+                Share this note with others by copying the link below:
+              </Text>
+              <InputGroup size="md">
+                <Input
+                  value={shareLink}
+                  readOnly
+                  pr="4.5rem"
+                  bg={inputBg}
+                />
+                <InputRightElement width="4.5rem">
+                  <Button
+                    h="1.75rem"
+                    size="sm"
+                    onClick={copyToClipboard}
+                    colorScheme={isCopied ? "green" : "blue"}
+                  >
+                    {isCopied ? (
+                      <Icon as={FaCheck} />
+                    ) : (
+                      <Icon as={FaCopy} />
+                    )}
+                  </Button>
+                </InputRightElement>
+              </InputGroup>
+              <Text fontSize="xs" color={mutedColor}>
+                Note: The link will be accessible to anyone who has it.
+              </Text>
+            </VStack>
+          </ModalBody>
+          <ModalFooter>
+            <Button colorScheme="blue" mr={3} onClick={onShareModalClose}>
+              Close
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Publish Alert */}
+      <AlertDialog
+        isOpen={isPublishAlertOpen}
+        leastDestructiveRef={cancelRef}
+        onClose={onPublishAlertClose}
+      >
+        <AlertDialogOverlay backdropFilter="blur(4px)">
+          <AlertDialogContent>
+            <AlertDialogHeader fontSize="lg" fontWeight="bold">
+              Make Note Public
+            </AlertDialogHeader>
+
+            <AlertDialogBody>
+              Are you sure you want to make this note publicly accessible? Anyone with the link will be able to view it.
+            </AlertDialogBody>
+
+            <AlertDialogFooter>
+              <Button ref={cancelRef} onClick={onPublishAlertClose}>
+                Cancel
               </Button>
-              <Button
-                colorScheme="blue"
-                onClick={updateContent}
-                isLoading={isLoading}
-                leftIcon={<Icon as={FaSave} />}
-                size="md"
-              >
-                Save
+              <Button colorScheme="blue" onClick={() => {
+                setCurrentTask(prev => ({ ...prev, public_access: true }));
+                onPublishAlertClose();
+              }} ml={3}>
+                Make Public
               </Button>
-            </HStack>
-          </Flex>
-        </DrawerFooter>
-      </DrawerContent>
-    </Drawer>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialogOverlay>
+      </AlertDialog>
+    </>
   );
 }

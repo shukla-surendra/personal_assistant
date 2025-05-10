@@ -285,8 +285,7 @@ class Task(DynamoEntity):
         self.start_time = start_time.isoformat() if start_time else None
         self.end_time = end_time.isoformat() if end_time else None
         self.assignee = assignee
-        self.published = False
-        self.public = False
+        self.public_access = False
         self.labels = labels or []
         self.board_id = board_id
         self.created_at = datetime.utcnow().isoformat()

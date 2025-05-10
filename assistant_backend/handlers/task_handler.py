@@ -88,8 +88,7 @@ class TaskHandler:
                 labels=task_cmd.labels,
                 meta_data=task_cmd.meta_data,
                 settings=task_cmd.settings,
-                published=task_cmd.published,
-                public=task_cmd.public,
+                public_access=task_cmd.public_access,
                 slug=slug
             )
 
@@ -196,10 +195,8 @@ class TaskHandler:
                 task.meta_data = task_cmd.meta_data
             if task_cmd.settings is not None:
                 task.settings = task_cmd.settings
-            if task_cmd.published is not None:
-                task.published = task_cmd.published
-            if task_cmd.public is not None:
-                task.public = task_cmd.public
+            if task_cmd.public_access is not None:
+                task.public_access = task_cmd.public_access
 
             self.db.commit()
             logger.info(f"Successfully updated task: {task_cmd.task_id}")
@@ -323,4 +320,31 @@ class TaskHandler:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Error getting task by slug: {str(e)}"
+            )
+
+    def get_public_note(self, note_id: str):
+        """Get a note with public access by ID - no authentication required"""
+        try:
+            logger.info(f"Getting public note: {note_id}")
+            # Get the note from database without user_id check
+            note = self.db.query(Task).filter(
+                Task.task_id == note_id,
+                Task.task_type == TaskType.NOTE.value,
+                Task.public_access == True,
+                Task.is_deleted == False
+            ).first()
+
+            if not note:
+                logger.warning(f"Public note not found or not publicly accessible: {note_id}")
+                return None
+
+            logger.info(f"Successfully retrieved public note: {note_id}")
+            return TaskDtoMapper.map_to_task_dto_mapper(note)
+
+        except Exception as e:
+            logger.error(f"Error getting public note: {str(e)}")
+            logger.error(traceback.format_exc())
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to get public note"
             )

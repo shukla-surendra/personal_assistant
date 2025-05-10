@@ -16,7 +16,7 @@ class TaskCommand(BaseModel):
     status: Optional[str] = "todo"
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
-    published: bool = False
+    public_access: bool = False  # Combined field for public access
     slug: Optional[str] = None
     board_id: Optional[str] = None
     completed: bool = False
@@ -28,7 +28,6 @@ class TaskCommand(BaseModel):
     labels: Optional[list] = []
     meta_data: Optional[dict] = {}
     settings: Optional[dict] = {}
-    public: bool = False
 
 
 class TaskDeleteCommand(BaseModel):
@@ -45,7 +44,7 @@ class TaskUpdateCommand(BaseModel):
     reporter_id: Optional[str] = None
     watchers: Optional[list] = []
     labels: Optional[list] = []
-    public: Optional[bool] = None
+    public_access: Optional[bool] = None  # Combined field for public access
     meta_data: Optional[dict] = {}
     settings: Optional[dict] = {}
     title: Optional[str] = None
@@ -54,7 +53,6 @@ class TaskUpdateCommand(BaseModel):
     task_type: Optional[str] = None
     status: Optional[str] = None
     completed: Optional[bool] = None
-    published: Optional[bool] = None
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
     due_on: Optional[datetime] = None

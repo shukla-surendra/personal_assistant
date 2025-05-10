@@ -1,5 +1,6 @@
 import http from "../http-common";
 import ConfigService from "../utils/config";
+import axios from "axios";
 
 const getAll = () => {
   return http.get(`/api/v1/workspaces/${ConfigService.getDefaultWorkspace().workspace_id}/tasks?order=desc&task_type=TASK`);
@@ -18,7 +19,16 @@ const getAllTimeBlocks = () => {
 };
 
 const get = task_id => {
-  return http.get(`/api/v1/workspaces/${ConfigService.getDefaultWorkspace().workspace_id}/tasks/${task_id}`);
+  // For shared notes, we don't need authentication
+  const isSharedNote = window.location.pathname.startsWith('/share/note/');
+  
+  if (isSharedNote) {
+    // Use axios directly for shared notes without authentication
+    return axios.get(`/api/v1/workspaces/${ConfigService.getDefaultWorkspace().workspace_id}/tasks/${task_id}`);
+  } else {
+    // Use the authenticated http client for regular requests
+    return http.get(`/api/v1/workspaces/${ConfigService.getDefaultWorkspace().workspace_id}/tasks/${task_id}`);
+  }
 };
 
 const getPostBySlug = slug => {
@@ -46,6 +56,11 @@ const findByTitle = title => {
   return http.get(`/api/v1/workspaces/${ConfigService.getDefaultWorkspace().workspace_id}/tasks ?title=${title}`);
 };
 
+const getPublicNote = task_id => {
+  // Use axios for public access without authentication
+  return axios.get(`/api/v1/public/notes/${task_id}`);
+};
+
 const TaskService = {
   getAll,
   getAllNotes,
@@ -57,7 +72,8 @@ const TaskService = {
   findByTitle,
   getAllQuickNotes,
   getAllTimeBlocks,
-  getPostBySlug
+  getPostBySlug,
+  getPublicNote
 };
 
 export default TaskService;
