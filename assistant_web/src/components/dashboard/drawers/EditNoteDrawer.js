@@ -103,7 +103,11 @@ export default function EditNoteDrawer(props) {
     TaskDataService.get(task_id)
       .then(response => {
         if (response && response.data) {
-          setCurrentTask(response.data);
+          // Use the description directly as HTML
+          setCurrentTask({
+            ...response.data,
+            description: response.data.description || ''
+          });
         }
       })
       .catch(e => {
@@ -133,19 +137,42 @@ export default function EditNoteDrawer(props) {
     setCurrentTask({ ...currentTask, [name]: value });
   };
 
-  const handlePublicAccessToggle = () => {
-    if (!currentTask.public_access) {
-      onPublishAlertOpen();
-    } else {
-      setCurrentTask(prev => ({ ...prev, public_access: false }));
-      toast({
-        title: "Note is now private",
-        description: "This note is no longer publicly accessible",
-        status: "info",
-        duration: 3000,
-        isClosable: true,
+  const handlePublish = () => {
+    setIsLoading(true);
+    dispatch(updateTask({ 
+      task_id: currentTask.task_id, 
+      data: {
+        ...currentTask,
+        public_access: !currentTask.public_access
+      }
+    }))
+      .unwrap()
+      .then(() => {
+        toast({
+          title: currentTask.public_access ? "Note unpublished" : "Note published",
+          status: "success",
+          duration: 3000,
+          isClosable: true,
+        });
+        // Update local state
+        setCurrentTask(prev => ({
+          ...prev,
+          public_access: !prev.public_access
+        }));
+      })
+      .catch(error => {
+        console.error('Error updating note visibility:', error);
+        toast({
+          title: "Error",
+          description: error.message,
+          status: "error",
+          duration: 3000,
+          isClosable: true,
+        });
+      })
+      .finally(() => {
+        setIsLoading(false);
       });
-    }
   };
 
   const handleShare = () => {
@@ -177,7 +204,7 @@ export default function EditNoteDrawer(props) {
       task_id: currentTask.task_id, 
       data: {
         ...currentTask,
-        description: JSON.stringify(currentTask.description)
+        description: currentTask.description // Send HTML content directly
       }
     }))
       .unwrap()
@@ -229,315 +256,79 @@ export default function EditNoteDrawer(props) {
     let initialContent = "";
     switch (template.id) {
       case 'meeting':
-        initialContent = {
-          type: 'doc',
-          content: [
-            {
-              type: 'heading',
-              attrs: { level: 1 },
-              content: [{ type: 'text', text: 'Meeting Notes' }]
-            },
-            {
-              type: 'paragraph',
-              content: [
-                { type: 'text', text: 'Date: ' },
-                { type: 'text', text: new Date().toLocaleDateString(), marks: [{ type: 'bold' }] }
-              ]
-            },
-            {
-              type: 'paragraph',
-              content: [{ type: 'text', text: 'Attendees:' }]
-            },
-            {
-              type: 'bulletList',
-              content: [
-                {
-                  type: 'listItem',
-                  content: [
-                    {
-                      type: 'paragraph',
-                      content: [{ type: 'text', text: 'Add attendee names here' }]
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              type: 'paragraph',
-              content: [{ type: 'text', text: 'Agenda:' }]
-            },
-            {
-              type: 'bulletList',
-              content: [
-                {
-                  type: 'listItem',
-                  content: [
-                    {
-                      type: 'paragraph',
-                      content: [{ type: 'text', text: 'Add agenda items here' }]
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              type: 'paragraph',
-              content: [{ type: 'text', text: 'Action Items:' }]
-            },
-            {
-              type: 'bulletList',
-              content: [
-                {
-                  type: 'listItem',
-                  content: [
-                    {
-                      type: 'paragraph',
-                      content: [{ type: 'text', text: 'Add action items here' }]
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              type: 'paragraph',
-              content: [{ type: 'text', text: 'Notes:' }]
-            },
-            {
-              type: 'paragraph',
-              content: [{ type: 'text', text: 'Add additional notes here' }]
-            }
-          ]
-        };
+        initialContent = `
+          <h1>Meeting Notes</h1>
+          <p>Date: <strong>${new Date().toLocaleDateString()}</strong></p>
+          <p>Attendees:</p>
+          <ul>
+            <li>Add attendee names here</li>
+          </ul>
+          <p>Agenda:</p>
+          <ul>
+            <li>Add agenda items here</li>
+          </ul>
+          <p>Action Items:</p>
+          <ul>
+            <li>Add action items here</li>
+          </ul>
+          <p>Notes:</p>
+          <p>Add additional notes here</p>
+        `;
         break;
       case 'todo':
-        initialContent = {
-          type: 'doc',
-          content: [
-            {
-              type: 'heading',
-              attrs: { level: 1 },
-              content: [{ type: 'text', text: 'To-Do List' }]
-            },
-            {
-              type: 'paragraph',
-              content: [{ type: 'text', text: 'Priority Tasks:' }]
-            },
-            {
-              type: 'bulletList',
-              content: [
-                {
-                  type: 'listItem',
-                  content: [
-                    {
-                      type: 'paragraph',
-                      content: [
-                        {
-                          type: 'text',
-                          marks: [{ type: 'bold' }],
-                          text: '☐ '
-                        },
-                        {
-                          type: 'text',
-                          text: 'Add high-priority tasks here'
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              type: 'paragraph',
-              content: [{ type: 'text', text: 'Regular Tasks:' }]
-            },
-            {
-              type: 'bulletList',
-              content: [
-                {
-                  type: 'listItem',
-                  content: [
-                    {
-                      type: 'paragraph',
-                      content: [
-                        {
-                          type: 'text',
-                          marks: [{ type: 'bold' }],
-                          text: '☐ '
-                        },
-                        {
-                          type: 'text',
-                          text: 'Add regular tasks here'
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              type: 'paragraph',
-              content: [{ type: 'text', text: 'Completed Tasks:' }]
-            },
-            {
-              type: 'bulletList',
-              content: [
-                {
-                  type: 'listItem',
-                  content: [
-                    {
-                      type: 'paragraph',
-                      content: [
-                        {
-                          type: 'text',
-                          marks: [{ type: 'bold' }],
-                          text: '☑ '
-                        },
-                        {
-                          type: 'text',
-                          text: 'Add completed tasks here'
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        };
+        initialContent = `
+          <h1>To-Do List</h1>
+          <p>Priority Tasks:</p>
+          <ul>
+            <li><strong>☐</strong> Add high-priority tasks here</li>
+          </ul>
+          <p>Regular Tasks:</p>
+          <ul>
+            <li><strong>☐</strong> Add regular tasks here</li>
+          </ul>
+          <p>Completed Tasks:</p>
+          <ul>
+            <li><strong>☑</strong> Add completed tasks here</li>
+          </ul>
+        `;
         break;
       case 'project':
-        initialContent = {
-          type: 'doc',
-          content: [
-            {
-              type: 'heading',
-              attrs: { level: 1 },
-              content: [{ type: 'text', text: 'Project Documentation' }]
-            },
-            {
-              type: 'paragraph',
-              content: [{ type: 'text', text: 'Project Overview:' }]
-            },
-            {
-              type: 'paragraph',
-              content: [{ type: 'text', text: 'Add project description here' }]
-            },
-            {
-              type: 'paragraph',
-              content: [{ type: 'text', text: 'Goals:' }]
-            },
-            {
-              type: 'bulletList',
-              content: [
-                {
-                  type: 'listItem',
-                  content: [
-                    {
-                      type: 'paragraph',
-                      content: [{ type: 'text', text: 'Add project goals here' }]
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              type: 'paragraph',
-              content: [{ type: 'text', text: 'Timeline:' }]
-            },
-            {
-              type: 'bulletList',
-              content: [
-                {
-                  type: 'listItem',
-                  content: [
-                    {
-                      type: 'paragraph',
-                      content: [{ type: 'text', text: 'Add project timeline here' }]
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              type: 'paragraph',
-              content: [{ type: 'text', text: 'Resources:' }]
-            },
-            {
-              type: 'bulletList',
-              content: [
-                {
-                  type: 'listItem',
-                  content: [
-                    {
-                      type: 'paragraph',
-                      content: [{ type: 'text', text: 'Add project resources here' }]
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        };
+        initialContent = `
+          <h1>Project Documentation</h1>
+          <p>Project Overview:</p>
+          <p>Add project description here</p>
+          <p>Goals:</p>
+          <ul>
+            <li>Add project goals here</li>
+          </ul>
+          <p>Timeline:</p>
+          <ul>
+            <li>Add project timeline here</li>
+          </ul>
+          <p>Resources:</p>
+          <ul>
+            <li>Add project resources here</li>
+          </ul>
+        `;
         break;
       case 'code':
-        initialContent = {
-          type: 'doc',
-          content: [
-            {
-              type: 'heading',
-              attrs: { level: 1 },
-              content: [{ type: 'text', text: 'Code Documentation' }]
-            },
-            {
-              type: 'paragraph',
-              content: [{ type: 'text', text: 'Description:' }]
-            },
-            {
-              type: 'paragraph',
-              content: [{ type: 'text', text: 'Add code description here' }]
-            },
-            {
-              type: 'paragraph',
-              content: [{ type: 'text', text: 'Implementation:' }]
-            },
-            {
-              type: 'codeBlock',
-              attrs: { language: 'javascript' },
-              content: [{ type: 'text', text: '// Add your code here' }]
-            },
-            {
-              type: 'paragraph',
-              content: [{ type: 'text', text: 'Usage:' }]
-            },
-            {
-              type: 'codeBlock',
-              attrs: { language: 'javascript' },
-              content: [{ type: 'text', text: '// Add usage examples here' }]
-            },
-            {
-              type: 'paragraph',
-              content: [{ type: 'text', text: 'Notes:' }]
-            },
-            {
-              type: 'paragraph',
-              content: [{ type: 'text', text: 'Add additional notes here' }]
-            }
-          ]
-        };
+        initialContent = `
+          <h1>Code Documentation</h1>
+          <p>Description:</p>
+          <p>Add code description here</p>
+          <p>Implementation:</p>
+          <pre><code class="language-javascript">// Add your code here</code></pre>
+          <p>Usage:</p>
+          <pre><code class="language-javascript">// Add usage examples here</code></pre>
+          <p>Notes:</p>
+          <p>Add additional notes here</p>
+        `;
         break;
       default:
-        initialContent = {
-          type: 'doc',
-          content: [
-            {
-              type: 'paragraph',
-              content: [{ type: 'text', text: 'Start writing...' }]
-            }
-          ]
-        };
+        initialContent = '<p>Start writing...</p>';
     }
     
-    // Update the task state with the raw JSON object
+    // Update the task state with the HTML content
     setCurrentTask(prev => ({
       ...prev,
       description: initialContent
@@ -949,7 +740,7 @@ export default function EditNoteDrawer(props) {
                   <MenuList shadow="lg" py={2}>
                     <MenuItem 
                       icon={<Icon as={currentTask?.public_access ? FaEyeSlash : FaEye} />}
-                      onClick={handlePublicAccessToggle}
+                      onClick={handlePublish}
                       py={2}
                     >
                       {currentTask?.public_access ? "Unpublish" : "Publish"}

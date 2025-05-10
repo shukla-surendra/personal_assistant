@@ -1,19 +1,9 @@
 import {
   Drawer,
-  DrawerContent,
-  DrawerOverlay,
   useColorModeValue,
-  Input,
-  InputGroup,
-  InputLeftElement,
-  Select,
   HStack,
   VStack,
   Tag,
-  TagLabel,
-  TagCloseButton,
-  Wrap,
-  Icon,
   Text,
   useDisclosure,
   Box,
@@ -26,7 +16,6 @@ import {
   MenuButton,
   MenuList,
   MenuItem,
-  Divider,
   Card,
   CardHeader,
   CardBody,
@@ -46,12 +35,10 @@ import {
   Tbody,
   Td
 } from '@chakra-ui/react';
-import { Link } from 'react-router-dom';
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { retrieveNotes } from "../../slices/tasks";
-import { AddIcon, EditIcon, ChevronRightIcon, DeleteIcon, SearchIcon, FilterIcon } from '@chakra-ui/icons';
 import Navbar from "../../components/dashboard/Navbar";
 import { Helmet } from 'react-helmet';
 import { formatLocalDateTime } from "../../utils/locale"
@@ -59,9 +46,7 @@ import NewNoteDrawer from "../../components/dashboard/drawers/NewNoteDrawer";
 import EditNoteDrawer from '../../components/dashboard/drawers/EditNoteDrawer'
 import DeleteTaskNoteModal from "../../components/dashboard/modals/DeleteTaskNoteModal";
 import Header from "../../components/dashboard/Header";
-import { FaTags, FaFolder, FaEye, FaTrash } from "react-icons/fa";
 import UnifiedEditButton from "../../components/dashboard/UnifiedEditButton";
-import UnifiedCreateButton from "../../components/dashboard/UnifiedCreateButton";
 import { useNavigate } from "react-router-dom";
 import NoteViewModal from "../../components/dashboard/modals/NoteViewModal";
 import { FiEye, FiMoreVertical, FiEdit2, FiTrash2, FiExternalLink, FiPlus } from "react-icons/fi";

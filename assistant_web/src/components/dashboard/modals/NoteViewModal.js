@@ -90,7 +90,8 @@ export default function NoteViewModal({ isOpen, onClose, note, onEdit }) {
           <VStack spacing={4} align="stretch">
             <Box>
               <RichTextEditor
-                content={note?.description || ''}
+                value={note?.description || ''}
+                onChange={() => {}}
                 editable={false}
               />
             </Box>
