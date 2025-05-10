@@ -351,8 +351,7 @@ class WorkspaceHandler:
             stmt = workspace_users.insert().values(
                 workspace_id=UUID(command.workspace_id),
                 user_id=user.user_id,
-                role=command.role,
-                joined_at=datetime.utcnow()
+                role=command.role
             )
             self.db.execute(stmt)
             self.db.commit()

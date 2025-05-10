@@ -31,24 +31,54 @@ import {
   MenuItem,
   MenuDivider,
   VStack,
+  Card,
+  CardBody,
+  CardHeader,
+  CardFooter,
+  HStack,
+  IconButton,
 } from "@chakra-ui/react";
-import { FiSearch, FiFilter, FiCalendar, FiTag, FiUser, FiChevronDown, FiArrowUp, FiArrowDown } from 'react-icons/fi';
+import { 
+  FiSearch, 
+  FiFilter, 
+  FiCalendar, 
+  FiTag, 
+  FiUser, 
+  FiChevronDown, 
+  FiArrowUp, 
+  FiArrowDown,
+  FiEye,
+  FiEdit2,
+  FiTrash2,
+  FiExternalLink
+} from 'react-icons/fi';
 import Navbar from "../../components/dashboard/Navbar";
 import Header from "../../components/dashboard/Header";
 import { formatLocalDateTime } from "../../utils/locale";
+import { useNavigate } from "react-router-dom";
+import TaskViewModal from "../../components/dashboard/modals/TaskViewModal";
+import EditTaskDrawer from "../../components/dashboard/drawers/EditTaskDrawer";
+import DeleteTaskNoteModal from "../../components/dashboard/modals/DeleteTaskNoteModal";
 
 export default function SearchTasksPage() {
   const [isMenuCollapsed, setIsMenuCollapsed] = useState(false);
   const menu_open = useDisclosure();
   const filterDrawer = useDisclosure();
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const tasks = useSelector(state => state.tasks.tasks);
   
-  // Move hooks to component level
+  // State for modals and drawers
+  const [selectedTask, setSelectedTask] = useState(null);
+  const view_modal = useDisclosure();
+  const edit_drawer = useDisclosure();
+  const delete_modal = useDisclosure();
+  
+  // Color mode values
   const pageBg = useColorModeValue('gray.50', 'gray.900');
   const mainBg = useColorModeValue('gray.50', 'gray.800');
   const cardBg = useColorModeValue('white', 'gray.700');
-  const textColor = useColorModeValue('gray.600', 'gray.300');
+  const textColor = useColorModeValue('gray.800', 'gray.200');
   const subTextColor = useColorModeValue('gray.500', 'gray.400');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
 
@@ -110,6 +140,47 @@ export default function SearchTasksPage() {
     } else {
       setSortBy(field);
       setSortOrder('asc');
+    }
+  };
+
+  const handleViewTask = (task) => {
+    setSelectedTask(task);
+    view_modal.onOpen();
+  };
+
+  const handleEditTask = (task) => {
+    setSelectedTask(task);
+    edit_drawer.onOpen();
+  };
+
+  const handleDeleteTask = (task) => {
+    setSelectedTask(task);
+    delete_modal.onOpen();
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'done':
+        return 'green';
+      case 'in_progress':
+        return 'orange';
+      case 'todo':
+        return 'blue';
+      default:
+        return 'gray';
+    }
+  };
+
+  const getPriorityColor = (priority) => {
+    switch (priority) {
+      case 'high':
+        return 'red';
+      case 'medium':
+        return 'yellow';
+      case 'low':
+        return 'green';
+      default:
+        return 'gray';
     }
   };
 
@@ -244,12 +315,9 @@ export default function SearchTasksPage() {
                   gap={6}
                 >
                   {filteredTasks.map((task) => (
-                    <Box
+                    <Card
                       key={task.task_id}
-                      p={6}
                       bg={cardBg}
-                      borderRadius="lg"
-                      boxShadow="sm"
                       borderWidth="1px"
                       borderColor={borderColor}
                       _hover={{ 
@@ -258,47 +326,43 @@ export default function SearchTasksPage() {
                         boxShadow: 'md'
                       }}
                     >
-                      <Stack spacing={4}>
-                        <Heading size="md" color={textColor}>
-                          {task.title}
-                        </Heading>
-                        <Box 
+                      <CardHeader>
+                        <Stack spacing={2}>
+                          <Heading size="md" color={textColor}>
+                            {task.title}
+                          </Heading>
+                          <Flex wrap="wrap" gap={2}>
+                            <Badge 
+                              colorScheme={getStatusColor(task.status)}
+                              px={2}
+                              py={1}
+                              borderRadius="full"
+                            >
+                              {task.status === 'todo' ? 'To Do' : 
+                               task.status === 'in_progress' ? 'In Progress' : 
+                               'Done'}
+                            </Badge>
+                            <Badge 
+                              colorScheme={getPriorityColor(task.priority)}
+                              px={2}
+                              py={1}
+                              borderRadius="full"
+                            >
+                              {task.priority}
+                            </Badge>
+                          </Flex>
+                        </Stack>
+                      </CardHeader>
+                      <CardBody>
+                        <Text 
                           color={subTextColor} 
                           noOfLines={2}
                           fontSize="sm"
                         >
                           {task.description}
-                        </Box>
-                        <Flex wrap="wrap" gap={2}>
-                          <Badge 
-                            colorScheme={
-                              task.status === 'done' ? 'green' : 
-                              task.status === 'in_progress' ? 'orange' : 
-                              'blue'
-                            }
-                            px={2}
-                            py={1}
-                            borderRadius="full"
-                          >
-                            {task.status === 'todo' ? 'To Do' : 
-                             task.status === 'in_progress' ? 'In Progress' : 
-                             'Done'}
-                          </Badge>
-                          <Badge 
-                            colorScheme={
-                              task.priority === 'high' ? 'red' : 
-                              task.priority === 'medium' ? 'yellow' : 
-                              'gray'
-                            }
-                            px={2}
-                            py={1}
-                            borderRadius="full"
-                          >
-                            {task.priority}
-                          </Badge>
-                        </Flex>
+                        </Text>
                         {task.tags && task.tags.length > 0 && (
-                          <Flex wrap="wrap" gap={1}>
+                          <Flex wrap="wrap" gap={1} mt={2}>
                             {task.tags.map((tag, index) => (
                               <Badge 
                                 key={index} 
@@ -313,11 +377,45 @@ export default function SearchTasksPage() {
                             ))}
                           </Flex>
                         )}
-                        <Text fontSize="sm" color={subTextColor}>
-                          Due: {formatLocalDateTime(task.due_date)}
-                        </Text>
-                      </Stack>
-                    </Box>
+                      </CardBody>
+                      <CardFooter>
+                        <HStack spacing={2} width="100%" justify="space-between">
+                          <Text fontSize="sm" color={subTextColor}>
+                            Due: {formatLocalDateTime(task.due_date)}
+                          </Text>
+                          <HStack spacing={1}>
+                            <IconButton
+                              icon={<FiEye />}
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleViewTask(task)}
+                              aria-label="View Task"
+                            />
+                            <IconButton
+                              icon={<FiExternalLink />}
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => navigate(`/page/${task.task_id}`)}
+                              aria-label="Open in new page"
+                            />
+                            <IconButton
+                              icon={<FiEdit2 />}
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleEditTask(task)}
+                              aria-label="Edit Task"
+                            />
+                            <IconButton
+                              icon={<FiTrash2 />}
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleDeleteTask(task)}
+                              aria-label="Delete Task"
+                            />
+                          </HStack>
+                        </HStack>
+                      </CardFooter>
+                    </Card>
                   ))}
                 </Grid>
               </Box>
@@ -401,6 +499,28 @@ export default function SearchTasksPage() {
           </DrawerBody>
         </DrawerContent>
       </Drawer>
+
+      {/* Modals and Drawers */}
+      {selectedTask && (
+        <>
+          <TaskViewModal
+            isOpen={view_modal.isOpen}
+            onClose={view_modal.onClose}
+            task={selectedTask}
+            onEdit={() => handleEditTask(selectedTask)}
+          />
+          <EditTaskDrawer
+            currentTask={selectedTask}
+            setCurrentTask={setSelectedTask}
+            disclosures={edit_drawer}
+          />
+          <DeleteTaskNoteModal
+            currentTask={selectedTask}
+            disclosures={delete_modal}
+            type="task"
+          />
+        </>
+      )}
     </>
   );
 } 
