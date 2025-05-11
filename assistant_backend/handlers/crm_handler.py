@@ -1,6 +1,6 @@
-from sqlalchemy.orm import Session
+from adapters.orm.models.database import SessionLocal
 from fastapi import HTTPException
-from typing import List, Optional
+from typing import List
 from uuid import UUID
 import logging
 
@@ -13,8 +13,8 @@ from commands.crm_cmd import (
 logger = logging.getLogger(__name__)
 
 class CRMHandler:
-    def __init__(self, db: Session):
-        self.db = db
+    def __init__(self):
+        self.db = SessionLocal()
 
     # Contact methods
     def create_contact(self, contact: ContactCreate) -> Contact:

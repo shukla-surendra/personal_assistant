@@ -1,9 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from typing import List, Optional
-from uuid import UUID
+from typing import List
 from handlers.comment_handler import CommentHandler
 from commands.comment_cmd import CommentCommand, CommentUpdateCommand, CommentDeleteCommand
-from adapters.orm.models.pg_models import Comment
 from dto.comment_dto import CommentDto
 from dto.comment_dto import CommentDtoMapper
 from authorization.auth import get_auth_details
