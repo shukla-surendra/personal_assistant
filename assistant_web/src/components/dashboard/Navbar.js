@@ -25,7 +25,8 @@ import {
   BsKanban,
   BsListTask,
   BsFileEarmarkText,
-  BsGraphUp
+  BsGraphUp,
+  BsPersonLinesFill
 } from 'react-icons/bs';
 import { 
   FiClock, 
@@ -180,6 +181,14 @@ const Navbar = ({ isCollapsed, onToggle }) => {
               isCollapsed={isCollapsed}
             >
               Time Block
+            </NavItem>
+            <NavItem
+              icon={BsPersonLinesFill}
+              to="/crm"
+              isActive={location.pathname === '/crm'}
+              isCollapsed={isCollapsed}
+            >
+              CRM
             </NavItem>
             <NavItem
               icon={FiSearch}
