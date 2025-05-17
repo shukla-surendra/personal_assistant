@@ -5,5 +5,6 @@
     "office_address": "Akshya Nagar 1st Block 1st Cross, Rammurthy nagar, Bangalore-560016",
     "twitter_link": "https://twitter.com/AssistantAI",
     "linkedin_link":"https://www.linkedin.com/company/assistantai/",
-    "instagram_link":"https://www.instagram.com/assistantai/"
+    "instagram_link":"https://www.instagram.com/assistantai/",
+    "API_BASE_URL": "http://localhost:8000"
 }

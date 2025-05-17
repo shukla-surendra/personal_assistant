@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     secret_key: str = "productify+secret"
     
     # Database settings
-    db_host: str = "db"  # Changed from assistant_backend-db-1 to localhostalhost        
+    db_host: str = "db"  # Changed from assistant_backend-db-1 to localhostalhost
     db_port: str = "5432"
     db_name: str = "productify"
     db_user: str = "postgres"

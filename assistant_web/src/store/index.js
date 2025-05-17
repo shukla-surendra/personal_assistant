@@ -8,7 +8,7 @@ import activitiesReducer from '../slices/crm/activitiesSlice';
 export const store = configureStore({
     reducer: {
         auth: authReducer,
-        workspace: workspaceReducer,
+        workspaces: workspaceReducer,
         contacts: contactsReducer,
         deals: dealsReducer,
         activities: activitiesReducer

@@ -1,9 +1,14 @@
 import axios from 'axios';
-import { API_BASE_URL } from '../config';
+import config from '../config.json';
 
-const CRM_API = `${API_BASE_URL}/api/v1/crm`;
+const CRM_API = `${config.API_BASE_URL}/api/v1/crm`;
 
 // Contact APIs
+export const getContacts = async (workspaceId) => {
+    const response = await axios.get(`${CRM_API}/workspaces/${workspaceId}/contacts`);
+    return response.data;
+};
+
 export const createContact = async (contactData) => {
     const response = await axios.post(`${CRM_API}/contacts`, contactData);
     return response.data;
@@ -30,6 +35,11 @@ export const deleteContact = async (contactId) => {
 };
 
 // Deal APIs
+export const getDeals = async (workspaceId) => {
+    const response = await axios.get(`${CRM_API}/workspaces/${workspaceId}/deals`);
+    return response.data;
+};
+
 export const createDeal = async (dealData) => {
     const response = await axios.post(`${CRM_API}/deals`, dealData);
     return response.data;
@@ -37,11 +47,6 @@ export const createDeal = async (dealData) => {
 
 export const getDeal = async (dealId) => {
     const response = await axios.get(`${CRM_API}/deals/${dealId}`);
-    return response.data;
-};
-
-export const getWorkspaceDeals = async (workspaceId) => {
-    const response = await axios.get(`${CRM_API}/workspaces/${workspaceId}/deals`);
     return response.data;
 };
 
@@ -78,5 +83,25 @@ export const createDealActivity = async (dealId, activityData) => {
 
 export const getDealActivities = async (dealId) => {
     const response = await axios.get(`${CRM_API}/deals/${dealId}/activities`);
+    return response.data;
+};
+
+export const getActivities = async (workspaceId) => {
+    const response = await axios.get(`${CRM_API}/workspaces/${workspaceId}/activities`);
+    return response.data;
+};
+
+export const createActivity = async (activityData) => {
+    const response = await axios.post(`${CRM_API}/activities`, activityData);
+    return response.data;
+};
+
+export const updateActivity = async (activityId, activityData) => {
+    const response = await axios.put(`${CRM_API}/activities/${activityId}`, activityData);
+    return response.data;
+};
+
+export const deleteActivity = async (activityId) => {
+    const response = await axios.delete(`${CRM_API}/activities/${activityId}`);
     return response.data;
 }; 

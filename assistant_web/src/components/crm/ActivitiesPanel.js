@@ -27,7 +27,6 @@ import {
     Spinner,
     Checkbox,
     ButtonGroup,
-    Tooltip,
     useColorModeValue,
     Popover,
     PopoverTrigger,
@@ -118,7 +117,7 @@ import {
     Tooltip,
     Legend
 } from 'chart.js';
-import { removeActivity, setFilters, setSort, clearFilters } from '../../slices/crm/activitiesSlice';
+import { removeActivity, setFilters, setSort, clearFilters, setActivities } from '../../slices/crm/activitiesSlice';
 
 ChartJS.register(
     CategoryScale,
@@ -156,10 +155,10 @@ const ACTIVITY_TEMPLATES = [
 const ActivitiesPanel = ({ contacts, deals }) => {
     const dispatch = useDispatch();
     const toast = useToast();
-    const { activities, loading, filters, sort } = useSelector((state) => state.activities);
+    const { activities: reduxActivities, loading: reduxLoading, filters, sort } = useSelector((state) => state.activities);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedActivity, setSelectedActivity] = useState(null);
-    const [viewMode, setViewMode] = useState('list'); // 'list' or 'grid'
+    const [viewMode, setViewMode] = useState('list');
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedActivities, setSelectedActivities] = useState([]);
     const [currentPage, setCurrentPage] = useState(1);
@@ -167,6 +166,8 @@ const ActivitiesPanel = ({ contacts, deals }) => {
     const [selectedTags, setSelectedTags] = useState([]);
     const [availableTags, setAvailableTags] = useState([]);
     const { isOpen: isCreateOpen, onOpen: onCreateOpen, onClose: onCreateClose } = useDisclosure();
+    const { isOpen: isEditOpen, onOpen: onEditOpen, onClose: onEditClose } = useDisclosure();
+    const { isOpen: isViewOpen, onOpen: onViewOpen, onClose: onViewClose } = useDisclosure();
     const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
     const [analyticsData, setAnalyticsData] = useState(null);
     const bgColor = useColorModeValue('white', 'gray.800');
@@ -182,6 +183,7 @@ const ActivitiesPanel = ({ contacts, deals }) => {
         description: '',
         tags: []
     });
+    const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
         fetchActivities();
@@ -190,11 +192,11 @@ const ActivitiesPanel = ({ contacts, deals }) => {
     useEffect(() => {
         // Extract unique tags from activities
         const tags = new Set();
-        activities.forEach(activity => {
+        reduxActivities.forEach(activity => {
             activity.tags?.forEach(tag => tags.add(tag));
         });
         setAvailableTags(Array.from(tags));
-    }, [activities]);
+    }, [reduxActivities]);
 
     const fetchActivities = async () => {
         try {
@@ -211,7 +213,7 @@ const ActivitiesPanel = ({ contacts, deals }) => {
                 ...dealActivities.flat()
             ];
             
-            setActivities(allActivities);
+            dispatch(setActivities(allActivities));
         } catch (error) {
             toast({
                 title: 'Error fetching activities',
@@ -225,7 +227,7 @@ const ActivitiesPanel = ({ contacts, deals }) => {
         }
     };
 
-    const filteredActivities = activities.filter((activity) => {
+    const filteredActivities = reduxActivities.filter((activity) => {
         const searchLower = searchQuery.toLowerCase();
         const matchesSearch = 
             activity.description.toLowerCase().includes(searchLower) ||
@@ -402,7 +404,7 @@ const ActivitiesPanel = ({ contacts, deals }) => {
             format(subDays(now, 30 - i), 'yyyy-MM-dd')
         );
 
-        const activitiesByDay = activities.reduce((acc, activity) => {
+        const activitiesByDay = reduxActivities.reduce((acc, activity) => {
             const day = format(new Date(activity.date), 'yyyy-MM-dd');
             if (!acc[day]) {
                 acc[day] = {
@@ -481,7 +483,22 @@ const ActivitiesPanel = ({ contacts, deals }) => {
         onCreateOpen();
     };
 
-    if (loading) {
+    const getTypeColor = (type) => {
+        switch (type.toLowerCase()) {
+            case 'call':
+                return 'blue';
+            case 'meeting':
+                return 'green';
+            case 'email':
+                return 'purple';
+            case 'note':
+                return 'yellow';
+            default:
+                return 'gray';
+        }
+    };
+
+    if (reduxLoading || isLoading) {
         return (
             <Box display="flex" justifyContent="center" alignItems="center" minH="200px">
                 <Spinner size="xl" />

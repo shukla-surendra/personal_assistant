@@ -1,6 +1,8 @@
 import pytest
 from fastapi import status
-from app.schemas import UserCreate, TaskCreate, NoteCreate
+from dto.user_dto import UserCreate
+from dto.task_dto import TaskCreate
+from dto.page_dto import NoteCreate
 
 # Test data
 TEST_USER = {

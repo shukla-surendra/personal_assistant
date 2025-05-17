@@ -3,6 +3,12 @@ from typing import List, Optional, Dict
 from pydantic import BaseModel
 
 
+class UserCreate(BaseModel):
+    email: str
+    password: str
+    full_name: str
+
+
 class UserDto(BaseModel):
     user_id: str
     first_name: str

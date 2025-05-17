@@ -1,62 +1,85 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
-from adapters.storage.postgresql_adapter import PostgreSQLAdapter
-from dto.task_dto import TimeBlockDto
-from commands.task_cmd import TimeBlockCommand, TimeBlockUpdateCommand
+from commands.task_cmd import TaskCommand, TaskUpdateCommand, TaskDeleteCommand
+from handlers.task_handler import TaskHandler
+from dto.task_dto import TaskDto
+from config import logger
+from constants import TaskType
 from authorization.auth import get_auth_details
 
-
 router = APIRouter()
-storage = PostgreSQLAdapter()
 
-@router.post("/timeblocks", response_model=TimeBlockDto)
+@router.post("/timeblocks", status_code=status.HTTP_201_CREATED)
 async def create_time_block(
-    time_block: TimeBlockCommand,
-    current_user: dict = Depends(get_auth_details),
+    workspace_id: str,
+    task_cmd: TaskCommand,
+    user: dict = Depends(get_auth_details)
 ):
+    """Create a new time block"""
     try:
-        time_block_data = time_block.dict()
-        time_block_data['user_id'] = current_user['user_id']
-        result = storage.create_time_block(time_block_data)
-        return result
+        # Set task type to TIME_BLOCK
+        task_cmd.task_type = TaskType.TIME_BLOCK.value
+        task_cmd.workspace_id = workspace_id
+        task_cmd.user_id = user.get("user_id")
+        
+        return TaskHandler().create_task(task_cmd)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"Error creating time block: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create time block")
 
-@router.get("/timeblocks", response_model=List[TimeBlockDto])
+@router.get("/timeblocks", status_code=status.HTTP_200_OK)
 async def get_time_blocks(
     workspace_id: str,
-    current_user: dict = Depends(get_auth_details)
+    user: dict = Depends(get_auth_details),
+    skip: int = 0,
+    limit: int = 50
 ):
+    """Get all time blocks for a workspace"""
     try:
-        time_blocks = storage.get_time_blocks(workspace_id, current_user['user_id'])
-        return time_blocks
+        return TaskHandler().list_tasks(
+            workspace_id=workspace_id,
+            user_id=user.get("user_id"),
+            skip=skip,
+            limit=limit,
+            task_type=TaskType.TIME_BLOCK.value
+        )
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"Error getting time blocks: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get time blocks")
 
-@router.put("/timeblocks/{time_block_id}", response_model=TimeBlockDto)
+@router.put("/timeblocks/{task_id}", status_code=status.HTTP_200_OK)
 async def update_time_block(
-    time_block_id: str,
-    time_block: TimeBlockUpdateCommand,
-    current_user: dict = Depends(get_auth_details)
+    workspace_id: str,
+    task_id: str,
+    task_cmd: TaskUpdateCommand,
+    user: dict = Depends(get_auth_details)
 ):
+    """Update a time block"""
     try:
-        time_block_data = time_block.dict(exclude_unset=True)
-        result = storage.update_time_block(time_block_id, time_block_data)
-        if not result:
-            raise HTTPException(status_code=404, detail="Time block not found")
-        return result
+        task_cmd.task_id = task_id
+        task_cmd.workspace_id = workspace_id
+        task_cmd.user_id = user.get("user_id")
+        task_cmd.task_type = TaskType.TIME_BLOCK.value
+        
+        return TaskHandler().update_task(task_cmd)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"Error updating time block: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update time block")
 
-@router.delete("/timeblocks/{time_block_id}")
+@router.delete("/timeblocks/{task_id}", status_code=status.HTTP_200_OK)
 async def delete_time_block(
-    time_block_id: str,
-    current_user: dict = Depends(get_auth_details)
+    workspace_id: str,
+    task_id: str,
+    user: dict = Depends(get_auth_details)
 ):
+    """Delete a time block"""
     try:
-        success = storage.delete_time_block(time_block_id)
-        if not success:
-            raise HTTPException(status_code=404, detail="Time block not found")
-        return {"message": "Time block deleted successfully"}
+        delete_cmd = TaskDeleteCommand(
+            task_id=task_id,
+            workspace_id=workspace_id,
+            user_id=user.get("user_id")
+        )
+        return TaskHandler().delete_task(delete_cmd)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e)) 
+        logger.error(f"Error deleting time block: {e}")
+        raise HTTPException(status_code=500, detail="Failed to delete time block") 

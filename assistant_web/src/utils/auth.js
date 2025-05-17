@@ -1,6 +1,5 @@
 import decode from 'jwt-decode';
-import ConfigService from '../utils/config'
-import auth from '../utils/auth'
+import config from '../utils/config';
 import { Select, Box } from '@chakra-ui/react';
 import { FiChevronDown, FiLogOut } from 'react-icons/fi';
 
@@ -40,38 +39,52 @@ class AuthService {
 
 	// Set token to localStorage and reload page to the homepage
 	login(loginResponse) {
-		// Store the access token
-		localStorage.setItem('access_token', loginResponse.access_token);
-		
-		// Store user info
-		const userInfo = {
-			user_id: loginResponse.user.user_id,
-			email: loginResponse.user.email,
-			first_name: loginResponse.user.first_name,
-			last_name: loginResponse.user.last_name,
-			role: loginResponse.user.role
-		};
-		localStorage.setItem('user_info', JSON.stringify(userInfo));
-		
-		// Set default workspace
-		const default_workspace = {
-			workspace_id: loginResponse.user.default_workspace.workspace_id,
-			name: loginResponse.user.default_workspace.name,
-			owner_id: loginResponse.user.user_id
-		};
-		ConfigService.setDefaultWorkspace(default_workspace);
-		ConfigService.setUserId(loginResponse.user.user_id);
-		
-		window.location.assign('/');
+		try {
+			console.log('Login response:', loginResponse);
+			
+			// Store the access token
+			localStorage.setItem('access_token', loginResponse.access_token);
+			
+			// Store user info
+			const userInfo = {
+				user_id: loginResponse.user.user_id,
+				email: loginResponse.user.email,
+				first_name: loginResponse.user.first_name,
+				last_name: loginResponse.user.last_name,
+				role: loginResponse.user.role
+			};
+			localStorage.setItem('user_info', JSON.stringify(userInfo));
+			
+			// Set default workspace
+			if (loginResponse.user.default_workspace) {
+				const default_workspace = {
+					workspace_id: loginResponse.user.default_workspace.workspace_id,
+					name: loginResponse.user.default_workspace.name,
+					owner_id: loginResponse.user.user_id
+				};
+				console.log('Setting default workspace:', default_workspace);
+				config.setDefaultWorkspace(default_workspace);
+			} else {
+				console.warn('No default workspace in login response');
+			}
+			
+			config.setUserId(loginResponse.user.user_id);
+			
+			window.location.assign('/');
+		} catch (error) {
+			console.error('Error during login:', error);
+			throw error;
+		}
 	}
 
 	// lear token from localstorage and force logout with reload
 	logout() {
 		localStorage.removeItem('access_token');
-		ConfigService.removeDefaultWorkspace()
+		config.removeDefaultWorkspace();
 		// reload the page and reset the state of the app
 		window.location.assign('/');
 	}
 }
+
 const authService = new AuthService();
 export default authService;

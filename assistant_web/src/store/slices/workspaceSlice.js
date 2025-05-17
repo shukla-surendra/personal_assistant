@@ -40,10 +40,18 @@ const workspaceSlice = createSlice({
   name: 'workspaces',
   initialState: {
     workspaces: [],
+    selectedWorkspace: null,
     loading: false,
     error: null,
   },
-  reducers: {},
+  reducers: {
+    selectWorkspace: (state, action) => {
+      state.selectedWorkspace = action.payload;
+    },
+    clearSelectedWorkspace: (state) => {
+      state.selectedWorkspace = null;
+    }
+  },
   extraReducers: (builder) => {
     builder
       // Fetch workspaces
@@ -68,13 +76,22 @@ const workspaceSlice = createSlice({
         const index = state.workspaces.findIndex((w) => w.id === action.payload.id);
         if (index !== -1) {
           state.workspaces[index] = action.payload;
+          // Update selected workspace if it was the one being updated
+          if (state.selectedWorkspace?.id === action.payload.id) {
+            state.selectedWorkspace = action.payload;
+          }
         }
       })
       // Delete workspace
       .addCase(deleteWorkspace.fulfilled, (state, action) => {
         state.workspaces = state.workspaces.filter((w) => w.id !== action.payload);
+        // Clear selected workspace if it was deleted
+        if (state.selectedWorkspace?.id === action.payload) {
+          state.selectedWorkspace = null;
+        }
       });
   },
 });
 
+export const { selectWorkspace, clearSelectedWorkspace } = workspaceSlice.actions;
 export default workspaceSlice.reducer; 

@@ -80,9 +80,10 @@ class TimeBlockDto(BaseModel):
     updated_at: datetime
 
 
-
-
-
+class TaskCreate(BaseModel):
+    title: str
+    description: Optional[str] = None
+    status: Optional[str] = None
 
 
 class BoardDtoMapper:

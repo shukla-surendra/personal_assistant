@@ -62,6 +62,9 @@ const activitiesSlice = createSlice({
                 dateRange: null,
                 tags: []
             };
+        },
+        setActivities: (state, action) => {
+            state.activities = action.payload;
         }
     },
     extraReducers: (builder) => {
@@ -93,5 +96,5 @@ const activitiesSlice = createSlice({
     }
 });
 
-export const { setFilters, setSort, clearFilters } = activitiesSlice.actions;
+export const { setFilters, setSort, clearFilters, setActivities } = activitiesSlice.actions;
 export default activitiesSlice.reducer; 

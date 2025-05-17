@@ -52,4 +52,8 @@ class BlockDtoMapper:
             parent_id=str(block.parent_id) if block.parent_id else None,
             properties=block.properties,
             order=block.order
-        ) 
+        )
+
+class NoteCreate(BaseModel):
+    title: str
+    content: Optional[str] = None 
