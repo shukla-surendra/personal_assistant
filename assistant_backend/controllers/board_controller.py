@@ -12,7 +12,7 @@ from config import logger
 
 
 router = APIRouter(
-    prefix="/api/v1/boards",
+    prefix="/api/v1/workspaces/{workspace_id}/boards",
     tags=["Boards"],
     responses={
         status.HTTP_404_NOT_FOUND: {"description": "Not found"},

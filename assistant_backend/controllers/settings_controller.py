@@ -16,7 +16,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
-    prefix="/api/v1/settings",
+    prefix="/api/v1/workspaces/{workspace_id}/settings",
     tags=["settings"],
     responses={
         status.HTTP_404_NOT_FOUND: {"description": "Not found"},
@@ -27,7 +27,7 @@ router = APIRouter(
 )
 
 @router.post("/", response_model=SettingsDto, status_code=status.HTTP_201_CREATED)
-async def create_settings(command: SettingsCommand, user: dict = Depends(get_auth_details)):
+async def create_settings(workspace_id: str, command: SettingsCommand, user: dict = Depends(get_auth_details)):
     """Create new user settings"""
     handler = SettingsHandler()
     try:
@@ -38,7 +38,7 @@ async def create_settings(command: SettingsCommand, user: dict = Depends(get_aut
         logger.error(f"Error creating settings: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/{workspace_id}", response_model=SettingsDto)
+@router.get("/", response_model=SettingsDto)
 async def get_settings(workspace_id: str, user: dict = Depends(get_auth_details)):
     """Get user settings for a workspace"""
     handler = SettingsHandler()
@@ -54,7 +54,7 @@ async def get_settings(workspace_id: str, user: dict = Depends(get_auth_details)
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.put("/{settings_id}", response_model=SettingsDto)
-async def update_settings(settings_id: str, command: SettingsUpdateCommand, user: dict = Depends(get_auth_details)):
+async def update_settings(workspace_id: str, settings_id: str, command: SettingsUpdateCommand, user: dict = Depends(get_auth_details)):
     """Update user settings"""
     handler = SettingsHandler()
     try:
@@ -70,9 +70,9 @@ async def update_settings(settings_id: str, command: SettingsUpdateCommand, user
 
 @router.put("/{settings_id}/preferences", response_model=SettingsDto)
 async def update_preferences(
+    workspace_id: str,
     settings_id: str,
     preferences: Dict,
-    workspace_id: str,
     user: dict = Depends(get_auth_details)
 ):
     """Update user preferences"""
@@ -94,9 +94,9 @@ async def update_preferences(
 
 @router.put("/{settings_id}/notifications", response_model=SettingsDto)
 async def update_notification_settings(
+    workspace_id: str,
     settings_id: str,
     notification_settings: Dict,
-    workspace_id: str,
     user: dict = Depends(get_auth_details)
 ):
     """Update notification settings"""
@@ -117,7 +117,7 @@ async def update_notification_settings(
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.delete("/{settings_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_settings(settings_id: str, workspace_id: str, user: dict = Depends(get_auth_details)):
+async def delete_settings(workspace_id: str, settings_id: str, user: dict = Depends(get_auth_details)):
     """Delete user settings"""
     handler = SettingsHandler()
     try:

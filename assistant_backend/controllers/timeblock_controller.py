@@ -1,15 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
+from dto.task_dto import TaskDto
 from commands.task_cmd import TaskCommand, TaskUpdateCommand, TaskDeleteCommand
 from handlers.task_handler import TaskHandler
-from dto.task_dto import TaskDto
 from config import logger
 from constants import TaskType
 from authorization.auth import get_auth_details
 
 router = APIRouter()
 
-@router.post("/timeblocks", status_code=status.HTTP_201_CREATED)
+@router.post("/api/v1/workspaces/{workspace_id}/timeblocks", status_code=status.HTTP_201_CREATED)
 async def create_time_block(
     workspace_id: str,
     task_cmd: TaskCommand,

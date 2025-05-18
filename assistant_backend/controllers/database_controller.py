@@ -7,7 +7,7 @@ from adapters.orm.models.pg_models import Database, DatabaseEntry
 from dto.database_dto import DatabaseDto, DatabaseEntryDto
 from dto.database_dto import DatabaseDtoMapper, DatabaseEntryDtoMapper
 
-router = APIRouter(prefix="/databases", tags=["databases"])
+router = APIRouter(prefix="/api/v1/workspaces/{workspace_id}/databases", tags=["databases"])
 
 @router.post("/", response_model=DatabaseDto, status_code=status.HTTP_201_CREATED)
 async def create_database(command: DatabaseCommand):

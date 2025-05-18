@@ -7,7 +7,7 @@ from adapters.orm.models.pg_models import Notification
 from dto.notification_dto import NotificationDto
 from dto.notification_dto import NotificationDtoMapper
 
-router = APIRouter(prefix="/notifications", tags=["notifications"])
+router = APIRouter(prefix="/api/v1/workspaces/{workspace_id}/notifications", tags=["notifications"])
 
 @router.post("/", response_model=NotificationDto, status_code=status.HTTP_201_CREATED)
 async def create_notification(command: NotificationCommand):

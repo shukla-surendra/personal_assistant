@@ -7,7 +7,7 @@ from adapters.orm.models.pg_models import Reminder
 from dto.reminder_dto import ReminderDto
 from dto.reminder_dto import ReminderDtoMapper
 
-router = APIRouter(prefix="/reminders", tags=["reminders"])
+router = APIRouter(prefix="/api/v1/workspaces/{workspace_id}/reminders", tags=["reminders"])
 
 @router.post("/", response_model=ReminderDto, status_code=status.HTTP_201_CREATED)
 async def create_reminder(command: ReminderCommand):

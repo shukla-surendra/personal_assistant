@@ -7,7 +7,7 @@ from adapters.orm.models.pg_models import Template
 from dto.template_dto import TemplateDto
 from dto.template_dto import TemplateDtoMapper
 
-router = APIRouter(prefix="/templates", tags=["templates"])
+router = APIRouter(prefix="/api/v1/workspaces/{workspace_id}/templates", tags=["templates"])
 
 @router.post("/", response_model=TemplateDto, status_code=status.HTTP_201_CREATED)
 async def create_template(command: TemplateCommand):

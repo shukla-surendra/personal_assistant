@@ -7,7 +7,7 @@ from adapters.orm.models.pg_models import Page, Block
 from dto.page_dto import PageDto, BlockDto
 from dto.page_dto import PageDtoMapper, BlockDtoMapper
 
-router = APIRouter(prefix="/pages", tags=["pages"])
+router = APIRouter(prefix="/api/v1/workspaces/{workspace_id}/pages", tags=["pages"])
 
 @router.post("/", response_model=PageDto, status_code=status.HTTP_201_CREATED)
 async def create_page(command: PageCommand):

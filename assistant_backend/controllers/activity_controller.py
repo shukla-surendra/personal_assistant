@@ -7,7 +7,7 @@ from adapters.orm.models.pg_models import Activity
 from dto.activity_dto import ActivityDto
 from dto.activity_dto import ActivityDtoMapper
 
-router = APIRouter(prefix="/activities", tags=["activities"])
+router = APIRouter(prefix="/api/v1/workspaces/{workspace_id}/activities", tags=["activities"])
 
 @router.post("/", response_model=ActivityDto, status_code=status.HTTP_201_CREATED)
 async def create_activity(command: ActivityCommand):

@@ -23,7 +23,7 @@ import ContactsPanel from '../../components/crm/ContactsPanel';
 import DealsPanel from '../../components/crm/DealsPanel';
 import { useNavigate } from 'react-router-dom';
 import { selectWorkspace } from '../../store/slices/workspaceSlice';
-import ConfigService from '../../utils/config';
+import config from '../../utils/config';
 
 const CRMPage = () => {
     const dispatch = useDispatch();
@@ -38,27 +38,20 @@ const CRMPage = () => {
     const hasError = contacts.error || deals.error || activities.error;
 
     useEffect(() => {
-        try {
-            // Get the current workspace from ConfigService
-            const currentWorkspace = ConfigService.getDefaultWorkspace();
-            console.log('Current workspace from ConfigService:', currentWorkspace);
-            
-            // If we have a workspace and it's different from the selected one, update Redux
-            if (currentWorkspace && (!selectedWorkspace || currentWorkspace.workspace_id !== selectedWorkspace.workspace_id)) {
-                console.log('Updating selected workspace in Redux');
-                dispatch(selectWorkspace(currentWorkspace));
+        // Get the workspace from localStorage that was set during login
+        const savedWorkspace = localStorage.getItem('workspace');
+        if (savedWorkspace) {
+            try {
+                const workspace = JSON.parse(savedWorkspace);
+                console.log('Found saved workspace:', workspace);
+                if (workspace && workspace.workspace_id) {
+                    dispatch(selectWorkspace(workspace));
+                }
+            } catch (error) {
+                console.error('Error parsing saved workspace:', error);
             }
-        } catch (error) {
-            console.warn('Error getting current workspace:', error);
-            toast({
-                title: 'No Workspace Selected',
-                description: 'Please select a workspace to continue.',
-                status: 'warning',
-                duration: 5000,
-                isClosable: true,
-            });
         }
-    }, [dispatch, selectedWorkspace, toast]);
+    }, [dispatch]);
 
     useEffect(() => {
         if (selectedWorkspace) {
