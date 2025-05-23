@@ -46,7 +46,10 @@ const workspaceSlice = createSlice({
   },
   reducers: {
     selectWorkspace: (state, action) => {
-      state.selectedWorkspace = action.payload;
+      console.log('selectWorkspace reducer called with:', action.payload);
+      // Ensure we're creating a new object to trigger state update
+      state.selectedWorkspace = { ...action.payload };
+      console.log('Updated state:', state);
     },
     clearSelectedWorkspace: (state) => {
       state.selectedWorkspace = null;
@@ -73,20 +76,20 @@ const workspaceSlice = createSlice({
       })
       // Update workspace
       .addCase(updateWorkspace.fulfilled, (state, action) => {
-        const index = state.workspaces.findIndex((w) => w.id === action.payload.id);
+        const index = state.workspaces.findIndex((w) => w.workspace_id === action.payload.workspace_id);
         if (index !== -1) {
           state.workspaces[index] = action.payload;
           // Update selected workspace if it was the one being updated
-          if (state.selectedWorkspace?.id === action.payload.id) {
+          if (state.selectedWorkspace?.workspace_id === action.payload.workspace_id) {
             state.selectedWorkspace = action.payload;
           }
         }
       })
       // Delete workspace
       .addCase(deleteWorkspace.fulfilled, (state, action) => {
-        state.workspaces = state.workspaces.filter((w) => w.id !== action.payload);
+        state.workspaces = state.workspaces.filter((w) => w.workspace_id !== action.payload);
         // Clear selected workspace if it was deleted
-        if (state.selectedWorkspace?.id === action.payload) {
+        if (state.selectedWorkspace?.workspace_id === action.payload) {
           state.selectedWorkspace = null;
         }
       });
