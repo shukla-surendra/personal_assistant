@@ -1,3 +1,4 @@
+""" database connection """
 from sqlalchemy import create_engine, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -18,7 +19,8 @@ def create_db_engine():
     for attempt in range(max_retries):
         try:
             SQLALCHEMY_DATABASE_URL = config.database_url
-            logger.info(f"Attempting to connect to database at {config.db_host}:{config.db_port} (attempt {attempt + 1}/{max_retries})")
+            logger.info(f"Attempting to connect to database "
+                        f"at {config.db_host}:{config.db_port} (attempt {attempt + 1}/{max_retries})")
 
             engine = create_engine(
                 SQLALCHEMY_DATABASE_URL,
@@ -61,4 +63,4 @@ try:
 
 except Exception as e:
     logger.error(f"Failed to initialize database connection: {str(e)}")
-    raise 
+    raise

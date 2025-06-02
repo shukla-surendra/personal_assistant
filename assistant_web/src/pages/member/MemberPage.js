@@ -23,8 +23,8 @@ import {
 } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchWorkspaces, createWorkspace, updateWorkspace, deleteWorkspace } from '../../store/slices/workspaceSlice';
-import { fetchMembers, addMember, removeMember, updateMemberRole, clearError } from '../../store/slices/memberSlice';
+import { selectWorkspace, fetchWorkspaces, createWorkspace, updateWorkspace, deleteWorkspace } from '../../slices/workspaces';
+import { fetchMembers, addMember, removeMember, updateMemberRole, clearError } from '../../slices/members';
 
 const MemberPage = () => {
   const dispatch = useDispatch();

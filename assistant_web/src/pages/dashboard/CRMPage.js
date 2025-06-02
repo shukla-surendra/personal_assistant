@@ -23,7 +23,7 @@ import ActivitiesPanel from '../../components/crm/ActivitiesPanel';
 import ContactsPanel from '../../components/crm/ContactsPanel';
 import DealsPanel from '../../components/crm/DealsPanel';
 import { useNavigate } from 'react-router-dom';
-import { selectWorkspace, fetchWorkspaces } from '../../store/slices/workspaceSlice';
+import { selectWorkspace, fetchWorkspaces } from '../../slices/workspaces';
 import config from '../../utils/config';
 import Navbar from '../../components/dashboard/Navbar';
 import Header from '../../components/dashboard/Header';

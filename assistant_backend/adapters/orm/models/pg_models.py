@@ -1,11 +1,9 @@
-from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Integer, Enum as SQLEnum, Table, Text
-from sqlalchemy.dialects.postgresql import UUID, JSONB, JSON
-from sqlalchemy.sql import func
+from sqlalchemy import (Column, String, Boolean, DateTime, ForeignKey, Integer, Enum as SQLEnum, Table, Text)
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 import uuid
 from adapters.orm.models.database import Base
-from constants import TaskStatus, TaskType, UserStatus, UserRoles, UserType
-from datetime import datetime
+import datetime
 
 # Association tables
 workspace_users = Table(
@@ -14,8 +12,8 @@ workspace_users = Table(
     Column('workspace_id', UUID(as_uuid=True), ForeignKey('workspaces.workspace_id'), primary_key=True),
     Column('user_id', UUID(as_uuid=True), ForeignKey('users.user_id'), primary_key=True),
     Column('role', String(50), nullable=False, server_default='member'),
-    Column('created_at', DateTime, default=datetime.utcnow),
-    Column('updated_at', DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    Column('created_at', DateTime, default=datetime.datetime.now(datetime.UTC)),
+    Column('updated_at', DateTime, default=datetime.datetime.now(datetime.UTC), onupdate=datetime.datetime.now(datetime.UTC))
 )
 
 task_tags = Table(
@@ -23,7 +21,7 @@ task_tags = Table(
     Base.metadata,
     Column('task_id', UUID(as_uuid=True), ForeignKey('tasks.task_id'), primary_key=True),
     Column('tag_id', UUID(as_uuid=True), ForeignKey('tags.id'), primary_key=True),
-    Column('created_at', DateTime, default=datetime.utcnow)
+    Column('created_at', DateTime, default=datetime.datetime.now(datetime.UTC))
 )
 
 class User(Base):
@@ -48,9 +46,8 @@ class User(Base):
     otp = Column(String, nullable=True)
     otp_time = Column(DateTime, nullable=True)
     default_workspace_id = Column(UUID(as_uuid=True), ForeignKey("workspaces.workspace_id"), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
+    created_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC))
+    updated_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC), onupdate=datetime.datetime.now(datetime.UTC))
     default_workspace = relationship("Workspace", foreign_keys=[default_workspace_id])
     workspaces = relationship("Workspace", secondary=workspace_users, back_populates="users")
     tasks = relationship("Task", foreign_keys="Task.user_id", back_populates="user")
@@ -77,9 +74,8 @@ class UserSettings(Base):
     theme = Column(String, default="light")
     preferences = Column(JSONB, nullable=True, default={})
     notification_settings = Column(JSONB, nullable=True, default={})
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
+    created_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC))
+    updated_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC), onupdate=datetime.datetime.now(datetime.UTC))
     user = relationship("User", back_populates="settings")
     workspace = relationship("Workspace")
 
@@ -108,9 +104,8 @@ class Task(Base):
     settings = Column(JSONB, nullable=True)
     public_access = Column(Boolean, default=False)
     slug = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
+    created_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC))
+    updated_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC), onupdate=datetime.datetime.now(datetime.UTC))
     workspace = relationship("Workspace", back_populates="tasks")
     board = relationship("Board", back_populates="tasks")
     user = relationship("User", foreign_keys=[user_id], back_populates="tasks")
@@ -135,9 +130,8 @@ class Workspace(Base):
     is_default = Column(Boolean, default=False)
     is_template = Column(Boolean, default=False)
     is_deleted = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
+    created_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC))
+    updated_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC), onupdate=datetime.datetime.now(datetime.UTC))
     owner = relationship("User", foreign_keys=[owner_id])
     tasks = relationship("Task", back_populates="workspace")
     users = relationship("User", secondary=workspace_users, back_populates="workspaces")
@@ -165,9 +159,8 @@ class Board(Base):
     properties = Column(JSONB, nullable=True)
     views = Column(JSONB, nullable=True)
     is_deleted = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
+    created_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC))
+    updated_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC), onupdate=datetime.datetime.now(datetime.UTC))
     workspace = relationship("Workspace", back_populates="boards")
     items = relationship("BoardItem", back_populates="board")
     tasks = relationship("Task", back_populates="board")
@@ -183,9 +176,8 @@ class BoardItem(Base):
     order = Column(Integer, nullable=True)
     assignee_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id"), nullable=True)
     is_deleted = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
+    created_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC))
+    updated_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC), onupdate=datetime.datetime.now(datetime.UTC))
     board = relationship("Board", back_populates="items")
     assignee = relationship("User", foreign_keys=[assignee_id], back_populates="assigned_items")
 
@@ -201,9 +193,8 @@ class Reminder(Base):
     repeat = Column(String, nullable=True)
     properties = Column(JSONB, nullable=True)
     is_completed = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
+    created_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC))
+    updated_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC), onupdate=datetime.datetime.now(datetime.UTC))
     workspace = relationship("Workspace", back_populates="reminders")
     user = relationship("User", back_populates="reminders")
 
@@ -220,9 +211,8 @@ class Notification(Base):
     entity_type = Column(String, nullable=True)
     properties = Column(JSONB, nullable=True)
     is_read = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
+    created_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC))
+    updated_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC), onupdate=datetime.datetime.now(datetime.UTC))
     workspace = relationship("Workspace", back_populates="notifications")
     user = relationship("User", back_populates="notifications")
 
@@ -238,9 +228,8 @@ class Comment(Base):
     content = Column(String, nullable=False)
     properties = Column(JSONB, nullable=True)
     is_deleted = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
+    created_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC))
+    updated_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC), onupdate=datetime.datetime.now(datetime.UTC))
     workspace = relationship("Workspace", back_populates="comments")
     user = relationship("User", back_populates="comments")
     task = relationship("Task", back_populates="comments")
@@ -252,8 +241,8 @@ class Tag(Base):
     name = Column(String, nullable=False, unique=True)
     color = Column(String, default="#808080")
     description = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC))
+    updated_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC), onupdate=datetime.datetime.now(datetime.UTC))
 
     tasks = relationship("Task", secondary=task_tags, back_populates="tags")
 
@@ -266,8 +255,8 @@ class Page(Base):
     content = Column(JSONB, nullable=True)
     properties = Column(JSONB, nullable=True)
     is_deleted = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC))
+    updated_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC), onupdate=datetime.datetime.now(datetime.UTC))
 
     workspace = relationship("Workspace", back_populates="pages")
     blocks = relationship("Block", back_populates="page")
@@ -281,8 +270,8 @@ class Block(Base):
     content = Column(JSONB, nullable=True)
     properties = Column(JSONB, nullable=True)
     is_deleted = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC))
+    updated_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC), onupdate=datetime.datetime.now(datetime.UTC))
 
     page = relationship("Page", back_populates="blocks")
 
@@ -295,8 +284,8 @@ class Database(Base):
     description = Column(String, nullable=True)
     properties = Column(JSONB, nullable=True)
     is_deleted = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC))
+    updated_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC), onupdate=datetime.datetime.now(datetime.UTC))
 
     workspace = relationship("Workspace", back_populates="databases")
     entries = relationship("DatabaseEntry", back_populates="database")
@@ -310,8 +299,8 @@ class DatabaseEntry(Base):
     content = Column(JSONB, nullable=True)
     properties = Column(JSONB, nullable=True)
     is_deleted = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC))
+    updated_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC), onupdate=datetime.datetime.now(datetime.UTC))
 
     database = relationship("Database", back_populates="entries")
 
@@ -328,8 +317,8 @@ class Template(Base):
     properties = Column(JSONB, nullable=True)
     tags = Column(JSONB, nullable=True)
     is_deleted = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC))
+    updated_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC), onupdate=datetime.datetime.now(datetime.UTC))
 
     workspace = relationship("Workspace", back_populates="templates")
 
@@ -344,8 +333,8 @@ class Activity(Base):
     entity_id = Column(UUID(as_uuid=True), nullable=False)
     details = Column(JSONB, nullable=True)
     properties = Column(JSONB, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC))
+    updated_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC), onupdate=datetime.datetime.now(datetime.UTC))
 
     workspace = relationship("Workspace", back_populates="activities")
     user = relationship("User", back_populates="activities")
@@ -360,8 +349,8 @@ class Integration(Base):
     settings = Column(JSONB, nullable=True)
     is_active = Column(Boolean, default=True)
     is_deleted = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC))
+    updated_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC), onupdate=datetime.datetime.now(datetime.UTC))
 
     workspace = relationship("Workspace", back_populates="integrations")
 
@@ -384,8 +373,8 @@ class Contact(Base):
     notes = Column(Text, nullable=True)
     properties = Column(JSONB, nullable=True)
     is_deleted = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC))
+    updated_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC), onupdate=datetime.datetime.now(datetime.UTC))
 
     workspace = relationship("Workspace", back_populates="contacts")
     deals = relationship("Deal", back_populates="contact")
@@ -408,8 +397,8 @@ class Deal(Base):
     status = Column(String, nullable=False, default="active")
     properties = Column(JSONB, nullable=True)
     is_deleted = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC))
+    updated_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC), onupdate=datetime.datetime.now(datetime.UTC))
 
     workspace = relationship("Workspace", back_populates="deals")
     contact = relationship("Contact", back_populates="deals")
@@ -429,8 +418,8 @@ class ContactActivity(Base):
     completed_at = Column(DateTime, nullable=True)
     status = Column(String, nullable=False, default="pending")
     properties = Column(JSONB, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC))
+    updated_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC), onupdate=datetime.datetime.now(datetime.UTC))
 
     workspace = relationship("Workspace", back_populates="contact_activities")
     contact = relationship("Contact", back_populates="activities")
@@ -449,8 +438,8 @@ class DealActivity(Base):
     old_stage = Column(String, nullable=True)
     new_stage = Column(String, nullable=True)
     properties = Column(JSONB, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC))
+    updated_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC), onupdate=datetime.datetime.now(datetime.UTC))
 
     workspace = relationship("Workspace", back_populates="deal_activities")
     deal = relationship("Deal", back_populates="activities")

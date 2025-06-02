@@ -1,7 +1,6 @@
+""" activity commands """
 from pydantic import BaseModel
 from typing import Optional
-from datetime import datetime
-from uuid import UUID
 
 
 class ActivityCommand(BaseModel):
@@ -21,4 +20,4 @@ class ActivityUpdateCommand(BaseModel):
 
 class ActivityDeleteCommand(BaseModel):
     activity_id: str
-    workspace_id: str 
+    workspace_id: str

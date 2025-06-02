@@ -25,7 +25,7 @@ import { MdExitToApp } from 'react-icons/md';
 import { HiChevronUpDown } from 'react-icons/hi2';
 import UserSettings from '../modals/UserSettings';
 import UserProfile from '../modals/UserProfile';
-import {retrieveWorkspaces} from '../../../slices/workspaces'
+import { selectWorkspace, fetchWorkspaces } from '../../../slices/workspaces';
 
 import Auth from "../../../utils/auth";
 import Config from "../../../utils/config"
@@ -44,7 +44,7 @@ function WorkspaceSelector() {
   const initFetch = useCallback(() => {
     setLoading(true);
     setError(null);
-    dispatch(retrieveWorkspaces())
+    dispatch(fetchWorkspaces())
       .unwrap()
       .catch(e => {
         console.error("Workspace fetch error:", e);

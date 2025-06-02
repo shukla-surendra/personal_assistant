@@ -6,48 +6,38 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000/api';
 // Async thunks
 export const fetchMembers = createAsyncThunk(
   'members/fetchMembers',
-  async () => {
-    const response = await axios.get(`${API_URL}/members`);
+  async (workspaceId) => {
+    const response = await axios.get(`${API_URL}/workspaces/${workspaceId}/members`);
     return response.data;
   }
 );
 
 export const addMember = createAsyncThunk(
   'members/addMember',
-  async ({ workspaceId, email, role }, { rejectWithValue }) => {
-    try {
-      const response = await axios.post(`${API_URL}/workspaces/${workspaceId}/members`, {
-        email,
-        role,
-      });
-      return response.data;
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.detail || 'Failed to add member');
-    }
+  async ({ workspaceId, email, role }) => {
+    const response = await axios.post(`${API_URL}/workspaces/${workspaceId}/members`, {
+      email,
+      role
+    });
+    return response.data;
   }
 );
 
 export const removeMember = createAsyncThunk(
   'members/removeMember',
-  async (memberId, { rejectWithValue }) => {
-    try {
-      await axios.delete(`${API_URL}/members/${memberId}`);
-      return memberId;
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.detail || 'Failed to remove member');
-    }
+  async ({ workspaceId, memberId }) => {
+    await axios.delete(`${API_URL}/workspaces/${workspaceId}/members/${memberId}`);
+    return memberId;
   }
 );
 
 export const updateMemberRole = createAsyncThunk(
   'members/updateMemberRole',
-  async ({ memberId, role }, { rejectWithValue }) => {
-    try {
-      const response = await axios.put(`${API_URL}/members/${memberId}`, { role });
-      return response.data;
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.detail || 'Failed to update member role');
-    }
+  async ({ workspaceId, memberId, role }) => {
+    const response = await axios.patch(`${API_URL}/workspaces/${workspaceId}/members/${memberId}`, {
+      role
+    });
+    return response.data;
   }
 );
 
@@ -114,7 +104,7 @@ const memberSlice = createSlice({
       })
       .addCase(updateMemberRole.fulfilled, (state, action) => {
         state.loading = false;
-        const index = state.members.findIndex((m) => m.id === action.payload.id);
+        const index = state.members.findIndex(m => m.id === action.payload.id);
         if (index !== -1) {
           state.members[index] = action.payload;
         }
@@ -124,7 +114,7 @@ const memberSlice = createSlice({
         state.loading = false;
         state.error = action.payload || action.error.message;
       });
-  },
+  }
 });
 
 export const { clearError } = memberSlice.actions;

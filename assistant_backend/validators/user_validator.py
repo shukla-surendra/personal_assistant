@@ -59,4 +59,4 @@ class UserValidator(BaseModel):
     def validate_preferences(cls, v):
         if not isinstance(v, dict):
             raise ValueError('Preferences must be a dictionary')
-        return v 
+        return v
