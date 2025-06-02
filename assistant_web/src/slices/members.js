@@ -1,13 +1,12 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
-
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000/api';
+import { BACKEND_URL } from '../http-common';
 
 // Async thunks
 export const fetchMembers = createAsyncThunk(
   'members/fetchMembers',
   async (workspaceId) => {
-    const response = await axios.get(`${API_URL}/workspaces/${workspaceId}/members`);
+    const response = await axios.get(`${BACKEND_URL}/api/v1/workspaces/${workspaceId}/members`);
     return response.data;
   }
 );
@@ -15,7 +14,7 @@ export const fetchMembers = createAsyncThunk(
 export const addMember = createAsyncThunk(
   'members/addMember',
   async ({ workspaceId, email, role }) => {
-    const response = await axios.post(`${API_URL}/workspaces/${workspaceId}/members`, {
+    const response = await axios.post(`${BACKEND_URL}/api/v1/workspaces/${workspaceId}/members`, {
       email,
       role
     });
@@ -26,7 +25,7 @@ export const addMember = createAsyncThunk(
 export const removeMember = createAsyncThunk(
   'members/removeMember',
   async ({ workspaceId, memberId }) => {
-    await axios.delete(`${API_URL}/workspaces/${workspaceId}/members/${memberId}`);
+    await axios.delete(`${BACKEND_URL}/api/v1/workspaces/${workspaceId}/members/${memberId}`);
     return memberId;
   }
 );
@@ -34,7 +33,7 @@ export const removeMember = createAsyncThunk(
 export const updateMemberRole = createAsyncThunk(
   'members/updateMemberRole',
   async ({ workspaceId, memberId, role }) => {
-    const response = await axios.patch(`${API_URL}/workspaces/${workspaceId}/members/${memberId}`, {
+    const response = await axios.patch(`${BACKEND_URL}/api/v1/workspaces/${workspaceId}/members/${memberId}`, {
       role
     });
     return response.data;

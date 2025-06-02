@@ -2,13 +2,14 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 import auth from '../utils/auth';
 import ConfigService from '../utils/config';
+import { BACKEND_URL } from '../http-common';
 
 // Async thunk for login
 export const login = createAsyncThunk(
   'auth/login',
   async (credentials, { rejectWithValue }) => {
     try {
-      const response = await axios.post('http://127.0.0.1:8000/api/v1/users/login', credentials);
+      const response = await axios.post(`${BACKEND_URL}/api/v1/users/login`, credentials);
       // Use auth service to handle login
       auth.login(response.data);
       return response.data;
