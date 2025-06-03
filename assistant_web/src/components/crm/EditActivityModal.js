@@ -18,70 +18,44 @@ import {
     Select,
     useToast
 } from '@chakra-ui/react';
-import { updateActivity } from '../../services/crmService';
+import { useDispatch } from 'react-redux';
+import { editActivity } from '../../slices/crm/activitiesSlice';
 
-const EditActivityModal = ({ isOpen, onClose, activity, onActivityUpdated }) => {
-    const [formData, setFormData] = useState({
-        type: 'note',
-        description: '',
-        notes: '',
-        contact_id: '',
-        deal_id: '',
-        tags: [],
-        properties: {}
-    });
-
-    const [errors, setErrors] = useState({});
-    const [isSubmitting, setIsSubmitting] = useState(false);
+const EditActivityModal = ({ isOpen, onClose, activity, workspaceId }) => {
+    const dispatch = useDispatch();
     const toast = useToast();
-
-    useEffect(() => {
-        if (activity) {
-            setFormData({
-                type: activity.type || 'note',
-                description: activity.description || '',
-                notes: activity.notes || '',
-                contact_id: activity.contact_id || '',
-                deal_id: activity.deal_id || '',
-                tags: activity.tags || [],
-                properties: activity.properties || {}
-            });
-        }
-    }, [activity]);
-
-    const validateForm = () => {
-        const newErrors = {};
-        if (!formData.type) newErrors.type = 'Type is required';
-        if (!formData.description) newErrors.description = 'Description is required';
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
+    const [formData, setFormData] = useState({
+        type: activity.type || '',
+        description: activity.description || '',
+        date: activity.date || '',
+        contact_id: activity.contact_id || '',
+        deal_id: activity.deal_id || '',
+        tags: activity.tags || []
+    });
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!validateForm()) return;
-
         try {
-            setIsSubmitting(true);
-            const updatedActivity = await updateActivity(activity.activity_id, formData);
-            onActivityUpdated(updatedActivity);
-            onClose();
+            await dispatch(editActivity({ 
+                workspaceId, 
+                activityId: activity.activity_id, 
+                activityData: formData 
+            })).unwrap();
             toast({
-                title: 'Activity updated successfully',
+                title: 'Activity updated',
                 status: 'success',
                 duration: 3000,
                 isClosable: true,
             });
+            onClose();
         } catch (error) {
             toast({
-                title: 'Error updating activity',
-                description: error.message,
+                title: 'Error',
+                description: 'Failed to update activity',
                 status: 'error',
                 duration: 5000,
                 isClosable: true,
             });
-        } finally {
-            setIsSubmitting(false);
         }
     };
 
@@ -103,7 +77,7 @@ const EditActivityModal = ({ isOpen, onClose, activity, onActivityUpdated }) => 
                     <ModalBody>
                         <Grid templateColumns="repeat(2, 1fr)" gap={4}>
                             <GridItem>
-                                <FormControl isInvalid={errors.type} isRequired>
+                                <FormControl>
                                     <FormLabel>Type</FormLabel>
                                     <Select
                                         name="type"
@@ -115,7 +89,6 @@ const EditActivityModal = ({ isOpen, onClose, activity, onActivityUpdated }) => 
                                         <option value="meeting">Meeting</option>
                                         <option value="note">Note</option>
                                     </Select>
-                                    <FormErrorMessage>{errors.type}</FormErrorMessage>
                                 </FormControl>
                             </GridItem>
 
@@ -148,7 +121,7 @@ const EditActivityModal = ({ isOpen, onClose, activity, onActivityUpdated }) => 
                             </GridItem>
 
                             <GridItem colSpan={2}>
-                                <FormControl isInvalid={errors.description} isRequired>
+                                <FormControl>
                                     <FormLabel>Description</FormLabel>
                                     <Input
                                         name="description"
@@ -156,19 +129,17 @@ const EditActivityModal = ({ isOpen, onClose, activity, onActivityUpdated }) => 
                                         onChange={handleChange}
                                         placeholder="Enter activity description"
                                     />
-                                    <FormErrorMessage>{errors.description}</FormErrorMessage>
                                 </FormControl>
                             </GridItem>
 
                             <GridItem colSpan={2}>
                                 <FormControl>
-                                    <FormLabel>Notes</FormLabel>
-                                    <Textarea
-                                        name="notes"
-                                        value={formData.notes}
+                                    <FormLabel>Date</FormLabel>
+                                    <Input
+                                        name="date"
+                                        value={formData.date}
                                         onChange={handleChange}
-                                        placeholder="Enter additional notes"
-                                        rows={3}
+                                        type="datetime-local"
                                     />
                                 </FormControl>
                             </GridItem>
@@ -202,7 +173,6 @@ const EditActivityModal = ({ isOpen, onClose, activity, onActivityUpdated }) => 
                         <Button
                             colorScheme="blue"
                             type="submit"
-                            isLoading={isSubmitting}
                         >
                             Save Changes
                         </Button>

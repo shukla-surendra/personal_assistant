@@ -152,7 +152,7 @@ const ACTIVITY_TEMPLATES = [
     }
 ];
 
-const ActivitiesPanel = ({ contacts, deals }) => {
+const ActivitiesPanel = ({ contacts, deals, workspaceId }) => {
     const dispatch = useDispatch();
     const toast = useToast();
     const { activities: reduxActivities, loading: reduxLoading, filters, sort } = useSelector((state) => state.activities);
@@ -249,7 +249,7 @@ const ActivitiesPanel = ({ contacts, deals }) => {
 
     const handleDelete = async (activityId) => {
         try {
-            await dispatch(removeActivity(activityId)).unwrap();
+            await dispatch(removeActivity({ workspaceId, activityId })).unwrap();
             toast({
                 title: 'Activity deleted',
                 status: 'success',
@@ -303,7 +303,7 @@ const ActivitiesPanel = ({ contacts, deals }) => {
     const handleBulkEdit = async (updates) => {
         try {
             await Promise.all(selectedActivities.map(id => 
-                updateActivity(id, updates)
+                updateActivity(workspaceId, id, updates)
             ));
             await fetchActivities();
             setSelectedActivities([]);

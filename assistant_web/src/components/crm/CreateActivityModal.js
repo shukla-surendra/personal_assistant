@@ -18,22 +18,22 @@ import {
     Select,
     useToast
 } from '@chakra-ui/react';
-import { createActivity } from '../../services/crmService';
+import { useDispatch } from 'react-redux';
+import { addActivity } from '../../slices/crm/activitiesSlice';
 
-const CreateActivityModal = ({ isOpen, onClose, onActivityCreated, workspaceId }) => {
+const CreateActivityModal = ({ isOpen, onClose, workspaceId }) => {
+    const dispatch = useDispatch();
+    const toast = useToast();
     const [formData, setFormData] = useState({
-        type: 'note',
+        type: '',
         description: '',
-        notes: '',
+        date: '',
         contact_id: '',
         deal_id: '',
-        tags: [],
-        properties: {}
+        tags: []
     });
-
     const [errors, setErrors] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const toast = useToast();
 
     const validateForm = () => {
         const newErrors = {};
@@ -49,22 +49,18 @@ const CreateActivityModal = ({ isOpen, onClose, onActivityCreated, workspaceId }
 
         try {
             setIsSubmitting(true);
-            const newActivity = await createActivity({
-                ...formData,
-                workspace_id: workspaceId
-            });
-            onActivityCreated(newActivity);
-            onClose();
+            await dispatch(addActivity({ workspaceId, activityData: formData })).unwrap();
             toast({
-                title: 'Activity created successfully',
+                title: 'Activity created',
                 status: 'success',
                 duration: 3000,
                 isClosable: true,
             });
+            onClose();
         } catch (error) {
             toast({
-                title: 'Error creating activity',
-                description: error.message,
+                title: 'Error',
+                description: 'Failed to create activity',
                 status: 'error',
                 duration: 5000,
                 isClosable: true,
@@ -99,6 +95,7 @@ const CreateActivityModal = ({ isOpen, onClose, onActivityCreated, workspaceId }
                                         value={formData.type}
                                         onChange={handleChange}
                                     >
+                                        <option value="">Select type</option>
                                         <option value="call">Call</option>
                                         <option value="email">Email</option>
                                         <option value="meeting">Meeting</option>
@@ -151,13 +148,12 @@ const CreateActivityModal = ({ isOpen, onClose, onActivityCreated, workspaceId }
 
                             <GridItem colSpan={2}>
                                 <FormControl>
-                                    <FormLabel>Notes</FormLabel>
-                                    <Textarea
-                                        name="notes"
-                                        value={formData.notes}
+                                    <FormLabel>Date</FormLabel>
+                                    <Input
+                                        name="date"
+                                        value={formData.date}
                                         onChange={handleChange}
-                                        placeholder="Enter additional notes"
-                                        rows={3}
+                                        type="datetime-local"
                                     />
                                 </FormControl>
                             </GridItem>

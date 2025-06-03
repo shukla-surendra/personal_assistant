@@ -19,16 +19,16 @@ export const addActivity = createAsyncThunk(
 
 export const editActivity = createAsyncThunk(
     'activities/editActivity',
-    async ({ activityId, activityData }) => {
-        const response = await updateActivity(activityId, activityData);
+    async ({ workspaceId, activityId, activityData }) => {
+        const response = await updateActivity(workspaceId, activityId, activityData);
         return response;
     }
 );
 
 export const removeActivity = createAsyncThunk(
     'activities/removeActivity',
-    async (activityId) => {
-        await deleteActivity(activityId);
+    async ({ workspaceId, activityId }) => {
+        await deleteActivity(workspaceId, activityId);
         return activityId;
     }
 );

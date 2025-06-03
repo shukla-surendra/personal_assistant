@@ -1,8 +1,9 @@
 import axios from "axios";
 import ConfigService from "./utils/config";
 import auth from "./utils/auth";
+import config from './config.json';
 
-export const BACKEND_URL = "http://127.0.0.1:8000";
+export const BACKEND_URL = `${config.API_BASE_URL}`;
 
 export const getBackendUrl = () => {
   return BACKEND_URL;
