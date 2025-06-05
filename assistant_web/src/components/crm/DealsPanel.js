@@ -112,12 +112,21 @@ const DealsPanel = () => {
         onViewOpen();
     };
 
+    const handleDealUpdated = () => {
+        toast({
+            title: 'Deal updated',
+            status: 'success',
+            duration: 3000,
+            isClosable: true,
+        });
+    };
+
     const filteredDeals = deals.filter((deal) => {
         const searchLower = searchQuery.toLowerCase();
         return (
-            deal.name.toLowerCase().includes(searchLower) ||
-            deal.company?.toLowerCase().includes(searchLower) ||
-            deal.contact_name?.toLowerCase().includes(searchLower)
+            (deal.name?.toLowerCase() || '').includes(searchLower) ||
+            (deal.company?.toLowerCase() || '').includes(searchLower) ||
+            (deal.contact_name?.toLowerCase() || '').includes(searchLower)
         );
     });
 
@@ -282,6 +291,7 @@ const DealsPanel = () => {
                         isOpen={isEditOpen}
                         onClose={onEditClose}
                         deal={selectedDeal}
+                        onSuccess={handleDealUpdated}
                     />
                     <ViewDealModal
                         isOpen={isViewOpen}

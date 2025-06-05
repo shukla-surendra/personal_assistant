@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 from uuid import UUID
 from adapters.orm.models.pg_models import Activity
 from adapters.orm.models.database import SessionLocal
@@ -67,6 +67,30 @@ class ActivityHandler:
             self.db.rollback()
             logger.error(f"Error deleting activity: {str(e)}")
             raise HTTPException(status_code=500, detail="Failed to delete activity")
+
+    def get_activity(self, activity_id: str) -> Activity:
+        try:
+            activity = self.db.query(Activity).filter(Activity.activity_id == UUID(activity_id)).first()
+            if not activity:
+                raise HTTPException(status_code=404, detail="Activity not found")
+            return activity
+        except SQLAlchemyError as e:
+            logger.error(f"Error getting activity: {str(e)}")
+            raise HTTPException(status_code=500, detail="Failed to get activity")
+
+    def list_activities(self, workspace_id: str, entity_id: Optional[str] = None, entity_type: Optional[str] = None) -> List[Activity]:
+        try:
+            query = self.db.query(Activity).filter(Activity.workspace_id == UUID(workspace_id))
+            
+            if entity_id:
+                query = query.filter(Activity.entity_id == UUID(entity_id))
+            if entity_type:
+                query = query.filter(Activity.entity_type == entity_type)
+            
+            return query.order_by(Activity.created_at.desc()).all()
+        except SQLAlchemyError as e:
+            logger.error(f"Error listing activities: {str(e)}")
+            raise HTTPException(status_code=500, detail="Failed to list activities")
 
     def __del__(self):
         self.db.close() 
