@@ -59,6 +59,7 @@ class User(Base):
     notifications = relationship("Notification", back_populates="user")
     reminders = relationship("Reminder", back_populates="user")
     settings = relationship("UserSettings", back_populates="user", uselist=False)
+    chats = relationship("Chat", back_populates="user")
 
 class UserSettings(Base):
     __tablename__ = "user_settings"
@@ -148,6 +149,7 @@ class Workspace(Base):
     deals = relationship("Deal", back_populates="workspace")
     contact_activities = relationship("ContactActivity", back_populates="workspace")
     deal_activities = relationship("DealActivity", back_populates="workspace")
+    chats = relationship("Chat", back_populates="workspace")
 
 class Board(Base):
     __tablename__ = "boards"
@@ -418,6 +420,7 @@ class ContactActivity(Base):
     completed_at = Column(DateTime, nullable=True)
     status = Column(String, nullable=False, default="pending")
     properties = Column(JSONB, nullable=True)
+    is_deleted = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC))
     updated_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC), onupdate=datetime.datetime.now(datetime.UTC))
 
@@ -444,3 +447,33 @@ class DealActivity(Base):
     workspace = relationship("Workspace", back_populates="deal_activities")
     deal = relationship("Deal", back_populates="activities")
     user = relationship("User")
+
+class Chat(Base):
+    __tablename__ = "chats"
+
+    chat_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(UUID(as_uuid=True), ForeignKey("workspaces.workspace_id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id"), nullable=False)
+    title = Column(String, nullable=False)
+    model = Column(String, nullable=False, default="gpt-3.5-turbo")  # The AI model being used
+    context = Column(JSONB, nullable=True)  # Additional context for the chat
+    is_deleted = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC))
+    updated_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC), onupdate=datetime.datetime.now(datetime.UTC))
+
+    workspace = relationship("Workspace", back_populates="chats")
+    user = relationship("User", back_populates="chats")
+    messages = relationship("ChatMessage", back_populates="chat", cascade="all, delete-orphan")
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+
+    message_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    chat_id = Column(UUID(as_uuid=True), ForeignKey("chats.chat_id"), nullable=False)
+    role = Column(String, nullable=False)  # user, assistant, system
+    content = Column(Text, nullable=False)
+    metadata = Column(JSONB, nullable=True)  # Additional metadata like tokens used, etc.
+    created_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC))
+    updated_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC), onupdate=datetime.datetime.now(datetime.UTC))
+
+    chat = relationship("Chat", back_populates="messages")

@@ -8,6 +8,7 @@ import contactsReducer from './slices/crm/contactsSlice';
 import dealsReducer from './slices/crm/dealsSlice';
 import activitiesReducer from './slices/crm/activitiesSlice';
 import memberReducer from './slices/members';
+import chatReducer from './slices/chatSlice';
 
 const store = configureStore({
   reducer: {
@@ -19,7 +20,8 @@ const store = configureStore({
     contacts: contactsReducer,
     deals: dealsReducer,
     activities: activitiesReducer,
-    members: memberReducer
+    members: memberReducer,
+    chat: chatReducer
   },
   devTools: true,
   middleware: (getDefaultMiddleware) =>

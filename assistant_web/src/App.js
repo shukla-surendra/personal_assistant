@@ -15,6 +15,7 @@ import DatabasePage from "./pages/dashboard/DatabasePage";
 import MembersPage from "./pages/dashboard/MembersPage";
 import NotificationsPage from "./pages/dashboard/NotificationsPage";
 import CRMPage from "./pages/dashboard/CRMPage";
+import ChatPage from "./pages/dashboard/ChatPage";
 // landing pages some page might require login
 import Login from "./pages/landing/Login"
 import Home from "./pages/landing/Home";
@@ -66,6 +67,7 @@ function App() {
           <Route path="/wiki" element={<WikiPage/>}/>
           <Route path="/database" element={<DatabasePage/>}/>
           <Route path="/crm" element={<CRMPage/>}/>
+          <Route path="/chat" element={<ChatPage/>}/>
           <Route path="/task/:id" element={<TaskDetailPage/>} />
           <Route path="/search-tasks" element={<SearchTasksPage />} />
           <Route path="/search-notebooks" element={<SearchNotebookPage />} />

@@ -14,7 +14,11 @@ import {
     useToast,
     Button,
     VStack,
-    useColorModeValue
+    useColorModeValue,
+    Alert,
+    AlertIcon,
+    AlertTitle,
+    AlertDescription
 } from '@chakra-ui/react';
 import { fetchContacts } from '../../slices/crm/contactsSlice';
 import { fetchDeals } from '../../slices/crm/dealsSlice';
@@ -34,13 +38,13 @@ const CRMPage = () => {
     const toast = useToast();
     const [isMenuCollapsed, setIsMenuCollapsed] = useState(false);
     const { selectedWorkspace, workspaces } = useSelector((state) => state.workspaces || {});
-    const contacts = useSelector((state) => state.contacts || {});
-    const deals = useSelector((state) => state.deals || {});
-    const activities = useSelector((state) => state.activities || {});
+    const { contacts, loading: contactsLoading, error: contactsError } = useSelector((state) => state.contacts || {});
+    const { deals, loading: dealsLoading, error: dealsError } = useSelector((state) => state.deals || {});
+    const { activities, loading: activitiesLoading, error: activitiesError } = useSelector((state) => state.activities || {});
     const bgColor = useColorModeValue('gray.50', 'gray.900');
 
-    const isLoading = contacts.loading || deals.loading || activities.loading;
-    const hasError = contacts.error || deals.error || activities.error;
+    const isLoading = contactsLoading || dealsLoading || activitiesLoading;
+    const hasError = contactsError || dealsError || activitiesError;
 
     // Debug logging for Redux state
     useEffect(() => {
@@ -155,53 +159,56 @@ const CRMPage = () => {
     if (isLoading) {
         console.log('Rendering loading state');
         return (
-            <Box minH="100vh" bg={bgColor}>
-                <Navbar isCollapsed={isMenuCollapsed} />
-                <Box
-                    ml={{ base: 0, md: isMenuCollapsed ? "60px" : "250px" }}
-                    transition="all 0.3s ease"
-                    minH="100vh"
-                >
-                    <Header onMenuToggle={() => setIsMenuCollapsed(!isMenuCollapsed)} />
-                    <Flex justify="center" align="center" h="100vh">
-                        <Spinner size="xl" />
-                    </Flex>
-                </Box>
+            <Box display="flex" justifyContent="center" alignItems="center" minH="100vh">
+                <Spinner size="xl" />
+            </Box>
+        );
+    }
+
+    if (hasError) {
+        return (
+            <Box p={4}>
+                <Alert status="error">
+                    <AlertIcon />
+                    <AlertTitle>Error loading CRM data</AlertTitle>
+                    <AlertDescription>
+                        {contactsError && <Text>Error loading contacts: {contactsError}</Text>}
+                        {dealsError && <Text>Error loading deals: {dealsError}</Text>}
+                        {activitiesError && <Text>Error loading activities: {activitiesError}</Text>}
+                    </AlertDescription>
+                </Alert>
             </Box>
         );
     }
 
     console.log('Rendering CRM dashboard with workspace:', selectedWorkspace);
     return (
-        <Box minH="100vh" bg={bgColor}>
-            <Navbar isCollapsed={isMenuCollapsed} />
-            <Box
-                ml={{ base: 0, md: isMenuCollapsed ? "60px" : "250px" }}
-                transition="all 0.3s ease"
-                minH="100vh"
-            >
-                <Header onMenuToggle={() => setIsMenuCollapsed(!isMenuCollapsed)} />
-                <Box p={4}>
-                    <Heading mb={6}>CRM Dashboard - {selectedWorkspace.name}</Heading>
-                    <Tabs variant="enclosed">
-                        <TabList>
-                            <Tab>Activities</Tab>
-                            <Tab>Contacts</Tab>
-                            <Tab>Deals</Tab>
-                        </TabList>
-                        <TabPanels>
-                            <TabPanel>
-                                <ActivitiesPanel />
-                            </TabPanel>
-                            <TabPanel>
-                                <ContactsPanel />
-                            </TabPanel>
-                            <TabPanel>
-                                <DealsPanel />
-                            </TabPanel>
-                        </TabPanels>
-                    </Tabs>
-                </Box>
+        <Box bg={bgColor} minH="100vh">
+            <Navbar isCollapsed={isMenuCollapsed} onToggle={() => setIsMenuCollapsed(!isMenuCollapsed)} />
+            <Box ml={isMenuCollapsed ? "60px" : "240px"} p={4}>
+                <Header title="CRM" />
+                <Tabs variant="enclosed" mt={4}>
+                    <TabList>
+                        <Tab>Contacts</Tab>
+                        <Tab>Deals</Tab>
+                        <Tab>Activities</Tab>
+                    </TabList>
+                    <TabPanels>
+                        <TabPanel>
+                            <ContactsPanel />
+                        </TabPanel>
+                        <TabPanel>
+                            <DealsPanel />
+                        </TabPanel>
+                        <TabPanel>
+                            <ActivitiesPanel 
+                                contacts={contacts || []} 
+                                deals={deals || []} 
+                                workspaceId={selectedWorkspace?.workspace_id}
+                            />
+                        </TabPanel>
+                    </TabPanels>
+                </Tabs>
             </Box>
         </Box>
     );

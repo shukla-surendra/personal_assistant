@@ -9,6 +9,7 @@ from commands.crm_cmd import (
     ContactCreate, ContactUpdate, DealCreate, DealUpdate,
     ContactActivityCreate, DealActivityCreate
 )
+from sqlalchemy.orm import joinedload
 
 logger = logging.getLogger(__name__)
 
@@ -91,13 +92,17 @@ class CRMHandler:
         return deal
 
     def get_workspace_deals(self, workspace_id: UUID) -> List[Deal]:
-        return self.db.query(Deal).filter(
+        return self.db.query(Deal).options(
+            joinedload(Deal.contact)
+        ).filter(
             Deal.workspace_id == workspace_id,
             Deal.is_deleted == False
         ).all()
 
     def get_contact_deals(self, contact_id: UUID) -> List[Deal]:
-        return self.db.query(Deal).filter(
+        return self.db.query(Deal).options(
+            joinedload(Deal.contact)
+        ).filter(
             Deal.contact_id == contact_id,
             Deal.is_deleted == False
         ).all()
@@ -141,7 +146,8 @@ class CRMHandler:
 
     def get_contact_activities(self, contact_id: UUID) -> List[ContactActivity]:
         return self.db.query(ContactActivity).filter(
-            ContactActivity.contact_id == contact_id
+            ContactActivity.contact_id == contact_id,
+            ContactActivity.is_deleted == False
         ).order_by(ContactActivity.created_at.desc()).all()
 
     def create_deal_activity(self, activity: DealActivityCreate) -> DealActivity:
@@ -158,5 +164,6 @@ class CRMHandler:
 
     def get_deal_activities(self, deal_id: UUID) -> List[DealActivity]:
         return self.db.query(DealActivity).filter(
-            DealActivity.deal_id == deal_id
+            DealActivity.deal_id == deal_id,
+            DealActivity.is_deleted == False
         ).order_by(DealActivity.created_at.desc()).all() 

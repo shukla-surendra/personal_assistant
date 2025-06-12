@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     db_name: str = "productify"
     db_user: str = "postgres"
     db_password: str = "postgres"
-    # database_url: str = ""
+    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/assistant"
     
     # Storage settings
     storage_type: str = "postgresql"  # Must match StorageType enum values
@@ -35,12 +35,16 @@ class Settings(BaseSettings):
     
     # Auth settings
     auth_type: str = "jwt"
-    jwt_secret: str = "productify+secret"
-    jwt_algorithm: str = "HS256"
-    jwt_expire_minutes: int = 120
+    JWT_SECRET_KEY: str = "your-secret-key"
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     
     # AWS settings
     aws_region: str = "ap-south-1"
+    
+    # OpenAI settings
+    OPENAI_API_KEY: str = ""
+    OPENAI_MODEL: str = "gpt-3.5-turbo"
     
     class Config:
         env_file = ".env"
@@ -48,7 +52,7 @@ class Settings(BaseSettings):
         extra = "ignore"  # Allow extra fields
 
 @lru_cache()
-def get_config():
+def get_settings():
     return Settings()
 
-settings = get_config()
+settings = get_settings()

@@ -19,8 +19,8 @@ export const addDeal = createAsyncThunk(
 
 export const editDeal = createAsyncThunk(
     'deals/editDeal',
-    async ({ dealId, dealData }) => {
-        const response = await updateDeal(dealId, dealData);
+    async ({ workspaceId, dealId, dealData }) => {
+        const response = await updateDeal(workspaceId, dealId, dealData);
         return response;
     }
 );

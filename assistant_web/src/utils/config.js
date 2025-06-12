@@ -25,7 +25,20 @@ class ConfigService {
         }
     }
 
-    // New methods for user_id
+    // Token management methods
+    getToken() {
+        return localStorage.getItem('access_token');
+    }
+
+    setToken(token) {
+        localStorage.setItem('access_token', token);
+    }
+
+    clearToken() {
+        localStorage.removeItem('access_token');
+    }
+
+    // User ID methods
     setUserId(user_id) {
         localStorage.setItem('user_id', user_id);
     }

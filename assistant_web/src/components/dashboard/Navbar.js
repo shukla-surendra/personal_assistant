@@ -26,7 +26,8 @@ import {
   BsListTask,
   BsFileEarmarkText,
   BsGraphUp,
-  BsPersonLinesFill
+  BsPersonLinesFill,
+  BsChatDots
 } from 'react-icons/bs';
 import { 
   FiClock, 
@@ -191,6 +192,14 @@ const Navbar = ({ isCollapsed, onToggle }) => {
               CRM
             </NavItem>
             <NavItem
+              icon={BsChatDots}
+              to="/chat"
+              isActive={location.pathname === '/chat'}
+              isCollapsed={isCollapsed}
+            >
+              Chat
+            </NavItem>
+            <NavItem
               icon={FiSearch}
               to="/search-tasks"
               isActive={location.pathname === '/search-tasks'}
@@ -257,91 +266,13 @@ const Navbar = ({ isCollapsed, onToggle }) => {
               </Text>
             )}
             <NavItem
-              icon={AiOutlineBook}
-              to="/wiki"
-              isActive={location.pathname === '/wiki'}
+              icon={FiUsers}
+              to="/members"
+              isActive={location.pathname === '/members'}
               isCollapsed={isCollapsed}
             >
-              Wiki
+              Members
             </NavItem>
-            <NavItem
-              icon={BsListTask}
-              to="/projects"
-              isActive={location.pathname === '/projects'}
-              isCollapsed={isCollapsed}
-            >
-              Projects
-            </NavItem>
-            <NavItem
-              icon={AiOutlineDatabase}
-              to="/database"
-              isActive={location.pathname === '/database'}
-              isCollapsed={isCollapsed}
-            >
-              Database
-            </NavItem>
-            <NavItem
-              icon={AiOutlineTeam}
-              to="/team"
-              isActive={location.pathname === '/team'}
-              isCollapsed={isCollapsed}
-            >
-              Team
-            </NavItem>
-          </Box>
-
-          <Divider />
-
-          {/* Analytics */}
-          <Box p={2}>
-            {!isCollapsed && (
-              <Text
-                px={4}
-                py={2}
-                fontSize="xs"
-                fontWeight="bold"
-                color="gray.500"
-                textTransform="uppercase"
-              >
-                Analytics
-              </Text>
-            )}
-            <NavItem
-              icon={MdOutlineAnalytics}
-              to="/analytics"
-              isActive={location.pathname === '/analytics'}
-              isCollapsed={isCollapsed}
-            >
-              Analytics
-            </NavItem>
-            <NavItem
-              icon={MdOutlineSpaceDashboard}
-              to="/reports"
-              isActive={location.pathname === '/reports'}
-              isCollapsed={isCollapsed}
-            >
-              Reports
-            </NavItem>
-          </Box>
-        </Box>
-
-        {/* Fixed Footer */}
-        <Box>
-          <Divider />
-          {/* Settings */}
-          <Box p={2}>
-            {!isCollapsed && (
-              <Text
-                px={4}
-                py={2}
-                fontSize="xs"
-                fontWeight="bold"
-                color="gray.500"
-                textTransform="uppercase"
-              >
-                Settings
-              </Text>
-            )}
             <NavItem
               icon={FiSettings}
               to="/settings"
@@ -350,31 +281,22 @@ const Navbar = ({ isCollapsed, onToggle }) => {
             >
               Settings
             </NavItem>
-            <NavItem
-              icon={FiUsers}
-              to="/members"
-              isActive={location.pathname === '/members'}
-              isCollapsed={isCollapsed}
-            >
-              Members
-            </NavItem>
           </Box>
+        </Box>
 
-          {/* Theme Toggle */}
-          <Box p={2}>
-            <Flex align="center" justify="space-between" px={4} py={2}>
-              {!isCollapsed && (
-                <Text fontSize="sm" color="gray.500">Theme</Text>
-              )}
+        {/* Footer */}
+        <Box p={4} borderTop="1px" borderColor={borderColor}>
+          <Flex justify="space-between" align="center">
+            <Tooltip label={colorMode === 'light' ? 'Dark Mode' : 'Light Mode'}>
               <IconButton
-                aria-label="Toggle theme"
-                icon={<Icon as={colorMode === "light" ? FiMoon : FiSun} />}
+                icon={<Icon as={colorMode === 'light' ? FiMoon : FiSun} />}
                 onClick={toggleColorMode}
-                size="sm"
                 variant="ghost"
+                aria-label="Toggle color mode"
+                size="sm"
               />
-            </Flex>
-          </Box>
+            </Tooltip>
+          </Flex>
         </Box>
       </VStack>
     </Box>
@@ -384,65 +306,41 @@ const Navbar = ({ isCollapsed, onToggle }) => {
 const NavItem = ({ icon, children, isCollapsed, to, isActive, onClick, ...rest }) => {
   const hoverBg = useColorModeValue('gray.100', 'gray.700');
   const activeBg = useColorModeValue('blue.50', 'blue.900');
-  const activeColor = useColorModeValue('blue.600', 'blue.300');
-  const color = useColorModeValue('gray.700', 'gray.200');
+  const activeColor = useColorModeValue('blue.600', 'blue.200');
 
-  return (
-    <Tooltip
-      label={children}
-      placement="right"
-      isDisabled={!isCollapsed}
-      hasArrow
+  const content = (
+    <Flex
+      align="center"
+      p={4}
+      mx={2}
+      borderRadius="lg"
+      role="group"
+      cursor="pointer"
+      _hover={{
+        bg: hoverBg,
+      }}
+      bg={isActive ? activeBg : 'transparent'}
+      color={isActive ? activeColor : 'inherit'}
+      {...rest}
     >
-      <Box
-        as={to ? RouterLink : 'div'}
-        to={to}
-        onClick={onClick}
-        style={{ textDecoration: 'none' }}
-        _focus={{ boxShadow: 'none' }}
-        cursor="pointer"
-      >
-        <Flex
-          align="center"
-          p="3"
-          mx="2"
-          borderRadius="lg"
-          role="group"
-          cursor="pointer"
-          _hover={{
-            bg: hoverBg,
-          }}
-          bg={isActive ? activeBg : 'transparent'}
-          color={isActive ? activeColor : color}
-          transition="all 0.2s"
-          {...rest}
-        >
-          {icon && (
-            <Icon
-              mr={isCollapsed ? 0 : 4}
-              fontSize="16"
-              _groupHover={{
-                color: activeColor,
-              }}
-              as={icon}
-            />
-          )}
-          {!isCollapsed && (
-            <Text
-              fontSize="sm"
-              fontWeight="medium"
-              transition="all 0.2s"
-              _groupHover={{
-                color: activeColor,
-              }}
-            >
-              {children}
-            </Text>
-          )}
-        </Flex>
-      </Box>
-    </Tooltip>
+      <Icon
+        mr={isCollapsed ? 0 : 4}
+        fontSize="16"
+        as={icon}
+      />
+      {!isCollapsed && (
+        <Text fontSize="sm" fontWeight={isActive ? 'bold' : 'normal'}>
+          {children}
+        </Text>
+      )}
+    </Flex>
   );
+
+  if (to) {
+    return <RouterLink to={to}>{content}</RouterLink>;
+  }
+
+  return content;
 };
 
 export default Navbar;

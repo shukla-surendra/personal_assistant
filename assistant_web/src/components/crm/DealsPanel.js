@@ -25,7 +25,7 @@ import {
     Progress
 } from '@chakra-ui/react';
 import { SearchIcon, AddIcon, ChevronDownIcon } from '@chakra-ui/icons';
-import { removeDeal } from '../../slices/crm/dealsSlice';
+import { removeDeal, editDeal } from '../../slices/crm/dealsSlice';
 import CreateDealModal from './CreateDealModal';
 import EditDealModal from './EditDealModal';
 import ViewDealModal from './ViewDealModal';
@@ -179,11 +179,11 @@ const DealsPanel = () => {
                         {filteredDeals.map((deal) => (
                             <Tr key={deal.deal_id}>
                                 <Td>
-                                    <Text fontWeight="medium">{deal.name}</Text>
+                                    <Text fontWeight="medium">{deal.title}</Text>
                                 </Td>
-                                <Td>{deal.company}</Td>
-                                <Td>{deal.contact_name}</Td>
-                                <Td>${deal.value.toLocaleString()}</Td>
+                                <Td>{deal.contact?.company || '-'}</Td>
+                                <Td>{deal.contact ? `${deal.contact.first_name} ${deal.contact.last_name}` : '-'}</Td>
+                                <Td>${deal.value?.toLocaleString() || '0'}</Td>
                                 <Td>
                                     <Badge colorScheme={getStageColor(deal.stage)}>
                                         {deal.stage}
@@ -236,11 +236,11 @@ const DealsPanel = () => {
                             boxShadow="sm"
                         >
                             <Text fontSize="lg" fontWeight="bold" mb={2}>
-                                {deal.name}
+                                {deal.title}
                             </Text>
-                            <Text mb={1}>Company: {deal.company}</Text>
-                            <Text mb={1}>Contact: {deal.contact_name}</Text>
-                            <Text mb={1}>Value: ${deal.value.toLocaleString()}</Text>
+                            <Text mb={1}>Company: {deal.contact?.company || '-'}</Text>
+                            <Text mb={1}>Contact: {deal.contact ? `${deal.contact.first_name} ${deal.contact.last_name}` : '-'}</Text>
+                            <Text mb={1}>Value: ${deal.value?.toLocaleString() || '0'}</Text>
                             <Flex mb={2} gap={2}>
                                 <Badge colorScheme={getStageColor(deal.stage)}>
                                     {deal.stage}

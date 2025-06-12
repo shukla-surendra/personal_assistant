@@ -1,50 +1,44 @@
 import logging
+import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from mangum import Mangum
-import uvicorn
+import openai
 
-# Configure logging first
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+from config import settings
+from controllers import (
+    task_routers,
+    board_routers,
+    timeblock_routers,
+    settings_router,
+    page_router,
+    database_router,
+    template_router,
+    comment_router,
+    reminder_router,
+    notification_router,
+    activity_router,
+    public_router,
+    crm_router,
+    chat_router
 )
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 try:
-    # Import routers after logging is configured
-    from controllers.tasks_controller import router as task_routers
-    from controllers.users_controller import router as user_routers
-    from controllers.workspace_controller import router as workspace_routers
-    from controllers.board_controller import router as board_routers
-    from controllers.timeblock_controller import router as timeblock_routers
-    from controllers.settings_controller import router as settings_router
-    from controllers.page_controller import router as page_router
-    from controllers.database_controller import router as database_router
-    from controllers.template_controller import router as template_router
-    from controllers.comment_controller import router as comment_router
-    from controllers.reminder_controller import router as reminder_router
-    from controllers.notification_controller import router as notification_router
-    from controllers.activity_controller import router as activity_router
-    from controllers.public_controller import router as public_router
-    from controllers.crm_controller import router as crm_router
+    # Initialize OpenAI
+    openai.api_key = settings.OPENAI_API_KEY
 
-    # Import database configuration
-    from adapters.orm.models.database import engine, Base
-
-    # Create database tables
-    Base.metadata.create_all(bind=engine)
-    logger.info("Database tables created successfully")
-
+    # Create FastAPI app
     app = FastAPI(
-        title="Assistant Backend API",
+        title="Assistant API",
         description="Backend API for the Assistant application",
         version="1.0.0"
     )
 
     # Include routers
-    app.include_router(user_routers)
-    app.include_router(workspace_routers)
     app.include_router(task_routers)
     app.include_router(board_routers)
     app.include_router(timeblock_routers)
@@ -58,6 +52,7 @@ try:
     app.include_router(activity_router)
     app.include_router(public_router)
     app.include_router(crm_router)
+    app.include_router(chat_router)
 
     # Configure CORS
     origins = ["*"]

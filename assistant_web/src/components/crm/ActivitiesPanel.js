@@ -201,11 +201,15 @@ const ActivitiesPanel = ({ contacts, deals, workspaceId }) => {
     const fetchActivities = async () => {
         try {
             setIsLoading(true);
+            if (!contacts || !deals || !workspaceId) {
+                return;
+            }
+
             const contactActivities = await Promise.all(
-                contacts.map(contact => getContactActivities(contact.contact_id))
+                (contacts || []).map(contact => getContactActivities(workspaceId, contact.contact_id))
             );
             const dealActivities = await Promise.all(
-                deals.map(deal => getDealActivities(deal.deal_id))
+                (deals || []).map(deal => getDealActivities(workspaceId, deal.deal_id))
             );
             
             const allActivities = [

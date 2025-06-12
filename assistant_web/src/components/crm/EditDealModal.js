@@ -52,7 +52,7 @@ const EditDealModal = ({ isOpen, onClose, deal, onSuccess }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await updateDeal(deal.id, formData);
+            await updateDeal(deal.workspace_id, deal.deal_id, formData);
             toast({
                 title: 'Deal updated successfully',
                 status: 'success',

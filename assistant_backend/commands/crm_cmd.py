@@ -56,6 +56,7 @@ class DealResponse(DealBase):
     deal_id: UUID
     workspace_id: UUID
     contact_id: UUID
+    contact: Optional[ContactResponse] = None
     created_at: datetime
     updated_at: datetime
 
