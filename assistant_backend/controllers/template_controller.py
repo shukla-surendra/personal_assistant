@@ -59,4 +59,6 @@ async def list_templates(workspace_id: str):
         templates = handler.list_templates(workspace_id)
         return [TemplateDtoMapper.map_to_template_dto(template) for template in templates]
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) 
+        raise HTTPException(status_code=500, detail=str(e))
+
+template_router = router 

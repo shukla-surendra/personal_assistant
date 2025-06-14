@@ -252,3 +252,5 @@ async def update_member_role(
     except Exception as e:
         logger.error(f"Error updating member role: {e}")
         raise HTTPException(status_code=500, detail="Failed to update member role")
+
+workspace_router = router

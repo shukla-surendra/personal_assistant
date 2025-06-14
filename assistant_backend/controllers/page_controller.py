@@ -9,6 +9,8 @@ from dto.page_dto import PageDtoMapper, BlockDtoMapper
 
 router = APIRouter(prefix="/api/v1/workspaces/{workspace_id}/pages", tags=["pages"])
 
+page_router = router
+
 @router.post("/", response_model=PageDto, status_code=status.HTTP_201_CREATED)
 async def create_page(command: PageCommand):
     handler = PageHandler()

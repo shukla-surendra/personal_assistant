@@ -205,3 +205,5 @@ async def list_board_items(board_id: str):
     except Exception as e:
         logger.error(f"Error listing board items: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+board_router = router

@@ -149,4 +149,7 @@ async def delete_task(
         raise HTTPException(status_code=500, detail=f"Error deleting task: {str(e)}")
 
 
+tasks_router = router
+
+
 

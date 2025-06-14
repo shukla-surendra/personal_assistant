@@ -102,4 +102,6 @@ async def list_database_entries(database_id: str):
         entries = handler.list_database_entries(database_id)
         return [DatabaseEntryDtoMapper.map_to_database_entry_dto(entry) for entry in entries]
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) 
+        raise HTTPException(status_code=500, detail=str(e))
+
+database_router = router 

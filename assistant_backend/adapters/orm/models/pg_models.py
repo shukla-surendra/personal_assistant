@@ -2,7 +2,7 @@ from sqlalchemy import (Column, String, Boolean, DateTime, ForeignKey, Integer, 
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 import uuid
-from adapters.orm.models.database import Base
+from .base import Base
 import datetime
 
 # Association tables
@@ -82,10 +82,11 @@ class UserSettings(Base):
 
 class Task(Base):
     __tablename__ = "tasks"
+    __table_args__ = {'extend_existing': True}
 
     task_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     workspace_id = Column(UUID(as_uuid=True), ForeignKey("workspaces.workspace_id"), nullable=False)
-    board_id = Column(UUID(as_uuid=True), ForeignKey("boards.board_id"), nullable=True)
+    board_id = Column(UUID(as_uuid=True), ForeignKey("boards.board_id", ondelete="SET NULL"), nullable=True)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id"), nullable=False)
     title = Column(String, nullable=False)
     description = Column(String, nullable=True)
@@ -153,9 +154,10 @@ class Workspace(Base):
 
 class Board(Base):
     __tablename__ = "boards"
+    __table_args__ = {'extend_existing': True}
 
     board_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    workspace_id = Column(UUID(as_uuid=True), ForeignKey("workspaces.workspace_id"), nullable=False)
+    workspace_id = Column(UUID(as_uuid=True), ForeignKey("workspaces.workspace_id", ondelete="CASCADE"), nullable=False)
     name = Column(String, nullable=False)
     description = Column(String, nullable=True)
     properties = Column(JSONB, nullable=True)
@@ -164,7 +166,7 @@ class Board(Base):
     created_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC))
     updated_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC), onupdate=datetime.datetime.now(datetime.UTC))
     workspace = relationship("Workspace", back_populates="boards")
-    items = relationship("BoardItem", back_populates="board")
+    items = relationship("BoardItem", back_populates="board", cascade="all, delete-orphan")
     tasks = relationship("Task", back_populates="board")
 
 class BoardItem(Base):
@@ -472,7 +474,7 @@ class ChatMessage(Base):
     chat_id = Column(UUID(as_uuid=True), ForeignKey("chats.chat_id"), nullable=False)
     role = Column(String, nullable=False)  # user, assistant, system
     content = Column(Text, nullable=False)
-    metadata = Column(JSONB, nullable=True)  # Additional metadata like tokens used, etc.
+    message_metadata = Column(JSONB, nullable=True)  # Additional metadata like tokens used, etc.
     created_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC))
     updated_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC), onupdate=datetime.datetime.now(datetime.UTC))
 

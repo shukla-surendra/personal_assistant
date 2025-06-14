@@ -59,4 +59,6 @@ async def list_notifications(workspace_id: str, entity_id: Optional[str] = None,
         notifications = handler.list_notifications(workspace_id, entity_id, entity_type)
         return [NotificationDtoMapper.map_to_notification_dto(notification) for notification in notifications]
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) 
+        raise HTTPException(status_code=500, detail=str(e))
+
+notification_router = router 

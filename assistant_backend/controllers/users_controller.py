@@ -84,4 +84,6 @@ async def get_owned_workspaces(user_id: str, user: dict = Depends(get_auth_detai
     else:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Operation not permitted")
 
+users_router = router
+
 

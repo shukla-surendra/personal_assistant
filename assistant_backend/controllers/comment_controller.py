@@ -60,4 +60,6 @@ async def list_comments(workspace_id: str, task_id: str, user: dict = Depends(ge
         comments = handler.list_comments(workspace_id, task_id, user.get("user_id"))
         return [CommentDtoMapper.map_to_comment_dto(comment) for comment in comments]
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) 
+        raise HTTPException(status_code=500, detail=str(e))
+
+comment_router = router 

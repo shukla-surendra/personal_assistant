@@ -176,4 +176,6 @@ async def create_completion(
         return result
     except Exception as e:
         logger.error(f"Error creating completion: {e}")
-        raise HTTPException(status_code=500, detail="Failed to create completion") 
+        raise HTTPException(status_code=500, detail="Failed to create completion")
+
+chat_router = router 

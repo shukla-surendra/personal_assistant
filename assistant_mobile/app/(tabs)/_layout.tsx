@@ -3,9 +3,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import Auth from '../../src/utils/auth';
+import { useTheme } from '../../hooks/useTheme';
 
 export default function TabLayout() {
     const router = useRouter();
+    const { theme } = useTheme();
 
     useEffect(() => {
         checkAuth();
@@ -26,13 +28,16 @@ export default function TabLayout() {
     return (
         <Tabs
             screenOptions={{
-                tabBarActiveTintColor: '#007AFF',
-                tabBarInactiveTintColor: '#8E8E93',
+                tabBarActiveTintColor: theme.colors.primary,
+                tabBarInactiveTintColor: theme.colors.textSecondary,
                 tabBarStyle: {
-                    backgroundColor: '#FFFFFF',
-                    borderTopWidth: 1,
-                    borderTopColor: '#E5E5EA',
+                    backgroundColor: theme.colors.background,
+                    borderTopColor: theme.colors.border,
                 },
+                headerStyle: {
+                    backgroundColor: theme.colors.background,
+                },
+                headerTintColor: theme.colors.text,
             }}
         >
             <Tabs.Screen
@@ -49,7 +54,16 @@ export default function TabLayout() {
                 options={{
                     title: 'Tasks',
                     tabBarIcon: ({ color, size }) => (
-                        <Ionicons name="checkbox" size={size} color={color} />
+                        <Ionicons name="list" size={size} color={color} />
+                    ),
+                }}
+            />
+            <Tabs.Screen
+                name="boards"
+                options={{
+                    title: 'Boards',
+                    tabBarIcon: ({ color, size }) => (
+                        <Ionicons name="grid" size={size} color={color} />
                     ),
                 }}
             />
@@ -77,6 +91,24 @@ export default function TabLayout() {
                     title: 'Account',
                     tabBarIcon: ({ color, size }) => (
                         <Ionicons name="person" size={size} color={color} />
+                    ),
+                }}
+            />
+            <Tabs.Screen
+                name="notifications"
+                options={{
+                    title: 'Notifications',
+                    tabBarIcon: ({ color, size }) => (
+                        <Ionicons name="notifications" size={size} color={color} />
+                    ),
+                }}
+            />
+            <Tabs.Screen
+                name="settings"
+                options={{
+                    title: 'Settings',
+                    tabBarIcon: ({ color, size }) => (
+                        <Ionicons name="settings" size={size} color={color} />
                     ),
                 }}
             />

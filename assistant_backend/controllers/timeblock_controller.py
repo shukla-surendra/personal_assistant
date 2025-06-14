@@ -82,4 +82,6 @@ async def delete_time_block(
         return TaskHandler().delete_task(delete_cmd)
     except Exception as e:
         logger.error(f"Error deleting time block: {e}")
-        raise HTTPException(status_code=500, detail="Failed to delete time block") 
+        raise HTTPException(status_code=500, detail="Failed to delete time block")
+
+timeblock_router = router 

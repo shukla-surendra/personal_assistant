@@ -101,4 +101,6 @@ def create_deal_activity(
 @router.get("/deals/{deal_id}/activities", response_model=List[DealActivityResponse])
 def get_deal_activities(workspace_id: str, deal_id: UUID, user: dict = Depends(get_auth_details)):
     handler = CRMHandler()
-    return handler.get_deal_activities(deal_id) 
+    return handler.get_deal_activities(deal_id)
+
+crm_router = router 

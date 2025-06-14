@@ -26,3 +26,5 @@ async def get_public_note(
     except Exception as e:
         logger.error(f"Error getting workspace: {e}")
         raise HTTPException(status_code=500, detail="Failed to get workspace")
+
+public_router = router
