@@ -6,6 +6,6 @@
     "twitter_link": "https://twitter.com/AssistantAI",
     "linkedin_link":"https://www.linkedin.com/company/assistantai/",
     "instagram_link":"https://www.instagram.com/assistantai/",
-    "API_BASE_URL": "http://10.1.196.56:8000",
+    "API_BASE_URL": "",
     "API_VERSION": "api/v1"
 }

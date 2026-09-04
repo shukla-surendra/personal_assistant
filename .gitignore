@@ -127,6 +127,16 @@ celerybeat.pid
 # SageMath parsed files
 *.sage.py
 
+# Terraform -- state files can contain secrets in plain text (e.g. the
+# OpenAI key passed to helm_release as set_sensitive)
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+crash.*.log
+
 # Environments
 .env
 .venv

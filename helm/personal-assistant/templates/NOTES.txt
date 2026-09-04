@@ -1,0 +1,17 @@
+personal-assistant deployed as release "{{ .Release.Name }}" in namespace "{{ .Release.Namespace }}".
+
+Schema migration ran as a Job (check its logs if the backend isn't coming up healthy):
+  kubectl logs -n {{ .Release.Namespace }} job/{{ include "pa.fullname" . }}-migrate-{{ .Release.Revision }}
+
+{{- if .Values.ingress.enabled }}
+
+Ingress is enabled at http://{{ .Values.ingress.host }}/ -- point it at the
+ingress controller's address (minikube: `minikube ip`, or `minikube tunnel`)
+via /etc/hosts if it's not a real DNS name.
+{{- else }}
+
+No Ingress -- the frontend Service is a NodePort. Reach it with:
+  minikube service {{ include "pa.fullname" . }}-frontend --url
+or:
+  kubectl port-forward svc/{{ include "pa.fullname" . }}-frontend 8080:80
+{{- end }}

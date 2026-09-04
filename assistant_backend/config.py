@@ -88,7 +88,13 @@ class Settings(BaseSettings):
     OPENAI_MODEL: str = "gpt-3.5-turbo"
     
     class Config:
-        case_sensitive = True
+        # False (the pydantic-settings default) so DB_HOST/DB_NAME/etc. env vars
+        # actually match the lowercase db_host/db_name/... fields below. This was
+        # True, which silently no-ops every one of those overrides -- local docker
+        # only "worked" because the hardcoded defaults happened to equal what's
+        # needed (db_host="db"). In Kubernetes the Postgres Service won't be
+        # named "db" by coincidence, so this has to actually work.
+        case_sensitive = False
         env_file = ".env"
         extra = "ignore"  # Allow extra fields
 

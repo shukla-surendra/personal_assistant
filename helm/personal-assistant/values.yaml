@@ -1,0 +1,69 @@
+# Defaults are tuned for a local minikube run: images are built locally and
+# loaded into minikube's node with `minikube image load` (see README.md),
+# so pullPolicy defaults to Never -- flip to IfNotPresent/Always once these
+# images are pushed to a real registry (ECR/ACR/GHCR/...).
+
+backend:
+  image:
+    repository: personal-assistant-backend
+    tag: latest
+    pullPolicy: Never
+  replicaCount: 1
+  port: 8000
+  env:
+    # NOT "production" -- config.py has a startup check that hard-requires
+    # SECRET_KEY (unused anywhere else in the codebase -- grepped, nothing
+    # reads settings.SECRET_KEY) and OPENAI_API_KEY (deliberately optional:
+    # chat_handler.py returns a clean 503 without one, by design) whenever
+    # ENVIRONMENT=="production". Flipping this to "production" honestly
+    # needs that check fixed first, not a fake SECRET_KEY value that
+    # wouldn't actually secure anything.
+    environment: development
+    storageType: postgresql
+    authType: jwt
+    allowedOrigins: "*"  # browser only ever talks to the frontend's own origin now
+                         # (nginx proxies /api/ server-side) -- this barely matters,
+                         # kept configurable rather than hardcoded.
+    openaiModel: gpt-3.5-turbo
+
+frontend:
+  image:
+    repository: personal-assistant-frontend
+    tag: latest
+    pullPolicy: Never
+  replicaCount: 1
+  port: 80
+
+postgres:
+  image: postgres:15
+  database: productify
+  user: postgres
+  storage: 1Gi
+
+redis:
+  image: redis:7
+
+# Secrets -- these are dev/demo defaults so the chart installs out of the box.
+# Override for anything beyond local minikube experimentation, e.g.:
+#   helm upgrade --install personal-assistant ./helm/personal-assistant \
+#     --set secrets.openaiApiKey=$OPENAI_API_KEY \
+#     --set secrets.postgresPassword=$(openssl rand -hex 16) \
+#     --set secrets.jwtSecret=$(openssl rand -hex 32)
+# or pass -f values-secret.yaml (gitignored) with the same keys.
+secrets:
+  postgresPassword: postgres
+  jwtSecret: dev-only-change-me
+  openaiApiKey: ""  # empty -> chat's /completion endpoint returns a clean 503
+
+ingress:
+  enabled: false
+  className: nginx
+  # Empty = no host match, so the Ingress serves any Host header -- avoids
+  # needing to already know the Load Balancer's public IP (to build a
+  # nip.io-style hostname) before the LB exists in the first place. Set a
+  # real hostname once you have a domain pointed at the IP.
+  host: ""
+  rateLimit:
+    enabled: true
+    requestsPerSecond: 10
+    burstMultiplier: 5

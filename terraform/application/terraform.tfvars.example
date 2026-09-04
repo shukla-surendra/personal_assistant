@@ -1,0 +1,14 @@
+# Copy to terraform.tfvars (gitignored) and fill in.
+
+# From: terraform -chdir=../aks-infra output -raw acr_login_server
+acr_login_server = "personalassistantXXXXXX.azurecr.io"
+
+# openssl rand -hex 16
+postgres_password = ""
+
+# openssl rand -hex 32
+jwt_secret = ""
+
+# Optional -- leave empty to deploy without OpenAI chat working (returns a
+# clean 503 rather than crashing).
+openai_api_key = ""
