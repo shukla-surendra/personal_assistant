@@ -16,6 +16,8 @@ import MembersPage from "./pages/dashboard/MembersPage";
 import NotificationsPage from "./pages/dashboard/NotificationsPage";
 import CRMPage from "./pages/dashboard/CRMPage";
 import ChatPage from "./pages/dashboard/ChatPage";
+import RemindersPage from "./pages/dashboard/RemindersPage";
+import BoardsPage from "./pages/dashboard/BoardsPage";
 // landing pages some page might require login
 import Login from "./pages/landing/Login"
 import Home from "./pages/landing/Home";
@@ -68,6 +70,8 @@ function App() {
           <Route path="/database" element={<DatabasePage/>}/>
           <Route path="/crm" element={<CRMPage/>}/>
           <Route path="/chat" element={<ChatPage/>}/>
+          <Route path="/reminders" element={<RemindersPage/>}/>
+          <Route path="/boards" element={<BoardsPage/>}/>
           <Route path="/task/:id" element={<TaskDetailPage/>} />
           <Route path="/search-tasks" element={<SearchTasksPage />} />
           <Route path="/search-notebooks" element={<SearchNotebookPage />} />
@@ -85,3 +89,4 @@ function App() {
 }
 
 export default App;
+

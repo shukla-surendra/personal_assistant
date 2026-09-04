@@ -4,6 +4,15 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
+# GENERATE_SOURCEMAP: CRA emits full production source maps by default --
+# for an image that's only ever served, not debugged in-browser via maps,
+# this is usually the single biggest chunk of `react-scripts build` time.
+# DISABLE_ESLINT_PLUGIN: webpack re-lints the whole src/ tree as part of the
+# build; useful for `npm start` (live feedback), pure overhead here -- CI/
+# review is where lint issues should actually get caught, not this Docker
+# layer.
+ENV GENERATE_SOURCEMAP=false
+ENV DISABLE_ESLINT_PLUGIN=true
 RUN npm run build
 
 # Serve stage

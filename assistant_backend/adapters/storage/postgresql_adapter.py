@@ -220,7 +220,7 @@ class PostgreSQLAdapter(StorageAdapter):
                 raise ValueError(f"User with ID {user_id} not found")
             
             session.commit()
-            return dict(result)
+            return dict(result._mapping)
 
     def delete_user(self, user_id: str) -> bool:
         with self.Session() as session:
@@ -264,7 +264,7 @@ class PostgreSQLAdapter(StorageAdapter):
             })
             
             session.commit()
-            return dict(result)
+            return dict(result._mapping)
 
     def get_workspace_by_id(self, workspace_id: str) -> Optional[Dict]:
         with self.Session() as session:
@@ -276,7 +276,7 @@ class PostgreSQLAdapter(StorageAdapter):
                 GROUP BY w.workspace_id
             """)
             result = session.execute(query, {"workspace_id": workspace_id}).fetchone()
-            return dict(result) if result else None
+            return dict(result._mapping) if result else None
 
     def get_user_workspaces(self, user_id: str) -> List[Dict]:
         with self.Session() as session:
@@ -348,7 +348,7 @@ class PostgreSQLAdapter(StorageAdapter):
             """)
             result = session.execute(query, task_data).fetchone()
             session.commit()
-            return dict(result)
+            return dict(result._mapping)
 
     def list_boards_by_workspace(self, workspace_id: str, user_id: str) -> List[Dict]:
         """List all boards in a workspace that the user has access to"""
@@ -407,7 +407,7 @@ class PostgreSQLAdapter(StorageAdapter):
                 GROUP BY w.workspace_id
             """)
             result = session.execute(query, {"user_id": user_id}).fetchone()
-            return dict(result) if result else None
+            return dict(result._mapping) if result else None
 
     def set_default_workspace(self, user_id: str, workspace_id: str) -> bool:
         """Set a workspace as default for a user"""
@@ -451,7 +451,7 @@ class PostgreSQLAdapter(StorageAdapter):
             """)
             result = session.execute(query, time_block_data).fetchone()
             session.commit()
-            return make_json_serializable(dict(result))
+            return make_json_serializable(dict(result._mapping))
 
     def get_time_blocks(self, workspace_id: str, user_id: str) -> List[Dict]:
         with self.Session() as session:
@@ -464,7 +464,7 @@ class PostgreSQLAdapter(StorageAdapter):
                 "workspace_id": workspace_id,
                 "user_id": user_id
             }).fetchall()
-            return [make_json_serializable(dict(row)) for row in results]
+            return [make_json_serializable(dict(row._mapping)) for row in results]
 
     def update_time_block(self, time_block_id: str, time_block_data: Dict) -> Dict:
         with self.Session() as session:
@@ -487,7 +487,7 @@ class PostgreSQLAdapter(StorageAdapter):
             """)
             result = session.execute(query, params).fetchone()
             session.commit()
-            return make_json_serializable(dict(result)) if result else None
+            return make_json_serializable(dict(result._mapping)) if result else None
 
     def delete_time_block(self, time_block_id: str) -> bool:
         with self.Session() as session:

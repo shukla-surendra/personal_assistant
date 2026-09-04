@@ -48,7 +48,8 @@ import {
   FiMenu,
   FiX,
   FiPlus,
-  FiList
+  FiList,
+  FiBell
 } from 'react-icons/fi';
 import { 
   MdOutlineDashboard,
@@ -160,6 +161,14 @@ const Navbar = ({ isCollapsed, onToggle }) => {
               Tasks
             </NavItem>
             <NavItem
+              icon={BsKanban}
+              to="/boards"
+              isActive={location.pathname === '/boards'}
+              isCollapsed={isCollapsed}
+            >
+              Boards
+            </NavItem>
+            <NavItem
               icon={FiBook}
               to="/notes"
               isActive={location.pathname === '/notes'}
@@ -184,6 +193,67 @@ const Navbar = ({ isCollapsed, onToggle }) => {
               Time Block
             </NavItem>
             <NavItem
+              icon={FiBell}
+              to="/reminders"
+              isActive={location.pathname === '/reminders'}
+              isCollapsed={isCollapsed}
+            >
+              Reminders
+            </NavItem>
+          </Box>
+
+          <Divider />
+
+          {/* Knowledge -- notetaking + Confluence-style docs/tables, already
+              built (WikiPage/DatabasePage) but previously not linked anywhere */}
+          <Box p={2}>
+            {!isCollapsed && (
+              <Text
+                px={4}
+                py={2}
+                fontSize="xs"
+                fontWeight="bold"
+                color="gray.500"
+                textTransform="uppercase"
+              >
+                Knowledge
+              </Text>
+            )}
+            <NavItem
+              icon={AiOutlineBook}
+              to="/wiki"
+              isActive={location.pathname === '/wiki'}
+              isCollapsed={isCollapsed}
+            >
+              Wiki
+            </NavItem>
+            <NavItem
+              icon={FiDatabase}
+              to="/database"
+              isActive={location.pathname === '/database'}
+              isCollapsed={isCollapsed}
+            >
+              Database
+            </NavItem>
+          </Box>
+
+          <Divider />
+
+          {/* Collaboration */}
+          <Box p={2}>
+            {!isCollapsed && (
+              <Text
+                px={4}
+                py={2}
+                fontSize="xs"
+                fontWeight="bold"
+                color="gray.500"
+                textTransform="uppercase"
+              >
+                Collaboration
+              </Text>
+            )}
+            <NavItem
               icon={BsPersonLinesFill}
               to="/crm"
               isActive={location.pathname === '/crm'}
@@ -199,6 +269,24 @@ const Navbar = ({ isCollapsed, onToggle }) => {
             >
               Chat
             </NavItem>
+          </Box>
+
+          <Divider />
+
+          {/* Search */}
+          <Box p={2}>
+            {!isCollapsed && (
+              <Text
+                px={4}
+                py={2}
+                fontSize="xs"
+                fontWeight="bold"
+                color="gray.500"
+                textTransform="uppercase"
+              >
+                Search
+              </Text>
+            )}
             <NavItem
               icon={FiSearch}
               to="/search-tasks"
@@ -272,6 +360,14 @@ const Navbar = ({ isCollapsed, onToggle }) => {
               isCollapsed={isCollapsed}
             >
               Members
+            </NavItem>
+            <NavItem
+              icon={FiBarChart2}
+              to="/reports"
+              isActive={location.pathname === '/reports'}
+              isCollapsed={isCollapsed}
+            >
+              Reports
             </NavItem>
             <NavItem
               icon={FiSettings}
