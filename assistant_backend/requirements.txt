@@ -58,11 +58,4 @@ redis==5.0.1
 # Documentation
 mkdocs==1.5.3
 mkdocs-material==9.5.3
-
-# Added from the code block
-torch>=2.0.0
-transformers>=4.30.0
-accelerate>=0.20.0
-sentencepiece>=0.1.99
-protobuf>=3.20.0
 openai==1.86.0

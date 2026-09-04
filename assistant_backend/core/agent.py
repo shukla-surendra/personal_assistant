@@ -1,8 +1,6 @@
 from typing import Dict, Any, List, Optional
 import json
 from datetime import datetime
-import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
 from config import logger
 from models.task import Task
 from models.reminder import Reminder
@@ -20,8 +18,16 @@ class Agent:
         self.db: Session = next(get_db())
         self.context_manager = ContextManager(user_id)
         
-        # Initialize Llama 2
+        # Initialize Llama 2 -- imported here, not at module level, so the rest of the
+        # app can boot without torch/transformers installed (they're a multi-GB
+        # dependency this is the only feature that needs, and this feature needs a
+        # gated HF model + real GPU to work at all -- neither available in this
+        # deployment). Importing core.agent no longer requires torch; constructing
+        # an Agent still does, and fails with a clear error if it's not installed.
         try:
+            import torch
+            from transformers import AutoModelForCausalLM, AutoTokenizer
+
             self.tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-2-7b-chat-hf")
             self.model = AutoModelForCausalLM.from_pretrained(
                 "meta-llama/Llama-2-7b-chat-hf",

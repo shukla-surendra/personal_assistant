@@ -16,14 +16,14 @@ variable "acr_login_server" {
 }
 
 variable "backend_image_tag" {
-  description = "Tag pushed to ACR for the backend image (see README.md's build/push steps)."
+  description = "Tag pushed to ACR for the backend image (see README.md's build/push steps, or scripts/build-and-push.sh). \"latest\" was the default here originally but was never actually the tag scripts/build-and-push.sh pushes (that defaults to v1) -- a real mismatch that briefly deployed a nonexistent image tag once. v1 matches what actually exists in the registry unless you've pushed something else."
   type        = string
-  default     = "latest"
+  default     = "v1"
 }
 
 variable "frontend_image_tag" {
   type    = string
-  default = "latest"
+  default = "v1"
 }
 
 variable "openai_api_key" {

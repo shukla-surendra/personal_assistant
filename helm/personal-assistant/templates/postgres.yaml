@@ -46,6 +46,14 @@ spec:
                 secretKeyRef:
                   name: {{ include "pa.fullname" . }}-secrets
                   key: POSTGRES_PASSWORD
+            # A freshly-provisioned PVC's filesystem root often isn't
+            # actually empty -- e.g. Azure Disk CSI formats new volumes with
+            # ext4, which always creates a lost+found directory at the root.
+            # initdb refuses to initialize into a non-empty directory (even
+            # if the only thing there is lost+found), so PGDATA points at a
+            # subdirectory Postgres creates itself instead of the mount root.
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
           volumeMounts:
             - name: data
               mountPath: /var/lib/postgresql/data

@@ -32,19 +32,29 @@ state manages which resource.
 | Piece | What it is | ~Cost/week |
 |---|---|---|
 | AKS control plane | Free SKU tier — no uptime SLA, $0 | $0 |
-| 2x Standard_B2s nodes | 2 vCPU / 4GB RAM each, burstable | ~$16 |
+| 1x Standard_D2s_v7 node | 2 vCPU / 8GB RAM | ~$22 |
 | Standard Load Balancer | Required by AKS now (Basic SKU is gone) | ~$4 |
 | Public IP (Standard) | Attached to the LB | ~$1 |
 | ACR (Basic tier) | Container registry for your images | ~$1 |
 | Managed Disk (1Gi) | Postgres's PVC | ~$0.02 |
 | Container Insights | **Off by default** — log ingestion is the #1 surprise-bill cause | $0 (opt-in) |
-| **Total** | | **~$25-35** |
+| **Total** | | **~$28-35** |
 
-Prices are retail East US estimates and drift over time/region — treat them
-as "the right order of magnitude," not an invoice. The bigger point: this
-setup leaves you ~$165+ of margin even if something goes sideways for a
-couple of days. The real risk isn't per-hour rate, it's **forgetting to tear
-it down** — see the last section.
+Node size changed from the original plan: this subscription's VM-size
+quota doesn't include the cheap burstable B-series at all (confirmed
+against a real `400 Bad Request` from `terraform apply`, not assumed —
+common anti-abuse restriction on new/trial subscriptions). `D2s_v7`
+pricing verified against Azure's retail Prices API at apply time:
+`$0.132/hr` in `eastus`. If your subscription's quota looks different,
+check what's actually allowed before trusting these defaults:
+`az vm list-skus --location eastus --size Standard_B2s --output table`
+(empty output means not allowed, same as what happened here).
+
+Prices otherwise are retail East US estimates and drift over time/region —
+treat them as "the right order of magnitude," not an invoice. The bigger
+point: this setup leaves you ~$165+ of margin even if something goes
+sideways for a couple of days. The real risk isn't per-hour rate, it's
+**forgetting to tear it down** — see the last section.
 
 ## Prerequisites
 
@@ -81,10 +91,17 @@ registry from Step 1.
 
 ```bash
 cd ../..   # repo root (personal_assistant/)
+./scripts/build-and-push.sh          # tag=v1, builds+pushes both, auto-detects
+                                       # the ACR login server from Step 1's Terraform
+                                       # output -- nothing to copy-paste
+```
+
+Or one image at a time: `./scripts/build-and-push.sh v1 backend`. What it
+runs under the hood, if you'd rather do it by hand:
+
+```bash
 ACR=$(terraform -chdir=terraform/container-registry output -raw acr_login_server)
-
 az acr login --name "${ACR%%.*}"
-
 docker build -t $ACR/personal-assistant-backend:v1 ./assistant_backend
 docker build -t $ACR/personal-assistant-frontend:v1 ./assistant_web
 docker push $ACR/personal-assistant-backend:v1
@@ -98,9 +115,11 @@ per-minute compute charge, negligible for images this size.)
 ## Step 3 — Cluster infrastructure (`terraform/aks-infra/`)
 
 Creates: its own resource group (`personal-assistant-learning` by default),
-VNet+subnet, AKS cluster (Free tier, 2x `Standard_B2s`), an `AcrPull` role
-assignment against Step 1's ACR (so AKS can pull images without stored
-credentials), and an Azure Budget with email alerts at 50/80/100% of a
+VNet+subnet, AKS cluster (Free tier, 1x `Standard_D2s_v7` — see the cost
+table above for why this isn't `Standard_B2s` as originally planned), an
+`AcrPull` role assignment against Step 1's ACR (so AKS can pull images
+without stored credentials), and an Azure Budget with email alerts at
+50/80/100% of a
 configurable monthly amount (default $50 — well above a real week's cost,
 so a hit means something's actually wrong).
 

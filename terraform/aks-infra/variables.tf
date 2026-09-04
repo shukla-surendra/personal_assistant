@@ -22,15 +22,15 @@ variable "kubernetes_version" {
 }
 
 variable "node_count" {
-  description = "2 nodes: enough headroom for backend+frontend+redis+postgres plus AKS's own system pods, without paying for more than a week of learning needs. Drop to 1 to save ~half the node cost if you're comfortable with zero headroom; bump to B2ms/B4ms (see node_vm_size) before adding a 3rd node if pods start Pending on resource pressure."
+  description = "1 node: this subscription's VM-size quota doesn't include the cheap burstable B-series (confirmed via the actual CreateOrUpdate error -- common anti-abuse restriction on new/trial subscriptions), so node_vm_size below is a pricier D-series instead. One D2s_v7 (8GB RAM) matches the total RAM originally planned as 2x Standard_B2s (2x4GB) at roughly half the node cost of running 2x D2s_v7. Bump to 2+ if pods start Pending on resource pressure -- costs real money per the pricing note below, check `az vm list-skus --location <region> --size <size> --output table` (or the Azure retail Prices API) for current numbers before assuming."
   type        = number
-  default     = 2
+  default     = 1
 }
 
 variable "node_vm_size" {
-  description = "Standard_B2s = 2 vCPU / 4GB RAM, burstable (cheap, throttles under sustained load -- fine for a low-traffic learning deployment). Standard_B2ms (8GB) is the next step up if pods stay Pending."
+  description = "Standard_D2s_v7 = 2 vCPU / 8GB RAM. Standard_B2s (2 vCPU/4GB, burstable, cheaper) was the original plan but isn't in this subscription's allowed VM-size list at all -- confirmed against the real CreateOrUpdate 400 error, not assumed. Verified pricing via https://prices.azure.com/api/retail/prices at time of writing: ~$0.132/hr in eastus (~$22/week for one node) -- notably more than B2s would have been. If your subscription's quota differs, check what's actually allowed before trusting this default: `az vm list-skus --location eastus --size Standard_B2s --output table` (empty output = not allowed)."
   type        = string
-  default     = "Standard_B2s"
+  default     = "Standard_D2s_v7"
 }
 
 variable "acr_id" {
