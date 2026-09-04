@@ -104,7 +104,6 @@ async def create_message(
     handler = ChatHandler()
     try:
         command.chat_id = chat_id
-        command.user_id = current_user.get("user_id")
         message = handler.create_message(command)
         return ChatMessageDtoMapper.map_to_chat_message_dto(message)
     except Exception as e:
@@ -165,15 +164,16 @@ async def delete_message(
 async def create_completion(
     workspace_id: str,
     chat_id: str,
-    request: dict,
     current_user: dict = Depends(get_auth_details)
 ):
-    """Get AI completion for a chat"""
+    """Get an AI completion for a chat, using its persisted message history.
+    Call POST /{chat_id}/messages with the new user turn first."""
     handler = ChatHandler()
     try:
-        request["user_id"] = current_user.get("user_id")
-        result = handler.create_completion(UUID(chat_id), request)
-        return result
+        message = handler.create_completion(UUID(chat_id))
+        return ChatMessageDtoMapper.map_to_chat_message_dto(message)
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error creating completion: {e}")
         raise HTTPException(status_code=500, detail="Failed to create completion")

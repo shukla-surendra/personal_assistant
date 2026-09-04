@@ -1,84 +1,42 @@
 from pydantic import BaseModel
-from typing import Optional, List, Dict, Any
-from datetime import datetime
-from uuid import UUID
+from typing import Optional, Dict, Any
 
-class ChatBase(BaseModel):
+# Field names here match adapters/orm/models/pg_models.py's Chat/ChatMessage
+# columns exactly (chat.model/context, message.message_metadata -- neither
+# model has a description/properties/user_id-on-message column). A second,
+# unused schema family (ChatCreate/ChatResponse/ChatCompletionRequest) used
+# to live here with different field names that didn't match either the
+# model or this one; removed rather than left as dead, confusing scaffolding.
+
+class ChatCommand(BaseModel):
+    workspace_id: Optional[str] = None  # Set from the URL path by the controller
+    user_id: Optional[str] = None  # Set from the auth token by the controller
     title: str
     model: str = "gpt-3.5-turbo"
     context: Optional[Dict[str, Any]] = None
 
-class ChatCreate(ChatBase):
-    workspace_id: UUID
-    user_id: UUID
-
-class ChatUpdate(ChatBase):
-    pass
-
-class ChatResponse(ChatBase):
-    chat_id: UUID
-    workspace_id: UUID
-    user_id: UUID
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-class ChatMessageBase(BaseModel):
-    role: str
-    content: str
-    metadata: Optional[Dict[str, Any]] = None
-
-class ChatMessageCreate(ChatMessageBase):
-    chat_id: UUID
-
-class ChatMessageResponse(ChatMessageBase):
-    message_id: UUID
-    chat_id: UUID
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-class ChatCompletionRequest(BaseModel):
-    messages: List[Dict[str, str]]
-    model: Optional[str] = "gpt-3.5-turbo"
-    temperature: Optional[float] = 0.7
-    max_tokens: Optional[int] = None
-    stream: Optional[bool] = False
-
-class ChatCommand(BaseModel):
-    workspace_id: str
-    user_id: str
-    title: str
-    description: Optional[str] = None
-    properties: Optional[Dict[str, Any]] = None
-
 class ChatUpdateCommand(BaseModel):
-    chat_id: str
+    chat_id: Optional[str] = None  # Set from the URL path by the controller
     title: Optional[str] = None
-    description: Optional[str] = None
-    properties: Optional[Dict[str, Any]] = None
+    model: Optional[str] = None
+    context: Optional[Dict[str, Any]] = None
 
 class ChatDeleteCommand(BaseModel):
     chat_id: str
     workspace_id: str
 
 class ChatMessageCommand(BaseModel):
-    chat_id: str
-    user_id: str
+    chat_id: Optional[str] = None  # Set from the URL path by the controller
     content: str
     role: str
-    properties: Optional[Dict[str, Any]] = None
+    message_metadata: Optional[Dict[str, Any]] = None
 
 class ChatMessageUpdateCommand(BaseModel):
-    message_id: str
-    chat_id: str
+    message_id: Optional[str] = None  # Set from the URL path by the controller
+    chat_id: Optional[str] = None  # Set from the URL path by the controller
     content: Optional[str] = None
-    properties: Optional[Dict[str, Any]] = None
+    message_metadata: Optional[Dict[str, Any]] = None
 
 class ChatMessageDeleteCommand(BaseModel):
     message_id: str
-    chat_id: str 
+    chat_id: str

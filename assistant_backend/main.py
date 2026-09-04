@@ -6,7 +6,6 @@ from fastapi.exceptions import RequestValidationError
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from mangum import Mangum
-import openai
 from sqlalchemy.orm import Session
 
 from config import settings
@@ -45,9 +44,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 try:
-    # Initialize OpenAI
-    openai.api_key = settings.OPENAI_API_KEY
-
     # Create FastAPI app
     app = FastAPI(
         title="Personal Assistant API",

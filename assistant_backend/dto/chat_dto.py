@@ -1,6 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional, Dict, Any, List
-from uuid import UUID
+from typing import Optional, Dict, Any
 from datetime import datetime
 
 class ChatDto(BaseModel):
@@ -8,18 +7,17 @@ class ChatDto(BaseModel):
     workspace_id: str
     user_id: str
     title: str
-    description: Optional[str] = None
-    properties: Optional[Dict[str, Any]] = None
+    model: str
+    context: Optional[Dict[str, Any]] = None
     created_at: datetime
     updated_at: datetime
 
 class ChatMessageDto(BaseModel):
     message_id: str
     chat_id: str
-    user_id: str
     content: str
     role: str
-    properties: Optional[Dict[str, Any]] = None
+    message_metadata: Optional[Dict[str, Any]] = None
     created_at: datetime
     updated_at: datetime
 
@@ -31,8 +29,8 @@ class ChatDtoMapper:
             workspace_id=str(chat.workspace_id),
             user_id=str(chat.user_id),
             title=chat.title,
-            description=chat.description,
-            properties=chat.properties,
+            model=chat.model,
+            context=chat.context,
             created_at=chat.created_at,
             updated_at=chat.updated_at
         )
@@ -43,10 +41,9 @@ class ChatMessageDtoMapper:
         return ChatMessageDto(
             message_id=str(message.message_id),
             chat_id=str(message.chat_id),
-            user_id=str(message.user_id),
             content=message.content,
             role=message.role,
-            properties=message.properties,
+            message_metadata=message.message_metadata,
             created_at=message.created_at,
             updated_at=message.updated_at
-        ) 
+        )

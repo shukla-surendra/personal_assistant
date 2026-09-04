@@ -23,7 +23,11 @@ export const createChat = createAsyncThunk(
     'chat/createChat',
     async (chatData, { rejectWithValue }) => {
         try {
-            const response = await chatService.createChat(chatData);
+            const workspace = ConfigService.getDefaultWorkspace();
+            if (!workspace) {
+                throw new Error('No workspace selected');
+            }
+            const response = await chatService.createChat(workspace.workspace_id, chatData);
             return response;
         } catch (error) {
             return rejectWithValue(error.response?.data?.detail || error.message);
@@ -35,7 +39,11 @@ export const fetchMessages = createAsyncThunk(
     'chat/fetchMessages',
     async (chatId, { rejectWithValue }) => {
         try {
-            const response = await chatService.getMessages(chatId);
+            const workspace = ConfigService.getDefaultWorkspace();
+            if (!workspace) {
+                throw new Error('No workspace selected');
+            }
+            const response = await chatService.getMessages(workspace.workspace_id, chatId);
             return response;
         } catch (error) {
             return rejectWithValue(error.response?.data?.detail || error.message);
@@ -47,7 +55,11 @@ export const sendMessage = createAsyncThunk(
     'chat/sendMessage',
     async ({ chatId, messageData }, { rejectWithValue }) => {
         try {
-            const response = await chatService.createMessage(chatId, messageData);
+            const workspace = ConfigService.getDefaultWorkspace();
+            if (!workspace) {
+                throw new Error('No workspace selected');
+            }
+            const response = await chatService.createMessage(workspace.workspace_id, chatId, messageData);
             return response;
         } catch (error) {
             return rejectWithValue(error.response?.data?.detail || error.message);
@@ -57,9 +69,16 @@ export const sendMessage = createAsyncThunk(
 
 export const getAICompletion = createAsyncThunk(
     'chat/getAICompletion',
-    async ({ chatId, completionData }, { rejectWithValue }) => {
+    async ({ chatId }, { rejectWithValue }) => {
         try {
-            const response = await chatService.createCompletion(chatId, completionData);
+            const workspace = ConfigService.getDefaultWorkspace();
+            if (!workspace) {
+                throw new Error('No workspace selected');
+            }
+            // No completionData needed -- the backend replies from the chat's
+            // persisted history, which already includes the turn sendMessage()
+            // just saved.
+            const response = await chatService.createCompletion(workspace.workspace_id, chatId);
             return response;
         } catch (error) {
             return rejectWithValue(error.response?.data?.detail || error.message);

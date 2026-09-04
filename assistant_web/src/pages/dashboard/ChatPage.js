@@ -143,15 +143,10 @@ const ChatPage = () => {
                 },
             })).unwrap();
 
-            // Get AI completion
+            // Get AI completion (backend replies from the chat's persisted
+            // history, which now includes the user turn saved just above)
             await dispatch(getAICompletion({
                 chatId: currentChat.chat_id,
-                completionData: {
-                    messages: [
-                        ...messages.map(m => ({ role: m.role, content: m.content })),
-                        { role: 'user', content },
-                    ],
-                },
             })).unwrap();
         } catch (error) {
             console.error('Error sending message:', error);
