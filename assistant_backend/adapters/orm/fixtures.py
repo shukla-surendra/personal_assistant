@@ -1,3 +1,4 @@
+import json
 import uuid
 from datetime import datetime, timedelta, timezone
 from passlib.hash import pbkdf2_sha256
@@ -10,6 +11,31 @@ from .models.pg_models import (
     workspace_users, task_tags
 )
 from constants import TaskStatus, TaskType, TaskPriority, UserStatus, UserRoles, UserType
+
+
+def _lexical(*paragraphs: str) -> str:
+    """A Task's `description` for task_type='note'/'quick_note' isn't
+    plain text -- NewNoteDrawer.js/DashboardPage.js's
+    extractTextFromLexicalJSON() JSON.parse() it and walk
+    root.children[].children[].text, expecting the Lexical rich-text
+    editor's serialized state. Plain text here still round-trips fine
+    through the API (it's just a String column), but renders as a blank
+    note in the UI -- JSON.parse throws, caught and swallowed, nothing
+    shown. This builds the minimal valid shape, one paragraph per arg."""
+    return json.dumps({
+        "root": {
+            "children": [
+                {
+                    "children": [
+                        {"detail": 0, "format": 0, "mode": "normal", "style": "", "text": text, "type": "text", "version": 1}
+                    ],
+                    "direction": "ltr", "format": "", "indent": 0, "type": "paragraph", "version": 1,
+                }
+                for text in paragraphs
+            ],
+            "direction": "ltr", "format": "", "indent": 0, "type": "root", "version": 1,
+        }
+    })
 
 
 def _seed_workspace_content(db: Session, workspace: Workspace, owner: User, teammate: User):
@@ -78,6 +104,19 @@ def _seed_workspace_content(db: Session, workspace: Workspace, owner: User, team
     # them as list/dict, not Optional, so leaving them None here (the DB
     # column itself is nullable) makes GET /tasks 500 with a Pydantic
     # validation error the moment a task lacking them is serialized.
+    #
+    # user_id=owner on every single one of these, deliberately -- handlers/
+    # task_handler.py's list_tasks() filters strictly on
+    # `Task.user_id == the logged-in caller`, not workspace membership.
+    # Tasks aren't shared workspace-wide the way Contacts/Deals are; a task
+    # is only ever visible to whoever's user_id created it. `teammate`
+    # never logs in anywhere (create_demo_account() only ever mints a
+    # token for `owner`), so any task given to `teammate` here would be
+    # permanently invisible through the normal Tasks/Notes screens --
+    # confirmed live: this is exactly why a demo login showed no seeded
+    # note/task/quick-note/time-block data even though the rows existed in
+    # the DB. teammate still shows up as `assignee_id` for realism --
+    # assignment doesn't gate visibility, only creatorship does.
     task_defaults = dict(watchers=[], labels=[], meta_data={}, settings={})
     tasks = [
         Task(
@@ -100,7 +139,7 @@ def _seed_workspace_content(db: Session, workspace: Workspace, owner: User, team
             task_id=uuid.uuid4(),
             workspace_id=workspace.workspace_id,
             board_id=board.board_id,
-            user_id=teammate.user_id,
+            user_id=owner.user_id,
             assignee_id=teammate.user_id,
             reporter_id=owner.user_id,
             title="Write onboarding docs",
@@ -126,13 +165,157 @@ def _seed_workspace_content(db: Session, workspace: Workspace, owner: User, team
             task_id=uuid.uuid4(),
             workspace_id=workspace.workspace_id,
             board_id=None,
-            user_id=teammate.user_id,
+            user_id=owner.user_id,
             title="Renew SSL certificate",
             priority=TaskPriority.URGENT.value,
             task_type=TaskType.TASK.value,
             status=TaskStatus.DONE.value,
             completed=True,
             due_on=now - timedelta(days=1),
+        ),
+        Task(
+            **task_defaults,
+            task_id=uuid.uuid4(),
+            workspace_id=workspace.workspace_id,
+            board_id=None,
+            user_id=owner.user_id,
+            title="Review pull request #142",
+            priority=TaskPriority.MEDIUM.value,
+            task_type=TaskType.TASK.value,
+            status=TaskStatus.IN_PROGRESS.value,
+            due_on=now + timedelta(days=1),
+        ),
+        Task(
+            **task_defaults,
+            task_id=uuid.uuid4(),
+            workspace_id=workspace.workspace_id,
+            board_id=None,
+            user_id=owner.user_id,
+            title="Set up staging environment",
+            priority=TaskPriority.HIGH.value,
+            task_type=TaskType.TASK.value,
+            status=TaskStatus.BLOCKED.value,
+            due_on=now + timedelta(days=5),
+        ),
+        Task(
+            **task_defaults,
+            task_id=uuid.uuid4(),
+            workspace_id=workspace.workspace_id,
+            board_id=None,
+            user_id=owner.user_id,
+            title="Buy coffee for the office",
+            priority=TaskPriority.LOW.value,
+            task_type=TaskType.TASK.value,
+            status=TaskStatus.TODO.value,
+            due_on=now + timedelta(days=3),
+        ),
+        # Notes, quick notes, and time blocks are all just Tasks with a
+        # different task_type (see pages/dashboard/NotesPage.js,
+        # components/dashboard/sections/StickyNote.js, and
+        # pages/dashboard/TimeBlockPage.js / services/taskservice.js's
+        # getAllNotes()/getAllQuickNotes()/getAllTimeBlocks(), each a plain
+        # GET /tasks?task_type=<x>) -- not separate tables, so each needs
+        # its own row here or that screen is empty regardless of how much
+        # other data exists. description uses _lexical() -- the Notes
+        # editor stores/reads Lexical rich-text JSON, not plain text (see
+        # that helper's docstring); plain text here would round-trip fine
+        # through the API but render as a blank note in the UI.
+        Task(
+            **task_defaults,
+            task_id=uuid.uuid4(),
+            workspace_id=workspace.workspace_id,
+            board_id=None,
+            user_id=owner.user_id,
+            title="Demo account design notes",
+            description=_lexical(
+                "Kept simple on purpose -- one owner + one teammate, one shared workspace.",
+                "Real signup gives every new user their own default workspace instead.",
+            ),
+            priority=TaskPriority.MEDIUM.value,
+            task_type=TaskType.NOTE.value,
+            status=TaskStatus.DONE.value,
+        ),
+        Task(
+            **task_defaults,
+            task_id=uuid.uuid4(),
+            workspace_id=workspace.workspace_id,
+            board_id=None,
+            user_id=owner.user_id,
+            title="Meeting notes -- kickoff",
+            description=_lexical(
+                "Attendees: Demo User, Sam Teammate.",
+                "Agreed: ship the CRM fix first, demo-account feature second.",
+                "Action item: follow up with Northwind Traders by Friday.",
+            ),
+            priority=TaskPriority.MEDIUM.value,
+            task_type=TaskType.NOTE.value,
+            status=TaskStatus.DONE.value,
+        ),
+        Task(
+            **task_defaults,
+            task_id=uuid.uuid4(),
+            workspace_id=workspace.workspace_id,
+            board_id=None,
+            user_id=owner.user_id,
+            title="Ideas for next sprint",
+            description=_lexical(
+                "Dark mode for the CRM tables.",
+                "Bulk-import contacts from CSV.",
+                "Slack notification when a deal changes stage.",
+            ),
+            priority=TaskPriority.LOW.value,
+            task_type=TaskType.NOTE.value,
+            status=TaskStatus.TODO.value,
+        ),
+        Task(
+            **task_defaults,
+            task_id=uuid.uuid4(),
+            workspace_id=workspace.workspace_id,
+            board_id=None,
+            user_id=owner.user_id,
+            title="Remember to check the Activities tab",
+            description=_lexical("Confirm create/edit/delete all still work after the last deploy."),
+            priority=TaskPriority.LOW.value,
+            task_type=TaskType.QUICK_NOTE.value,
+            status=TaskStatus.DONE.value,
+        ),
+        Task(
+            **task_defaults,
+            task_id=uuid.uuid4(),
+            workspace_id=workspace.workspace_id,
+            board_id=None,
+            user_id=owner.user_id,
+            title="Ask Sam about the Globex deal",
+            description=_lexical("They mentioned budget was confirmed -- get the exact number."),
+            priority=TaskPriority.MEDIUM.value,
+            task_type=TaskType.QUICK_NOTE.value,
+            status=TaskStatus.TODO.value,
+        ),
+        Task(
+            **task_defaults,
+            task_id=uuid.uuid4(),
+            workspace_id=workspace.workspace_id,
+            board_id=None,
+            user_id=owner.user_id,
+            title="Focus block: CRM cleanup",
+            priority=TaskPriority.MEDIUM.value,
+            task_type=TaskType.TIME_BLOCK.value,
+            status=TaskStatus.SCHEDULED.value,
+            start_time=now + timedelta(hours=2),
+            end_time=now + timedelta(hours=4),
+        ),
+        Task(
+            **task_defaults,
+            task_id=uuid.uuid4(),
+            workspace_id=workspace.workspace_id,
+            board_id=None,
+            user_id=owner.user_id,
+            title="Focus block: sprint planning prep",
+            priority=TaskPriority.LOW.value,
+            task_type=TaskType.TIME_BLOCK.value,
+            status=TaskStatus.SCHEDULED.value,
+            start_time=now + timedelta(days=1, hours=1),
+            end_time=now + timedelta(days=1, hours=2),
         ),
     ]
     db.add_all(tasks)

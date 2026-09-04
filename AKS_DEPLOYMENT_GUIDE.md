@@ -223,6 +223,64 @@ curl -s http://$IP/api/v1/users/signup -X POST \
 Open `http://$IP/` in a browser — this is the same app you already tested
 on minikube, now on a real public IP.
 
+## Shipping a code update to an already-running cluster
+
+This is the loop for "I changed the app, get the new version live" — as
+opposed to Steps 1-6 above, which are first-time setup. No new
+infrastructure gets created here; it's new images + a Helm values change
+on top of everything that already exists.
+
+```bash
+# 1. Commit and push -- the CI workflow builds from whatever's on `main`,
+#    not from your local working tree.
+git add -A && git commit -m "..." && git push
+
+# 2. Trigger the build (native amd64 GitHub runners -- no local QEMU pain).
+#    First time only: the workflow needs three REPO VARIABLES (Settings ->
+#    Secrets and variables -> Actions -> Variables), not secrets -- these
+#    are identifiers, not credentials (see docs/AWS_vs_AZURE_PERMISSIONS.md):
+gh variable set AZURE_CLIENT_ID       --body "$(terraform -chdir=terraform/cicd output -raw azure_client_id)"
+gh variable set AZURE_TENANT_ID       --body "$(terraform -chdir=terraform/cicd output -raw azure_tenant_id)"
+gh variable set AZURE_SUBSCRIPTION_ID --body "$(terraform -chdir=terraform/cicd output -raw azure_subscription_id)"
+# Without these, the workflow's Azure login step fails immediately with
+# "Not all values are present. Ensure 'client-id' and 'tenant-id' are
+# supplied." -- a real, observed failure the first time this ran, not a
+# hypothetical.
+
+gh workflow run build-and-push.yml -f tag=v2 -f target=all
+gh run watch <run-id-from-the-output-above> --exit-status
+
+# 3. Point the Helm release at the new tag.
+#    Edit terraform/application/terraform.tfvars:
+#      backend_image_tag  = "v2"
+#      frontend_image_tag = "v2"
+
+cd terraform/application
+az aks get-credentials --resource-group personal-assistant-learning --name personal-assistant-aks --overwrite-existing
+terraform plan -out=tfplan   # should show ONLY the two image.tag values changing
+terraform apply tfplan
+```
+
+`terraform apply` here does a `helm upgrade` under the hood — Kubernetes
+does a normal rolling update (new pod comes up healthy before the old one
+terminates), so there's no real downtime window. The `migration-job.yaml`
+Helm hook fires again on every `helm upgrade` regardless of whether the
+schema actually changed (Alembic's `upgrade head` is a no-op if there's
+nothing new to apply, confirmed by it completing in ~4-17s rather than
+erroring) — same "check the Job's own status, don't just trust
+`helm_release` succeeded" lesson from earlier in this doc's development
+history still applies:
+
+```bash
+kubectl get pods                 # both Deployments should show a fresh AGE, 1/1 Running
+kubectl get deploy personal-assistant-backend -o jsonpath='{.spec.template.spec.containers[0].image}'
+kubectl get jobs                 # latest personal-assistant-migrate-N should be Complete
+```
+
+Then re-run Step 6's verification commands against the same public IP —
+nothing about the IP, the Ingress, or the Load Balancer changes on a code
+update, only the pods behind them do.
+
 ## Rate limiting — what's actually enforcing it, and how to see it work
 
 Two independent layers, on purpose:
@@ -331,3 +389,169 @@ az group delete --name personal-assistant-registry --yes --no-wait
 
 That's a real destructive action against your real subscription — run it
 yourself, don't have anything automated do it for you.
+
+---
+
+## A worked example: shipping a real change, then tearing everything down
+
+### 2026-09-04 — v2: CRM fixes, a demo-account feature, and the CI gotcha it surfaced
+
+Starting point: the cluster from earlier this week was still up, still on
+the `v1` images, serving real traffic at `http://48.206.145.18/`. A
+session of local work had landed real fixes (the CRM Activities tab was
+wired to the wrong backend endpoints entirely; Contacts/Deals create-edit-
+delete had several argument-order bugs; `adapters/orm/fixtures.py` was
+dead on import) plus a new feature (`POST /api/v1/users/demo` — a
+self-serve "Try Demo" button that mints a fresh, fully-seeded account with
+no signup form). All of that was committed and pushed to `main` first —
+the CI workflow builds from what's on GitHub, not from a local working
+tree.
+
+**Triggered the build, hit a real, useful failure immediately:**
+
+```bash
+gh workflow run build-and-push.yml -f tag=v2 -f target=all
+```
+
+The `Azure login (OIDC, no stored secret)` step failed on the very first
+run:
+
+```
+Login failed with Error: Using auth-type: SERVICE_PRINCIPAL. Not all
+values are present. Ensure 'client-id' and 'tenant-id' are supplied.
+```
+
+Root cause, confirmed rather than guessed: `gh variable list` came back
+empty. `terraform/cicd` had created the App Registration and federated
+identity credential earlier this week, but the three repo **variables**
+(`AZURE_CLIENT_ID`/`AZURE_TENANT_ID`/`AZURE_SUBSCRIPTION_ID` — the
+workflow's `azure/login@v2` step reads these, see
+`.github/workflows/build-and-push.yml`) had never actually been set on the
+GitHub side. The Terraform stage existing isn't the same as the repo being
+wired up to use it. Fixed by reading straight from that stage's live
+outputs (not retyping values from an old doc — verified they were still
+current first):
+
+```bash
+gh variable set AZURE_CLIENT_ID       --body "$(terraform -chdir=terraform/cicd output -raw azure_client_id)"
+gh variable set AZURE_TENANT_ID       --body "$(terraform -chdir=terraform/cicd output -raw azure_tenant_id)"
+gh variable set AZURE_SUBSCRIPTION_ID --body "$(terraform -chdir=terraform/cicd output -raw azure_subscription_id)"
+```
+
+Re-triggered, watched it with `gh run watch <id> --exit-status` — this
+time real amd64 hardware, no local QEMU wait, both images built and pushed
+to ACR as `v2` in under two minutes total.
+
+**Rolled out**: bumped `backend_image_tag`/`frontend_image_tag` to `v2` in
+`terraform/application/terraform.tfvars`, `terraform plan` (confirmed the
+diff was *only* those two values, nothing else drifted), `terraform
+apply`. `helm_release.personal_assistant: Modifications complete after
+1m9s` — a normal Kubernetes rolling update, old pods stayed serving until
+new ones passed their readiness probe, so no real downtime window.
+Verified for real, not just trusted the exit code:
+
+```bash
+kubectl get deploy personal-assistant-backend -o jsonpath='{.spec.template.spec.containers[0].image}'
+# personalassistantfoylsi.azurecr.io/personal-assistant-backend:v2
+kubectl get jobs   # migration Job #4 -- Complete, 17s (no-op: no schema change this release)
+```
+
+Then walked the actual new features through the public IP end-to-end —
+not just "pods are Running," the specific things that were broken/new:
+
+```bash
+curl -s http://48.206.145.18/api/v1/users/demo -X POST   # -> fresh account, real token, real seeded workspace
+# created a contact activity, PUT to update it, DELETE it -- the two
+# endpoints that flatly didn't exist before this release -- both 200
+```
+
+### 2026-09-04 — full teardown, in the order the Teardown section above says
+
+Requested directly: tear everything down for a deliberate stop-and-review
+before rebuilding it by hand. Followed this doc's own destroy order
+exactly — application first (so Helm gets to clean up the LB/Public IP
+before the VNet under it disappears), then keyvault (lives inside
+aks-infra's resource group, would be an uncontrolled side effect
+otherwise), then the cluster, then `cicd` (not in this doc's original
+teardown list — added it since it's real infrastructure this project
+created too, even though it costs nothing sitting idle), then the
+registry last:
+
+```
+terraform/application       -> 2 destroyed   (17s, 33s)
+terraform/keyvault           -> 6 destroyed   (~20s total)
+terraform/aks-infra          -> 6 destroyed   (cluster itself: 5m51s -- by far the slowest step)
+terraform/cicd                -> 4 destroyed   (~1m)
+terraform/container-registry  -> 3 destroyed   (~25s)
+```
+
+Confirmed clean, not assumed:
+
+```bash
+az group list --output table
+# personal-assistant-registry, personal-assistant-learning, and its MC_*
+# pair all gone. Only RG-EAST_US and NetworkWatcherRG remain -- both
+# pre-existing, unrelated to this project.
+```
+
+**One cleanup step not in this doc's original teardown checklist**: the
+GitHub repo variables set earlier in this same session now pointed at a
+destroyed identity. Removed them too, so a future `git clone` + fresh
+setup doesn't find stale, misleading values already sitting there:
+
+```bash
+gh variable delete AZURE_CLIENT_ID
+gh variable delete AZURE_TENANT_ID
+gh variable delete AZURE_SUBSCRIPTION_ID
+```
+
+**What survives a full teardown, deliberately**: every Terraform file, the
+Helm chart, this doc, `docs/terraform-infra-walkthrough.md`,
+`docs/architecture.md`, `docs/AWS_vs_AZURE_PERMISSIONS.md`, and the
+application code itself (including today's CRM fixes and the demo-account
+feature) — none of that lives in Azure. Rebuilding from here is Steps 1-6
+of this doc again, in order, same as the very first time.
+
+### `NetworkWatcherRG` / `NetworkWatcher_eastus` — the one thing left in the subscription, and why that's fine
+
+`az group list` after the teardown above still shows `NetworkWatcherRG`
+alongside the pre-existing `RG-EAST_US`. Worth understanding rather than
+just ignoring:
+
+**The mechanism**: the first time *any* VNet gets created in a region
+within a subscription, Azure auto-provisions a `NetworkWatcherRG` resource
+group and a `NetworkWatcher_<region>` resource for that region. The
+trigger here was `azurerm_virtual_network.this` in
+`terraform/aks-infra/main.tf` (`personal-assistant-aks-vnet`) — Azure's own
+housekeeping, not anything any of the five Terraform stages in this repo
+ever created. Confirmed directly, not assumed:
+
+```bash
+az network watcher list --output table
+# eastus   NetworkWatcher_eastus   Succeeded   NetworkWatcherRG
+
+az resource list --resource-group NetworkWatcherRG --output table
+# same resource, no tags at all -- every resource this project's Terraform
+# actually manages carries purpose = personal-assistant-learning; this
+# doesn't, because nothing in terraform/ ever put it there
+```
+
+That untagged state is exactly why `terraform destroy` across all five
+stages never touched it — it isn't tracked in any of their state files,
+so there was never anything to destroy.
+
+**What it's for**: IP flow verify, NSG flow logs, packet capture,
+connection troubleshoot, topology view, next-hop diagnostics — regional
+tooling for debugging *any* VNet in `eastus`, not scoped to one VNet or
+resource group.
+
+**Cost**: $0 for the resource itself sitting idle. It only costs money if
+a specific feature is turned on against it (NSG Flow Logs need a storage
+account behind them, for example) — nothing here ever did that.
+
+**Does it matter now**: no. The VNet is gone, so it has nothing left to
+watch, but Azure doesn't auto-delete it just because the last VNet in the
+region disappeared. It'll sit there, empty and free, until the next VNet
+gets created in `eastus` — including the next AKS rebuild from this same
+doc. Safe to leave alone; optional removal if it bothers you:
+`az network watcher configure --locations eastus --enabled false`.

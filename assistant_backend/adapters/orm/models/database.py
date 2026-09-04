@@ -28,7 +28,21 @@ def create_db_engine():
                 pool_timeout=60,
                 pool_recycle=1800,
                 pool_pre_ping=True,
-                echo=config.environment == "development"
+                echo=config.environment == "development",
+                # A session that opens a transaction (any query does,
+                # implicitly) and then never commits/rolls back -- e.g. a
+                # container getting killed/restarted mid-request, or a
+                # request handler that errors before reaching its
+                # `finally: db.close()` -- otherwise sits there forever,
+                # holding row locks that queue up and wedge every later
+                # request touching the same rows (observed directly: a
+                # single such zombie connection blocked new demo-account
+                # creation, migrations, and the test suite's schema reset,
+                # each stacking further sessions behind it). Postgres itself
+                # kills any connection that goes idle-in-transaction past
+                # this, so a zombie clears on its own instead of needing a
+                # manual pg_terminate_backend.
+                connect_args={"options": "-c idle_in_transaction_session_timeout=30000"},
             )
             
             # Test the connection
