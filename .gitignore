@@ -134,6 +134,12 @@ celerybeat.pid
 *.tfstate.*
 *.tfvars
 !*.tfvars.example
+# Saved plan files (`terraform plan -out=tfplan`) -- can embed real values
+# for set_sensitive/sensitive-marked variables internally, even though the
+# human-readable CLI output redacts them for display. Ephemeral, local-only
+# artifacts; never belong in version control regardless.
+tfplan
+*.tfplan
 crash.log
 crash.*.log
 

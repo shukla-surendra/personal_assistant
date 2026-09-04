@@ -1,0 +1,54 @@
+name: Build and push images to ACR
+
+# Manual trigger only (workflow_dispatch) -- not on every push. GitHub-hosted
+# runners bill per actual minute used, but a push-triggered workflow means
+# "every commit costs minutes" whether you meant to build or not. This stays
+# a deliberate action, matching "only charged when we run."
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Image tag to build and push"
+        required: true
+        default: v1
+      target:
+        description: "Which image(s) to build"
+        required: true
+        default: all
+        type: choice
+        options: [all, backend, frontend]
+
+permissions:
+  id-token: write   # required for OIDC -- this is what lets azure/login skip a stored client secret entirely
+  contents: read
+
+env:
+  ACR_LOGIN_SERVER: personalassistantfoylsi.azurecr.io
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest   # real amd64 hardware -- no QEMU emulation, unlike building on Apple Silicon locally
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login (OIDC, no stored secret)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: az acr login
+        run: az acr login --name ${{ env.ACR_LOGIN_SERVER }}
+
+      - name: Build and push backend
+        if: ${{ inputs.target == 'all' || inputs.target == 'backend' }}
+        run: |
+          docker build -t ${{ env.ACR_LOGIN_SERVER }}/personal-assistant-backend:${{ inputs.tag }} ./assistant_backend
+          docker push ${{ env.ACR_LOGIN_SERVER }}/personal-assistant-backend:${{ inputs.tag }}
+
+      - name: Build and push frontend
+        if: ${{ inputs.target == 'all' || inputs.target == 'frontend' }}
+        run: |
+          docker build -t ${{ env.ACR_LOGIN_SERVER }}/personal-assistant-frontend:${{ inputs.tag }} ./assistant_web
+          docker push ${{ env.ACR_LOGIN_SERVER }}/personal-assistant-frontend:${{ inputs.tag }}

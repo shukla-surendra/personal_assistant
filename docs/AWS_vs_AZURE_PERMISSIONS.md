@@ -678,3 +678,167 @@ kubectl describe pod <name>           # events -- the actual "why is this Pendin
 kubectl logs <name>                   # a container's stdout/stderr
 kubectl logs <name> -c <container>    # multi-container pod (e.g. the migration Job's wait-for-postgres init container)
 ```
+
+---
+
+### 2026-09-04 — cross-architecture image builds: another real subscription restriction
+
+**Root cause of "frontend pod ImagePullBackOff, backend fine"**: this Mac
+is Apple Silicon (arm64); `docker build` targets the host architecture by
+default. Locally-built images were `arm64`; AKS's `Standard_D2s_v7` nodes
+are `amd64` — kubelet's pull fails with "no match for platform in
+manifest," not a permissions error despite what the accompanying `401
+Unauthorized` text suggests (that part's a red herring -- containerd's
+fallback-to-anonymous-pull attempt after the platform mismatch, on a
+registry with `anonymous_pull_enabled = false`).
+
+Fix, in principle simple: `docker build --platform linux/amd64 ...`. In
+practice, cross-architecture emulation (QEMU) makes CPU-heavy steps much
+slower than native. Backend rebuilt fine in a couple of minutes. Frontend
+(`create-react-app`, a large dependency tree — Chakra UI, MUI, TipTap/
+Lexical, FullCalendar, dnd-kit, Redux) took **22+ minutes just for `npm
+ci`** under emulation — confirmed by killing the build and reading its
+final output: `npm run build` (webpack) had only just started, 5 seconds
+in, meaning nearly all that time was dependency installation, not the
+bundler.
+
+**Tried the "obvious" fix for this exact problem — building natively on
+real amd64 hardware instead of emulating it locally:**
+```bash
+az acr build --registry personalassistantfoylsi --image personal-assistant-frontend:v1 ./assistant_web
+```
+```
+ERROR: (TasksOperationsNotAllowed) ACR Tasks requests for the registry
+personalassistantfoylsi and <subscription-id> are not permitted.
+```
+Blocked at the subscription level — same category as the B-series VM quota
+restriction from Step 3, not a bug in this project's setup. ACR Tasks
+provide real (if modest) free compute, plausibly restricted on new/trial
+subscriptions for the same anti-abuse reason B-series VMs were. Checked
+for a remaining alternative (`docker buildx ls` — a remote/cloud builder
+would sidestep local emulation entirely) — none configured, both available
+builders are the local `docker` driver. Local QEMU emulation, patience
+required, is genuinely the only path available in this subscription right
+now. Went back to it, this time with realistic expectations of the timing
+now that it's clear where the time actually goes.
+
+**Takeaway for anywhere else this comes up**: if you develop on Apple
+Silicon and deploy to any x86_64 cloud target (AKS, EKS, GKE, a plain VM),
+build images with `--platform linux/amd64` explicitly rather than relying
+on the default — and budget real extra time for it locally unless a
+native-arch remote builder (a cloud CI runner, `az acr build`/`docker
+buildx build --builder cloud`, GitHub Actions on an `ubuntu-latest`
+runner) is available, since none of that is a given on every subscription.
+
+---
+
+### 2026-09-04 — the app is live on AKS, and one last bug: the migration silently never ran
+
+Frontend's amd64 image finished and pushed while waiting on an unrelated
+question; all 4 pods (`backend`, `frontend`, `postgres`, `redis`) came up
+`1/1 Running`. First real end-to-end test through the public Load
+Balancer (`http://48.206.145.18/`):
+```
+POST /api/v1/users/signup -> 500 "Internal server error while creating user"
+```
+`kubectl logs` on the backend: `psycopg2.errors.UndefinedTable: relation
+"users" does not exist`. Postgres itself was healthy — the schema was
+just never created on it.
+
+**Root cause, reconstructed from the timeline**: the migration Job
+(`helm/personal-assistant/templates/migration-job.yaml`, a `post-install,
+pre-upgrade` Helm hook) runs using the *backend* image. During the one
+`terraform apply` where Postgres finally came up healthy (after the
+`PGDATA` fix), the backend image at that exact moment was still the
+broken `arm64`-only build — so the migration Job's own container almost
+certainly also failed to pull, the same way the Deployment pods did, just
+less visibly since a failed/pending Job doesn't show up in a plain
+`kubectl get pods` glance at the long-running Deployments. Nothing in
+Terraform's own output flagged this as a distinct failure — `helm_release`
+reported success once the Deployments and Job resource existed, without
+this session separately checking the Job's own completion status.
+
+**Fix**, since the images and Postgres are now both actually fine and
+nothing about the Helm release itself changed (so a plain `terraform
+apply`/`helm upgrade` wouldn't re-trigger the hook — no diff to apply):
+ran the migration directly against the already-healthy backend pod,
+which already has the correct DB env vars and `alembic` installed:
+```bash
+kubectl exec -it deploy/personal-assistant-backend -- alembic upgrade head
+```
+Verified for real — all 25 tables present (`inspect(engine).get_table_names()`
+via `kubectl exec`), then re-ran the actual signup call:
+```
+POST /api/v1/users/signup -> 201, real user_id + auto-created default workspace
+```
+
+**Lesson for next time**: after any Helm release involving a hook-based
+Job, check the Job's own status explicitly (`kubectl get jobs`,
+`kubectl logs job/<name>`) rather than inferring success from the
+Deployments alone being healthy — a hook can fail silently relative to
+the rest of the release, especially when it shares an image with
+Deployments that were *also* mid-fix at the same moment.
+
+---
+
+### 2026-09-04 — CI builds: GitHub Actions instead of Azure DevOps, and why
+
+Wanted to stop fighting local QEMU emulation for good by building on real
+`amd64` hardware. Considered Azure DevOps Pipelines (genuinely Azure-native)
+first, but flagged a real risk before building toward it: brand-new Azure
+DevOps organizations don't get the free tier (1 parallel job, 1,800
+min/month) automatically — Microsoft gates it behind a manual anti-abuse
+approval form, 2-3 business days. **This exact subscription had already
+hit two similar anti-abuse walls this session** (the `Standard_B2s` VM
+quota, `az acr build`'s `TasksOperationsNotAllowed`), so a third was a real
+possibility, not hypothetical. The fallback if blocked isn't pay-per-use
+either — it's a ~$40/month *subscription* per parallel job, which doesn't
+match "only charged when we run." Chose **GitHub Actions** instead — no
+equivalent approval gate for private repos, 2,000 free min/month by
+default, and the repo (`shukla-surendra/personal_assistant`) was already
+on GitHub.
+
+**Built as actual infrastructure, not just a workflow file** — a new
+`terraform/cicd/` stage using the `azuread` provider (not `azurerm`;
+Entra ID/App Registration resources live in a separate provider):
+```hcl
+azuread_application "github_actions"                          # the App Registration
+azuread_service_principal "github_actions"                     # its Entra identity
+azuread_application_federated_identity_credential "github_actions"  # OIDC trust
+azurerm_role_assignment "github_actions_acr_push"               # AcrPush, scoped to the ACR only
+```
+The federated identity credential is the actual point: GitHub Actions
+authenticates via **OIDC**, exchanging its own short-lived token for an
+Azure AD token at workflow-run time — **no client secret stored anywhere**,
+nothing to leak, nothing to rotate. Trust is scoped narrowly:
+`subject = "repo:shukla-surendra/personal_assistant:ref:refs/heads/main"`
+— only workflow runs dispatched against this exact repo and branch can
+assume this identity. This is the same Pattern-B, no-static-keys shape
+as the AKS kubelet's Managed Identity pulling from this same ACR
+(`terraform/aks-infra/main.tf`'s `AcrPull` role assignment) — see this
+doc's very first entries on AWS access keys vs. IAM roles for the fuller
+mental model. `AcrPush` only, not `Contributor` or `AcrPull`-and-more —
+this identity's entire job is pushing images, nothing else.
+
+Applied for real:
+```
+azuread_application.github_actions: Creation complete
+azuread_service_principal.github_actions: Creation complete
+azuread_application_federated_identity_credential.github_actions: Creation complete
+azurerm_role_assignment.github_actions_acr_push: Creation complete after 32s
+```
+Outputs (none of these are secret — they're identifiers, not credentials;
+safe to put directly in GitHub Actions *variables*, not *secrets*):
+```
+azure_client_id       = "06199aab-c1dd-44cf-8634-8277703978e1"
+azure_tenant_id       = "0b19a756-b586-402e-bcc6-0640146e652b"
+azure_subscription_id = "1f7b45cd-c3f3-487c-8cc6-8eeb3d1ce432"
+```
+
+Workflow: `.github/workflows/build-and-push.yml` — `workflow_dispatch`
+only (not triggered on every push, so it stays "only charged when we
+actually run it" rather than costing minutes on every commit),
+`runs-on: ubuntu-latest` (real amd64, no emulation), `azure/login@v2`
+using the three vars above, `az acr login`, then a plain `docker build` +
+`docker push` per image — the same steps `scripts/build-and-push.sh`
+already does locally, just on hardware that doesn't need QEMU.
