@@ -1,9 +1,3 @@
-resource "random_string" "acr_suffix" {
-  length  = 6
-  special = false
-  upper   = false
-}
-
 resource "azurerm_resource_group" "this" {
   name     = var.resource_group_name
   location = var.location
@@ -41,16 +35,6 @@ resource "azurerm_log_analytics_workspace" "this" {
   resource_group_name = azurerm_resource_group.this.name
   sku                 = "PerGB2018"
   retention_in_days   = 30
-}
-
-resource "azurerm_container_registry" "this" {
-  name                = var.acr_name != null ? var.acr_name : "personalassistant${random_string.acr_suffix.result}"
-  resource_group_name = azurerm_resource_group.this.name
-  location            = azurerm_resource_group.this.location
-  sku                 = "Basic" # cheapest tier (~$0.167/day); Standard/Premium add geo-replication and
-  # throughput this single-learner deployment has no use for.
-  admin_enabled = false # AKS pulls via its kubelet managed identity (role assignment below),
-  # not admin username/password -- the same pattern real deployments use.
 }
 
 resource "azurerm_kubernetes_cluster" "this" {
@@ -99,10 +83,14 @@ resource "azurerm_kubernetes_cluster" "this" {
   }
 }
 
-# Lets the AKS cluster's node identity pull images from this ACR without
-# admin credentials or an imagePullSecret.
+# Lets the AKS cluster's node identity pull images from the ACR created by
+# the separate container-registry/ stage (var.acr_id, its output) --
+# without admin credentials or an imagePullSecret. This is the only place
+# the two stages' resources actually touch, which is exactly why ACR
+# surviving an `aks-infra` destroy/recreate works: nothing here *creates*
+# or *owns* the registry, it only references it by ID.
 resource "azurerm_role_assignment" "aks_acr_pull" {
-  scope                = azurerm_container_registry.this.id
+  scope                = var.acr_id
   role_definition_name = "AcrPull"
   principal_id         = azurerm_kubernetes_cluster.this.kubelet_identity[0].object_id
 }

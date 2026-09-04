@@ -33,10 +33,9 @@ variable "node_vm_size" {
   default     = "Standard_B2s"
 }
 
-variable "acr_name" {
-  description = "Must be globally unique across ALL of Azure (not just your subscription) and alphanumeric only, no hyphens. Default appends a random suffix at apply time via random_string -- override if you want a specific name."
+variable "acr_id" {
+  description = "From the container-registry stage's output: terraform -chdir=../container-registry output -raw acr_id. Apply that stage first."
   type        = string
-  default     = null
 }
 
 variable "enable_container_insights" {

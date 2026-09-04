@@ -11,7 +11,7 @@ variable "cluster_name" {
 }
 
 variable "acr_login_server" {
-  description = "From aks-infra's output: terraform -chdir=../aks-infra output -raw acr_login_server"
+  description = "From container-registry's output: terraform -chdir=../container-registry output -raw acr_login_server"
   type        = string
 }
 

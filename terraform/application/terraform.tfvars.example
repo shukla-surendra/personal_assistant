@@ -1,6 +1,6 @@
 # Copy to terraform.tfvars (gitignored) and fill in.
 
-# From: terraform -chdir=../aks-infra output -raw acr_login_server
+# From: terraform -chdir=../container-registry output -raw acr_login_server
 acr_login_server = "personalassistantXXXXXX.azurecr.io"
 
 # openssl rand -hex 16

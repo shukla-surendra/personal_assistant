@@ -8,6 +8,25 @@ learning, without surprising your $200 credit.
 the end is not optional reading — it's the difference between this costing
 ~$25-35 and this costing $200.
 
+## Three Terraform stages, and why three
+
+```
+terraform/container-registry/   ACR only. Apply ONCE, leave alone all week.
+terraform/aks-infra/            AKS cluster only. Disposable -- tear down and
+                                 recreate as many times as you want this week
+                                 (to practice the cycle, or manage cost)
+                                 without rebuilding or re-pushing images.
+terraform/application/          ingress-nginx + the app itself, on top of
+                                 whichever cluster currently exists.
+```
+
+The registry is deliberately its own stage, in its **own resource group**,
+separate from the cluster's. If ACR lived in the same resource group as the
+AKS cluster, destroying that resource group (the normal teardown/recreate
+move) would take every pushed image down with it — Azure resource group
+deletion cascades to everything inside it, regardless of which Terraform
+state manages which resource.
+
 ## What gets built, and roughly what it costs for one week
 
 | Piece | What it is | ~Cost/week |
@@ -38,42 +57,31 @@ az account show          # confirm it's the right subscription
 `terraform`, `helm`, `kubectl` are already on this machine (used for the
 minikube deployment earlier).
 
-## Step 1 — Cluster infrastructure (`terraform/aks-infra/`)
+## Step 1 — Container registry (`terraform/container-registry/`), apply once
 
-Creates: resource group, VNet+subnet, AKS cluster (Free tier, 2x
-`Standard_B2s`), ACR, an `AcrPull` role assignment so AKS can pull images
-without stored credentials, and an Azure Budget with email alerts at
-50/80/100% of a configurable monthly amount (default $50 — well above a
-real week's cost, so a hit means something's actually wrong).
+Creates: its own resource group (`personal-assistant-registry` by default)
++ an ACR (Basic tier). Nothing here references the AKS cluster at all.
 
 ```bash
-cd terraform/aks-infra
-cp terraform.tfvars.example terraform.tfvars
-# edit terraform.tfvars: set budget_alert_email to an address you actually check
-
+cd terraform/container-registry
 terraform init
-terraform plan    # review before applying anything real/billed
+terraform plan
 terraform apply
+terraform output acr_login_server   # save this -- both later stages need it
+terraform output acr_id             # aks-infra needs this
 ```
 
-Takes ~10-15 minutes (AKS cluster provisioning is the slow part). When done:
-
-```bash
-terraform output acr_login_server   # save this, application/ needs it
-$(terraform output -raw get_credentials_command)   # points kubectl/helm at the new cluster
-kubectl get nodes   # should show 2 nodes, Ready
-```
-
-**Right now**, go set a second, independent budget alert directly in the
-Azure Portal (Cost Management + Billing → Budgets) — belt and suspenders;
-the Terraform-managed one and a portal-native one catch different failure
-modes (e.g. one existing before this resource group does).
+Fast (ACR provisions in well under a minute) — nothing here waits on the
+slow part (AKS cluster creation, next).
 
 ## Step 2 — Build and push images to ACR
 
+This can happen now, before the cluster exists at all — it only needs the
+registry from Step 1.
+
 ```bash
 cd ../..   # repo root (personal_assistant/)
-ACR=$(terraform -chdir=terraform/aks-infra output -raw acr_login_server)
+ACR=$(terraform -chdir=terraform/container-registry output -raw acr_login_server)
 
 az acr login --name "${ACR%%.*}"
 
@@ -87,7 +95,39 @@ docker push $ACR/personal-assistant-frontend:v1
 alternative that builds *inside* ACR — skips needing Docker locally, small
 per-minute compute charge, negligible for images this size.)
 
-## Step 3 — Application (`terraform/application/`)
+## Step 3 — Cluster infrastructure (`terraform/aks-infra/`)
+
+Creates: its own resource group (`personal-assistant-learning` by default),
+VNet+subnet, AKS cluster (Free tier, 2x `Standard_B2s`), an `AcrPull` role
+assignment against Step 1's ACR (so AKS can pull images without stored
+credentials), and an Azure Budget with email alerts at 50/80/100% of a
+configurable monthly amount (default $50 — well above a real week's cost,
+so a hit means something's actually wrong).
+
+```bash
+cd terraform/aks-infra
+cp terraform.tfvars.example terraform.tfvars
+# edit terraform.tfvars: set budget_alert_email to an address you actually check,
+# and acr_id to Step 1's `terraform output -raw acr_id`
+
+terraform init
+terraform plan    # review before applying anything real/billed
+terraform apply
+```
+
+Takes ~10-15 minutes (AKS cluster provisioning is the slow part). When done:
+
+```bash
+$(terraform output -raw get_credentials_command)   # points kubectl/helm at the new cluster
+kubectl get nodes   # should show 2 nodes, Ready
+```
+
+**Right now**, go set a second, independent budget alert directly in the
+Azure Portal (Cost Management + Billing → Budgets) — belt and suspenders;
+the Terraform-managed one and a portal-native one catch different failure
+modes (e.g. one existing before this resource group does).
+
+## Step 4 — Application (`terraform/application/`)
 
 Creates: `ingress-nginx` (the actual thing that gets you a public Load
 Balancer + IP, and enforces rate limiting) via Helm, then the
@@ -105,7 +145,7 @@ terraform plan
 terraform apply
 ```
 
-## Step 4 — Verify it's actually publicly reachable
+## Step 5 — Verify it's actually publicly reachable
 
 ```bash
 kubectl get svc -n ingress-nginx ingress-nginx-controller
@@ -150,38 +190,55 @@ or `helm upgrade` with `--set ingress.rateLimit.requestsPerSecond=<n>`.
 ## Monitoring cost during the week
 
 - Azure Portal → **Cost Management + Billing → Cost analysis**, scoped to
-  the `personal-assistant-learning` resource group — check daily, costs lag
-  by ~24-48h so don't expect same-day numbers.
-- The budget alerts from Step 1 email you at 50/80/100% of `budget_amount_usd`.
+  the `personal-assistant-learning` **and** `personal-assistant-registry`
+  resource groups — check daily, costs lag by ~24-48h so don't expect
+  same-day numbers.
+- The budget alerts from Step 3 email you at 50/80/100% of `budget_amount_usd`.
 - `az consumption usage list --output table` for a CLI-side check.
+
+## Recreating just the cluster mid-week (keeping the registry)
+
+The whole point of the 3-stage split. To tear down and rebuild the cluster
+without touching your pushed images:
+
+```bash
+cd terraform/application && terraform destroy
+cd ../aks-infra && terraform destroy
+# ... later, whenever you want it back:
+cd ../aks-infra && terraform apply     # same acr_id, same images already in ACR
+cd ../application && terraform apply
+```
 
 ## Teardown — do this before the week is out, not after
 
-Destroying the resource group deletes everything in it (AKS, ACR, VNet,
-disks, the auto-managed `MC_*` node resource group AKS creates alongside
-it) — but destroy in this order so Helm gets a chance to clean up the Load
-Balancer/Public IP *before* the VNet they sit in disappears out from under
-them:
+Destroy in this order — application first, so Helm gets a chance to clean
+up the Load Balancer/Public IP *before* the VNet they sit in disappears out
+from under them, then the cluster, then finally the registry (the one
+thing you were deliberately keeping alive all week):
 
 ```bash
 cd terraform/application
 terraform destroy       # removes the Helm releases -- LB, Public IP, Ingress cleanly torn down
 
 cd ../aks-infra
-terraform destroy       # removes the AKS cluster (+ its MC_* resource group), ACR, VNet, budget, resource group
+terraform destroy       # removes the AKS cluster (+ its MC_* resource group), VNet, budget, resource group
+
+cd ../container-registry
+terraform destroy       # removes the ACR and every image in it -- do this LAST, only once you're actually done
 ```
 
 Confirm nothing's left:
 
 ```bash
-az group list --output table   # personal-assistant-learning and its MC_* pair should both be gone
+az group list --output table   # personal-assistant-learning, its MC_* pair, and personal-assistant-registry should all be gone
 ```
 
 If `terraform destroy` fails partway (it happens), the reliable fallback is
-deleting the resource group directly:
+deleting both resource groups directly:
 
 ```bash
 az group delete --name personal-assistant-learning --yes --no-wait
+az group delete --name personal-assistant-registry --yes --no-wait
 ```
 
 That's a real destructive action against your real subscription — run it

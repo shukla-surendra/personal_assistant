@@ -238,10 +238,12 @@ looking at your own real tenant/subscription pair instead of the abstract
 version.
 
 **Next real step** (still no billed resources created — `plan` only reads
-and diffs, never creates):
+and diffs, never creates). Updated after restructuring into three stages
+(see `AKS_DEPLOYMENT_GUIDE.md`) — registry first, since it's independent of
+the cluster and everything else depends on it existing:
 
 ```bash
-cd terraform/aks-infra
+cd terraform/container-registry
 terraform init      # if you haven't already
 terraform plan       # first real contact between Terraform and your actual subscription
 ```
