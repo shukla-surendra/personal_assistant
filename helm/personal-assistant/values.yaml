@@ -10,6 +10,12 @@ backend:
     pullPolicy: Never
   replicaCount: 1
   port: 8000
+  # Set (via Terraform's application stage, from the keyvault stage's
+  # backend_identity_client_id output) to source OPENAI_API_KEY from Azure
+  # Key Vault through the Secrets Store CSI Driver instead of
+  # secrets.openaiApiKey below. Empty (the default, e.g. on minikube where
+  # there's no Key Vault at all) keeps the old direct-Secret path.
+  workloadIdentityClientId: ""
   env:
     # NOT "production" -- config.py has a startup check that hard-requires
     # SECRET_KEY (unused anywhere else in the codebase -- grepped, nothing
@@ -53,7 +59,15 @@ redis:
 secrets:
   postgresPassword: postgres
   jwtSecret: dev-only-change-me
-  openaiApiKey: ""  # empty -> chat's /completion endpoint returns a clean 503
+  # Ignored once backend.workloadIdentityClientId is set (see above) --
+  # OPENAI_API_KEY then comes from Key Vault instead. Empty -> chat's
+  # /completion endpoint returns a clean 503, either way.
+  openaiApiKey: ""
+
+# Only used when backend.workloadIdentityClientId is set.
+keyVault:
+  name: ""
+  tenantId: ""
 
 ingress:
   enabled: false

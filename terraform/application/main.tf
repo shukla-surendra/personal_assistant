@@ -80,8 +80,22 @@ resource "helm_release" "personal_assistant" {
     name  = "secrets.jwtSecret"
     value = var.jwt_secret
   }
-  set_sensitive {
-    name  = "secrets.openaiApiKey"
-    value = var.openai_api_key
+
+  # No secrets.openaiApiKey here -- the raw key never flows through
+  # Terraform/Helm at all now. Instead the backend pod fetches it directly
+  # from Key Vault at pod-start, authenticated as its own Workload Identity
+  # (terraform/keyvault). These three values only identify WHICH vault and
+  # WHICH identity -- none of them are secret themselves.
+  set {
+    name  = "backend.workloadIdentityClientId"
+    value = var.backend_workload_identity_client_id
+  }
+  set {
+    name  = "keyVault.name"
+    value = var.key_vault_name
+  }
+  set {
+    name  = "keyVault.tenantId"
+    value = var.azure_tenant_id
   }
 }

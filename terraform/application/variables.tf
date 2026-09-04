@@ -26,10 +26,21 @@ variable "frontend_image_tag" {
   default = "v1"
 }
 
-variable "openai_api_key" {
-  description = "Leave empty to deploy without one -- chat's /completion endpoint returns a clean 503 rather than crashing."
+variable "backend_workload_identity_client_id" {
+  description = "From the keyvault stage's output: terraform -chdir=../keyvault output -raw backend_identity_client_id. Empty means no Key Vault at all (e.g. minikube) -- the chart falls back to secrets.openaiApiKey below, which stays empty -> chat's /completion endpoint returns a clean 503 rather than crashing."
   type        = string
-  sensitive   = true
+  default     = ""
+}
+
+variable "key_vault_name" {
+  description = "From the keyvault stage's output: terraform -chdir=../keyvault output -raw key_vault_name"
+  type        = string
+  default     = ""
+}
+
+variable "azure_tenant_id" {
+  description = "From the keyvault stage's output: terraform -chdir=../keyvault output -raw tenant_id"
+  type        = string
   default     = ""
 }
 

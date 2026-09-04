@@ -60,6 +60,26 @@ resource "azurerm_kubernetes_cluster" "this" {
     type = "SystemAssigned"
   }
 
+  # Lets pods authenticate to Azure AD as their OWN identity (via a
+  # federated ServiceAccount token), instead of a shared node-level
+  # credential or a static key baked into a Secret -- same Pattern-B
+  # shape as the kubelet's AcrPull identity below and the GitHub Actions
+  # identity in terraform/cicd, just federated to a Kubernetes
+  # ServiceAccount's OIDC token instead of GitHub's. Both flags are
+  # non-disruptive, in-place updates (Azure confirmed, no node
+  # replacement) -- not something that would recreate the cluster.
+  oidc_issuer_enabled      = true
+  workload_identity_enabled = true
+
+  # AKS-managed addon: installs the Secrets Store CSI Driver + Azure
+  # provider for you (no separate Helm install). secret_rotation_enabled
+  # polls Key Vault periodically and re-syncs the mounted/synced secret if
+  # the value in the vault changes, without needing a pod restart to pick
+  # it up.
+  key_vault_secrets_provider {
+    secret_rotation_enabled = true
+  }
+
   network_profile {
     # kubenet over Azure CNI: kubenet allocates pod IPs from a separate
     # overlay range instead of consuming one VNet IP per pod, which matters

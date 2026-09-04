@@ -8,7 +8,7 @@ learning, without surprising your $200 credit.
 the end is not optional reading — it's the difference between this costing
 ~$25-35 and this costing $200.
 
-## Three Terraform stages, and why three
+## Four Terraform stages, and why four
 
 ```
 terraform/container-registry/   ACR only. Apply ONCE, leave alone all week.
@@ -16,9 +16,17 @@ terraform/aks-infra/            AKS cluster only. Disposable -- tear down and
                                  recreate as many times as you want this week
                                  (to practice the cycle, or manage cost)
                                  without rebuilding or re-pushing images.
+terraform/keyvault/              Key Vault + the backend's Workload Identity.
+                                 Depends on aks-infra's OIDC issuer URL --
+                                 see the "Recreating just the cluster" gotcha
+                                 below before tearing aks-infra down alone.
 terraform/application/          ingress-nginx + the app itself, on top of
                                  whichever cluster currently exists.
 ```
+
+(A fifth, `terraform/cicd/`, exists separately for GitHub Actions'
+OIDC-federated image-build identity -- optional, not part of this
+core runbook. See its own resources for details.)
 
 The registry is deliberately its own stage, in its **own resource group**,
 separate from the cluster's. If ACR lived in the same resource group as the
@@ -146,7 +154,34 @@ Azure Portal (Cost Management + Billing → Budgets) — belt and suspenders;
 the Terraform-managed one and a portal-native one catch different failure
 modes (e.g. one existing before this resource group does).
 
-## Step 4 — Application (`terraform/application/`)
+## Step 4 — Key Vault + Workload Identity (`terraform/keyvault/`)
+
+Creates: a Key Vault (RBAC-authorization mode), a dedicated
+`azurerm_user_assigned_identity` for just the backend pod, a
+`federated_identity_credential` trusting that pod's own Kubernetes
+ServiceAccount token (via Step 3's OIDC issuer), and two role
+assignments (the backend identity gets read-only "Key Vault Secrets
+User"; your own `az login` identity gets "Key Vault Secrets Officer" so
+you can actually write the secret in). Optional — skip this stage
+entirely (leave `backend_workload_identity_client_id` empty in Step 5)
+to fall back to the plain `secrets.openaiApiKey` Helm value instead.
+
+```bash
+cd terraform/keyvault
+terraform init
+terraform apply -var "oidc_issuer_url=$(terraform -chdir=../aks-infra output -raw oidc_issuer_url)"
+```
+
+Then set the actual key — **manually, never through Terraform** (keeps
+the raw value out of `.tfvars` and `terraform.tfstate` entirely; the
+`postgres_password`/`jwt_secret` route via `set_sensitive` still ends up
+in plaintext state, this deliberately doesn't):
+
+```bash
+$(terraform output -raw set_openai_secret_command)   # after: export OPENAI_API_KEY=sk-... in your own shell first
+```
+
+## Step 5 — Application (`terraform/application/`)
 
 Creates: `ingress-nginx` (the actual thing that gets you a public Load
 Balancer + IP, and enforces rate limiting) via Helm, then the
@@ -157,14 +192,22 @@ Balancer + IP, and enforces rate limiting) via Helm, then the
 cd terraform/application
 cp terraform.tfvars.example terraform.tfvars
 # fill in: acr_login_server (from Step 1's output), postgres_password,
-# jwt_secret (openssl rand -hex 32 for both), openai_api_key (optional)
+# jwt_secret (openssl rand -hex 32 for both), and -- if Step 4 was run --
+# backend_workload_identity_client_id / key_vault_name / azure_tenant_id
+# (all three from Step 4's outputs)
 
 terraform init
 terraform plan
 terraform apply
 ```
 
-## Step 5 — Verify it's actually publicly reachable
+If Step 4 was skipped, leave those three blank -- chat's `/completion`
+endpoint returns a clean 503 rather than crashing. To use a key without
+Key Vault at all, set the chart's `secrets.openaiApiKey` value directly
+(`helm upgrade ... --set secrets.openaiApiKey=$OPENAI_API_KEY`) instead
+of through this Terraform stage.
+
+## Step 6 — Verify it's actually publicly reachable
 
 ```bash
 kubectl get svc -n ingress-nginx ingress-nginx-controller
@@ -217,27 +260,53 @@ or `helm upgrade` with `--set ingress.rateLimit.requestsPerSecond=<n>`.
 
 ## Recreating just the cluster mid-week (keeping the registry)
 
-The whole point of the 3-stage split. To tear down and rebuild the cluster
-without touching your pushed images:
+The whole point of the multi-stage split. To tear down and rebuild the
+cluster without touching your pushed images:
 
 ```bash
 cd terraform/application && terraform destroy
+cd ../keyvault && terraform destroy      # see the gotcha below for why this can't be skipped
 cd ../aks-infra && terraform destroy
 # ... later, whenever you want it back:
-cd ../aks-infra && terraform apply     # same acr_id, same images already in ACR
+cd ../aks-infra && terraform apply       # same acr_id, same images already in ACR
+cd ../keyvault && terraform apply -var "oidc_issuer_url=$(terraform -chdir=../aks-infra output -raw oidc_issuer_url)"
+$(terraform output -raw set_openai_secret_command)   # re-set the secret -- see below
 cd ../application && terraform apply
 ```
+
+**Gotcha: a recreated cluster gets a brand-new OIDC issuer URL.** Every
+AKS cluster mints its own unique `oidc_issuer_url` at creation time --
+even with identical config, destroying and recreating aks-infra produces
+a *different* URL than before. The `keyvault` stage's
+`federated_identity_credential` is pinned to whatever URL it was applied
+with, so a stale one silently stops matching the new cluster's pod
+tokens -- Workload Identity auth would fail with no obvious error
+pointing at "the issuer URL changed." Reapplying `keyvault` after recreating `aks-infra` fixes the mismatch --
+but `keyvault`'s vault lives inside `aks-infra`'s own resource group
+(deliberately, see `terraform/keyvault/variables.tf`'s comment), so
+destroying `aks-infra` while `keyvault` still exists would take the
+vault down as an uncontrolled side effect of the resource-group
+deletion, orphaning `keyvault`'s own Terraform state. Destroying
+`keyvault` first, as shown above, avoids that. Either way, the vault
+comes back empty on recreate -- re-run the `az keyvault secret set`
+command afterward.
 
 ## Teardown — do this before the week is out, not after
 
 Destroy in this order — application first, so Helm gets a chance to clean
 up the Load Balancer/Public IP *before* the VNet they sit in disappears out
-from under them, then the cluster, then finally the registry (the one
-thing you were deliberately keeping alive all week):
+from under them; then keyvault, since it lives inside aks-infra's resource
+group and would otherwise get taken down as an uncontrolled side effect
+of that group's deletion (see the recreate-gotcha above); then the
+cluster; then finally the registry (the one thing you were deliberately
+keeping alive all week):
 
 ```bash
 cd terraform/application
 terraform destroy       # removes the Helm releases -- LB, Public IP, Ingress cleanly torn down
+
+cd ../keyvault
+terraform destroy       # removes the vault, the backend identity, its federated credential + role assignments
 
 cd ../aks-infra
 terraform destroy       # removes the AKS cluster (+ its MC_* resource group), VNet, budget, resource group

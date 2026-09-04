@@ -842,3 +842,219 @@ actually run it" rather than costing minutes on every commit),
 using the three vars above, `az acr login`, then a plain `docker build` +
 `docker push` per image — the same steps `scripts/build-and-push.sh`
 already does locally, just on hardware that doesn't need QEMU.
+
+---
+
+### 2026-09-04 — security fix: two things had already been pushed to the public repo
+
+Asked directly: "are we sharing any credentials publicly, since this is a
+public repo." Confirmed via `curl https://api.github.com/repos/.../...`
+that it genuinely is public, then audited what was actually tracked —
+found two problems **already live on `origin/main`**, not just a future
+risk:
+- `assistant_web/.env` — a real AWS Lambda Function URL (old/decommissioned,
+  confirmed not a live concern, but shouldn't have been committed anyway).
+- `terraform/aks-infra/tfplan` and `terraform/application/tfplan` — binary
+  saved plan files. The `application` one was concerning since that stage
+  passes `postgres_password`/`jwt_secret` as `set_sensitive` values.
+  Did a byte-level scan (not just a quick grep) for the exact known secret
+  values and any secret-shaped strings in both files — found nothing. A
+  real gap regardless: `.gitignore` had `*.tfstate`/`*.tfvars` but never
+  `tfplan` — these should never have been committable in the first place.
+
+Fixed (staged, not committed by me — left for direct review/commit):
+```bash
+# .gitignore: added tfplan / *.tfplan
+git rm --cached terraform/aks-infra/tfplan terraform/application/tfplan assistant_web/.env
+```
+Untracks going forward; doesn't rewrite the *old* commits already on
+GitHub that still contain them — a full history scrub (`git filter-repo`
++ force-push) is a separate, more invasive action, not done here since it
+rewrites shared public history and wasn't explicitly requested.
+
+**Then rotated `postgres_password`/`jwt_secret` as a zero-cost precaution**,
+even with nothing confirmed leaked. This surfaced a real, worth-remembering
+gotcha: `terraform apply` with new `set_sensitive` values updates the
+Kubernetes *Secret* object's data, but does **not** change the actual
+password inside an already-initialized Postgres — the image only reads
+`POSTGRES_PASSWORD` once, at first `initdb`. Backend promptly went
+`CrashLoopBackOff`: `password authentication failed for user "postgres"`
+— the app was now trying the *new* password against a database that still
+had the *old* one. Fixed with a direct, live `ALTER USER`:
+```bash
+kubectl exec -i personal-assistant-postgres-0 -- psql -U postgres \
+  -c "ALTER USER postgres WITH PASSWORD '<new-value-from-tfvars>';"
+```
+No password needed to run that command itself — connecting from *inside*
+the pod uses Postgres's local trust auth, not a network connection, so it
+doesn't require knowing either the old or new password to get in and set
+the new one. All 4 pods back to `1/1 Running` within seconds, verified
+with a real signup call through the public LB afterward.
+
+### 2026-09-04 — access + routing, restated plainly
+
+**Reaching the app**: `http://48.206.145.18/` (browser or `curl`) for
+everything — the UI and the API share the exact same public entry point,
+there's no separate address for "the API."
+
+**What decides frontend vs. backend**: not the Ingress — it has a single
+`path: /` rule pointing only at the frontend Service, so `/api/v1/...`
+and `/` both get routed to the *same place* by the Load Balancer and
+`ingress-nginx`. The actual split happens one hop later, inside the
+frontend pod's own nginx (`assistant_web/nginx.conf.template`):
+`location /api/` proxies to the backend Service, everything else falls
+through to `try_files ... /index.html` (the static React app). Full
+diagram + walkthrough already in `docs/architecture.md`'s "In front of
+the frontend, or the backend?" section.
+
+### 2026-09-04 — does frontend→backend traffic go through the Load Balancer too?
+
+**No.** The frontend pod's nginx proxies `/api/*` straight to the backend
+*Service name* (`personal-assistant-backend`), not to the public IP.
+CoreDNS resolves that name to the Service's ClusterIP
+(`10.0.100.162`), and `kube-proxy`'s node-level iptables/IPVS rules
+rewrite that to an actual backend pod IP (`10.244.0.25`) and route it
+there directly over the pod overlay network. No public IP, no internet
+hop, no Ingress involved — entirely inside the cluster.
+
+**Could it be routed through the LB instead?** Nothing in Kubernetes
+stops a pod from calling a public IP, so yes, mechanically — but it's a
+bad idea, illustrating *why* ClusterIP/DNS exists at all:
+- It would actually still land on the backend rather than fail: the
+  Ingress rule is a catch-all on `/`, so `48.206.145.18/api/...` would
+  route to `FrontendSvc` → the same frontend pod → its nginx sees
+  `/api/*` → proxies internally to the backend anyway. Same end path,
+  just with two pointless hops bolted onto the front.
+- It would pass through `ingress-nginx`'s `limit-rps` rate limiter —
+  the one meant for *external* users — throttling the app's own
+  internal traffic.
+- Adds real latency for a call that was already inside the cluster.
+- Azure's Standard Load Balancer has a known "hairpin"/loopback
+  limitation: a backend-pool member (here, the pod) calling back into
+  the LB's own public frontend IP can behave unreliably, since the
+  LB's SNAT rules generally assume the caller is external — a
+  cloud-networking gotcha, unrelated to this app's own config.
+
+This is exactly why Kubernetes gives every Service a stable internal
+ClusterIP + DNS name: pod-to-pod calls never need to leave the cluster,
+round-trip through a cloud LB, or depend on public networking at all.
+
+### 2026-09-04 — how does the Load Balancer actually reach a pod?
+
+It doesn't, directly — it only ever talks to a **Node**, on a specific
+port. Delivery to the actual pod is `kube-proxy`'s job, one layer further
+in. Real values, checked live:
+```
+ingress-nginx-controller Svc:  ClusterIP 10.0.54.27, EXTERNAL-IP 48.206.145.18
+  80:32684/TCP  443:32560/TCP     <- NodePorts, auto-allocated
+Node: aks-system-13632577-vmss000000, INTERNAL-IP 10.10.1.4
+Endpoints (real pod IP behind the Svc): 10.244.0.13:80, 10.244.0.13:443
+```
+1. A `type: LoadBalancer` Service auto-allocates a **NodePort** (here
+   `32684`/`32560`, from the reserved 30000-32767 range) and opens it on
+   *every* node — whether or not that node happens to be running a
+   matching pod.
+2. `cloud-controller-manager` configures the real Azure LB's backend
+   pool = the AKS nodes themselves, with a forwarding rule + health
+   probe aimed at that NodePort. The LB's entire model of the world is
+   "port 80 → some healthy node, on port 32684" — it has no concept of
+   Services, pods, or `ingress-nginx`.
+3. Traffic lands on a node (`10.10.1.4:32684`) — the LB's job ends here.
+4. `kube-proxy` on that node holds iptables/IPVS rules built from the
+   Service's live **Endpoints** list (refreshed continuously off
+   readiness-probe results) and DNATs `node-IP:32684` → `pod-IP:80`
+   (`10.244.0.13:80`).
+5. If the target pod were on a *different* node than the one the LB
+   picked, kube-proxy would hop the packet across the node-to-node VNet
+   first. This cluster has only 1 node (`node_count = 1` in
+   `terraform/aks-infra`) right now, so that cross-node hop never
+   actually happens here — but it's the general mechanism.
+
+So: **LB picks a node; `kube-proxy` picks the pod.** An unready pod
+drops out of Endpoints automatically, and the LB keeps sending traffic
+to the node regardless, trusting `kube-proxy` to route around it.
+
+### 2026-09-04 — moving OPENAI_API_KEY into Azure Key Vault (Workload Identity + CSI driver)
+
+Request: get the OpenAI key out of a plain K8s Secret and have the
+backend pod pull it from Key Vault instead. Built as a genuinely new
+Terraform stage (`terraform/keyvault/`), applied for real:
+
+**What got built, and why each piece exists:**
+- `azurerm_kubernetes_cluster.this` (aks-infra) gained
+  `oidc_issuer_enabled`, `workload_identity_enabled`, and a
+  `key_vault_secrets_provider` block — the last one is an AKS-managed
+  addon that installs the Secrets Store CSI Driver + Azure provider for
+  you, no separate Helm chart needed. All three applied as an **in-place
+  update** (confirmed via `terraform plan` before applying) — no node or
+  cluster replacement, ~3.5 minutes, zero pod disruption.
+- `azurerm_key_vault.this` (new `keyvault` stage) — `pa-kv-qlelnf`,
+  RBAC-authorization mode (not the older access-policy model), same
+  identity+role+scope 3-tuple as every other permission in this project.
+- `azurerm_user_assigned_identity.backend` — a dedicated identity for
+  *just* the backend workload. Not the AKS cluster's own SystemAssigned
+  identity (that one runs the cluster + pulls images via kubelet), not
+  shared with anything else.
+- `azurerm_federated_identity_credential` — trusts a specific Kubernetes
+  ServiceAccount's own OIDC token (`system:serviceaccount:default:
+  personal-assistant-backend`) as this Azure identity. Exact same
+  Pattern-B, no-stored-secret shape as `terraform/cicd`'s GitHub Actions
+  identity — just federated to AKS's own OIDC issuer instead of GitHub's.
+- `azurerm_role_assignment` × 2 — "Key Vault Secrets User" for the
+  backend identity (read secret values, nothing else), "Key Vault
+  Secrets Officer" for *my own* `az login` identity (needed to actually
+  write the secret in — RBAC-mode Key Vault has no implicit
+  creator-gets-access the way the legacy access-policy model did).
+
+**The raw key itself never touches Terraform at all** — set once,
+manually, straight into the vault:
+```bash
+az keyvault secret set --vault-name pa-kv-qlelnf --name openai-api-key \
+  --value "$OPENAI_API_KEY" --output none
+```
+Not a Terraform resource, not a `.tfvars` line, not `set_sensitive` on
+`helm_release` (which is how `postgres_password`/`jwt_secret` still flow
+today) — those still end up inside `terraform.tfstate` in plaintext.
+This value now exists in exactly one place: the vault itself.
+
+**On the Kubernetes side** (`helm/personal-assistant/templates/`):
+- `serviceaccount-backend.yaml` — a ServiceAccount just for this pod,
+  annotated `azure.workload.identity/client-id: <the backend identity>`.
+- `secretproviderclass.yaml` — tells the CSI driver which vault/secret/
+  identity to use, AND has a `secretObjects` block that syncs the
+  fetched value into a real K8s Secret
+  (`personal-assistant-openai-secret`) — so `backend.yaml`'s
+  `OPENAI_API_KEY` env var still just reads a normal `secretKeyRef`,
+  completely unaware Key Vault is involved.
+- `backend.yaml` — added the `azure.workload.identity/use: "true"` pod
+  label (required or the identity webhook ignores the pod entirely),
+  `serviceAccountName`, and a CSI volume mount (unused by the app itself
+  — mounting it is only what *triggers* the fetch+sync).
+
+**A real failure, and why it wasn't actually a problem**: applied the
+Helm upgrade *before* the secret existed in the vault. The new pod sat
+in `ContainerCreating` for 5+ minutes with:
+```
+MountVolume.SetUp failed ... GET https://pa-kv-qlelnf.vault.azure.net/secrets/openai-api-key/
+RESPONSE 404: SecretNotFound
+```
+— a clean 404, not a 403, which was actually a good sign: identity +
+federation + RBAC were all already working, it just had nothing to
+fetch yet. Terraform's helm-wait hit its default timeout and marked the
+release `"failed"`, but **the OLD pod was still `1/1 Running` the whole
+time** — a rolling update never tears down the old ReplicaSet until the
+new one is ready, so the app stayed up throughout. Once the secret was
+set, the stuck pod self-healed in under 20 seconds with no re-apply
+needed (kubelet just retries `FailedMount` on its own) — confirmed via
+`SecretRotationComplete` in its events. A follow-up `terraform apply`
+(0 real changes, ~46s) was still worth doing, purely to flip Helm's own
+tracked release status back from `failed` to `deployed` so it wouldn't
+confuse a future upgrade.
+
+**Verified for real** — full signup → login → create chat → post
+message → trigger completion, through the public LB IP, backend reading
+`OPENAI_API_KEY` from the CSI-synced Secret the whole time:
+```
+POST /api/v1/workspaces/{id}/chats/{id}/completion -> 200 OK
+{"content":"OK","role":"assistant",...}
+```

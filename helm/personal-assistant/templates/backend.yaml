@@ -28,6 +28,13 @@ spec:
     metadata:
       labels:
         app: {{ include "pa.fullname" . }}-backend
+        {{- if .Values.backend.workloadIdentityClientId }}
+        # Required by the Azure Workload Identity mutating webhook -- without
+        # this exact label, it ignores the pod entirely and no projected
+        # ServiceAccount token gets injected, regardless of the ServiceAccount
+        # annotation below.
+        azure.workload.identity/use: "true"
+        {{- end }}
       annotations:
         # Forces a real rollout when the ConfigMap's data changes -- otherwise
         # Kubernetes has no reason to restart existing pods just because a
@@ -35,6 +42,7 @@ spec:
         # (or crash-looping) on stale config indefinitely.
         checksum/config: {{ include (print $.Template.BasePath "/configmap-backend.yaml") . | sha256sum }}
     spec:
+      serviceAccountName: {{ include "pa.fullname" . }}-backend
       containers:
         - name: backend
           image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
@@ -63,8 +71,22 @@ spec:
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "pa.fullname" . }}-secrets
+                  # Key Vault path (via the SecretProviderClass's
+                  # secretObjects sync) once workloadIdentityClientId is
+                  # set; otherwise the plain Helm-managed Secret, unchanged
+                  # from before -- e.g. on minikube, where there's no Key
+                  # Vault at all.
+                  name: {{ include "pa.fullname" . }}-{{ if .Values.backend.workloadIdentityClientId }}openai-secret{{ else }}secrets{{ end }}
                   key: OPENAI_API_KEY
+          {{- if .Values.backend.workloadIdentityClientId }}
+          volumeMounts:
+            # Mounting this is what actually triggers the CSI driver to
+            # fetch from Key Vault and run the secretObjects sync below --
+            # the app itself never reads this path, only the env var above.
+            - name: openai-secrets
+              mountPath: "/mnt/secrets-store"
+              readOnly: true
+          {{- end }}
           readinessProbe:
             httpGet:
               path: /health
@@ -77,3 +99,12 @@ spec:
               port: {{ .Values.backend.port }}
             initialDelaySeconds: 15
             periodSeconds: 15
+      {{- if .Values.backend.workloadIdentityClientId }}
+      volumes:
+        - name: openai-secrets
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: {{ include "pa.fullname" . }}-openai
+      {{- end }}
