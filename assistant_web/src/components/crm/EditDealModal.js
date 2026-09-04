@@ -17,15 +17,17 @@ import {
     NumberInputField,
     useToast,
 } from '@chakra-ui/react';
-import { updateDeal } from '../../services/crmService';
+import { useDispatch } from 'react-redux';
+import { editDeal } from '../../slices/crm/dealsSlice';
 
-const EditDealModal = ({ isOpen, onClose, deal, onSuccess }) => {
+const EditDealModal = ({ isOpen, onClose, deal, workspaceId, onSuccess }) => {
+    const dispatch = useDispatch();
     const [formData, setFormData] = useState({
         title: '',
         value: 0,
         stage: '',
         description: '',
-        expectedCloseDate: '',
+        expected_close_date: '',
     });
     const toast = useToast();
 
@@ -36,7 +38,12 @@ const EditDealModal = ({ isOpen, onClose, deal, onSuccess }) => {
                 value: deal.value || 0,
                 stage: deal.stage || '',
                 description: deal.description || '',
-                expectedCloseDate: deal.expectedCloseDate ? new Date(deal.expectedCloseDate).toISOString().split('T')[0] : '',
+                // Backend field is expected_close_date (see commands/crm_cmd.py's
+                // DealBase) -- deal.expectedCloseDate never existed on the API
+                // response, so this always read as empty before.
+                expected_close_date: deal.expected_close_date
+                    ? new Date(deal.expected_close_date).toISOString().split('T')[0]
+                    : '',
             });
         }
     }, [deal]);
@@ -52,7 +59,7 @@ const EditDealModal = ({ isOpen, onClose, deal, onSuccess }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await updateDeal(deal.workspace_id, deal.deal_id, formData);
+            await dispatch(editDeal({ workspaceId, dealId: deal.deal_id, dealData: formData })).unwrap();
             toast({
                 title: 'Deal updated successfully',
                 status: 'success',
@@ -128,8 +135,8 @@ const EditDealModal = ({ isOpen, onClose, deal, onSuccess }) => {
                             <FormLabel>Expected Close Date</FormLabel>
                             <Input
                                 type="date"
-                                name="expectedCloseDate"
-                                value={formData.expectedCloseDate}
+                                name="expected_close_date"
+                                value={formData.expected_close_date}
                                 onChange={handleChange}
                             />
                         </FormControl>

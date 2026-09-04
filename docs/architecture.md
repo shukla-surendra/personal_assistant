@@ -164,3 +164,64 @@ kubectl get pods -o wide                         # pod IPs, which node they're o
 kubectl get nodes -o wide                        # the node's real VNet IP
 kubectl get svc -n ingress-nginx ingress-nginx-controller   # the public IP, live
 ```
+
+## ClusterIP — the fourth IP range, and why Postgres doesn't have one
+
+### 2026-09-04 — `kubectl get svc` output, read line by line
+
+```
+NAME                                  TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)    AGE
+service/kubernetes                    ClusterIP   10.0.0.1       <none>        443/TCP    3h13m
+service/personal-assistant-backend    ClusterIP   10.0.100.162   <none>        8000/TCP   107m
+service/personal-assistant-frontend   ClusterIP   10.0.232.70    <none>        80/TCP     107m
+service/personal-assistant-postgres   ClusterIP   None           <none>        5432/TCP   107m
+service/personal-assistant-redis      ClusterIP   10.0.216.154   <none>        6379/TCP   107m
+```
+
+**What ClusterIP actually is**: a stable, virtual IP that only exists
+inside the cluster's networking layer — not attached to any real network
+interface, unreachable from outside. It comes from a *third* IP range,
+on top of the two already covered above:
+
+| Range | What's in it | Example |
+|---|---|---|
+| `10.10.0.0/16` | Real VNet — nodes | node IP `10.10.1.4` |
+| `10.244.0.0/x` | kubenet's pod overlay | pod IPs |
+| `10.0.0.0/16` | Service ClusterIPs | `10.0.100.162`, `10.0.232.70`, `10.0.216.154` |
+
+**Why it exists**: pods are disposable. A backend pod that dies and gets
+rescheduled gets a brand-new IP from the pod overlay range — if the
+frontend had to remember that pod's actual IP, every restart would break
+it. A ClusterIP is a fixed address that never changes for the Service's
+whole lifetime, sitting in front of however many pods currently match its
+label selector. `kube-proxy` on every node watches the Service's live
+**Endpoints** (the real pod IPs behind it, refreshed off readiness-probe
+results) and DNATs any packet sent to the ClusterIP into one of the
+currently-healthy pod IPs, via iptables/IPVS rules. CoreDNS gives each
+Service a stable DNS name too, so nothing even needs to know the ClusterIP
+number — this is exactly the mechanism the frontend→backend call in the
+sequence diagram above already relies on: `proxy_pass` hits
+`personal-assistant-backend` by name, CoreDNS resolves it to
+`10.0.100.162`, kube-proxy DNATs it to whatever pod is currently ready.
+
+**Reading each row**:
+- **`service/kubernetes` at `10.0.0.1`** — not part of this app. Every
+  cluster gets this automatically; it's the Kubernetes API server's own
+  ClusterIP, so pods/controllers can reach the control plane without
+  knowing its real address.
+- **`backend`, `frontend`, `redis`** — ordinary ClusterIPs. Any pod behind
+  them is interchangeable, so a virtual IP load-balancing across whichever
+  pods are currently ready is exactly the right shape.
+- **`postgres` — `CLUSTER-IP: None`.** Deliberately *not* a normal
+  ClusterIP — a **headless Service**. No virtual IP, no load-balancing.
+  DNS lookups on `personal-assistant-postgres` return the pod's *actual*
+  IP directly instead. This is the right shape for a database: the app
+  doesn't want "a random Postgres replica," it wants a stable,
+  individually-addressable identity for one specific pod — which is why
+  StatefulSets pair with headless Services almost always.
+
+**To confirm this live**: compare `kubectl get pods -o wide`'s Postgres
+pod IP against
+`kubectl exec -it deploy/personal-assistant-backend -- getent hosts personal-assistant-postgres`
+— the headless lookup returns the pod IP directly, no `10.0.x.x`
+ClusterIP in between.

@@ -21,16 +21,20 @@ import {
 import { useDispatch } from 'react-redux';
 import { addActivity } from '../../slices/crm/activitiesSlice';
 
-const CreateActivityModal = ({ isOpen, onClose, workspaceId }) => {
+// A ContactActivity/DealActivity can only ever belong to ONE contact or ONE
+// deal -- crm_controller.py has no standalone activities collection, only
+// nested /contacts/{id}/activities and /deals/{id}/activities. So "related
+// to" here picks both WHICH kind and WHICH specific record, and that's what
+// decides which endpoint addActivity actually calls.
+const CreateActivityModal = ({ isOpen, onClose, workspaceId, contacts = [], deals = [], onCreated }) => {
     const dispatch = useDispatch();
     const toast = useToast();
     const [formData, setFormData] = useState({
         type: '',
+        title: '',
         description: '',
-        date: '',
-        contact_id: '',
-        deal_id: '',
-        tags: []
+        entityType: 'contact',
+        entityId: '',
     });
     const [errors, setErrors] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -38,9 +42,15 @@ const CreateActivityModal = ({ isOpen, onClose, workspaceId }) => {
     const validateForm = () => {
         const newErrors = {};
         if (!formData.type) newErrors.type = 'Type is required';
-        if (!formData.description) newErrors.description = 'Description is required';
+        if (!formData.title) newErrors.title = 'Title is required';
+        if (!formData.entityId) newErrors.entityId = `Select a ${formData.entityType}`;
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
+    };
+
+    const resetForm = () => {
+        setFormData({ type: '', title: '', description: '', entityType: 'contact', entityId: '' });
+        setErrors({});
     };
 
     const handleSubmit = async (e) => {
@@ -49,13 +59,24 @@ const CreateActivityModal = ({ isOpen, onClose, workspaceId }) => {
 
         try {
             setIsSubmitting(true);
-            await dispatch(addActivity({ workspaceId, activityData: formData })).unwrap();
+            await dispatch(addActivity({
+                workspaceId,
+                entityType: formData.entityType,
+                entityId: formData.entityId,
+                activityData: {
+                    type: formData.type,
+                    title: formData.title,
+                    description: formData.description || undefined,
+                },
+            })).unwrap();
+            await onCreated?.();
             toast({
                 title: 'Activity created',
                 status: 'success',
                 duration: 3000,
                 isClosable: true,
             });
+            resetForm();
             onClose();
         } catch (error) {
             toast({
@@ -74,9 +95,15 @@ const CreateActivityModal = ({ isOpen, onClose, workspaceId }) => {
         const { name, value } = e.target;
         setFormData(prev => ({
             ...prev,
-            [name]: value
+            [name]: value,
+            // Switching kind invalidates whichever specific record was picked.
+            ...(name === 'entityType' ? { entityId: '' } : {}),
         }));
     };
+
+    const entityOptions = formData.entityType === 'contact'
+        ? contacts.map(c => ({ id: c.contact_id, label: `${c.first_name} ${c.last_name}` }))
+        : deals.map(d => ({ id: d.deal_id, label: d.title }));
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} size="xl">
@@ -106,75 +133,59 @@ const CreateActivityModal = ({ isOpen, onClose, workspaceId }) => {
                             </GridItem>
 
                             <GridItem>
-                                <FormControl>
-                                    <FormLabel>Contact</FormLabel>
+                                <FormControl isInvalid={errors.title} isRequired>
+                                    <FormLabel>Title</FormLabel>
+                                    <Input
+                                        name="title"
+                                        value={formData.title}
+                                        onChange={handleChange}
+                                        placeholder="Short title"
+                                    />
+                                    <FormErrorMessage>{errors.title}</FormErrorMessage>
+                                </FormControl>
+                            </GridItem>
+
+                            <GridItem>
+                                <FormControl isRequired>
+                                    <FormLabel>Related to</FormLabel>
                                     <Select
-                                        name="contact_id"
-                                        value={formData.contact_id}
+                                        name="entityType"
+                                        value={formData.entityType}
                                         onChange={handleChange}
                                     >
-                                        <option value="">Select contact</option>
-                                        {/* Add contact options here */}
+                                        <option value="contact">Contact</option>
+                                        <option value="deal">Deal</option>
                                     </Select>
                                 </FormControl>
                             </GridItem>
 
                             <GridItem>
-                                <FormControl>
-                                    <FormLabel>Deal</FormLabel>
+                                <FormControl isInvalid={errors.entityId} isRequired>
+                                    <FormLabel>{formData.entityType === 'contact' ? 'Contact' : 'Deal'}</FormLabel>
                                     <Select
-                                        name="deal_id"
-                                        value={formData.deal_id}
+                                        name="entityId"
+                                        value={formData.entityId}
                                         onChange={handleChange}
                                     >
-                                        <option value="">Select deal</option>
-                                        {/* Add deal options here */}
+                                        <option value="">
+                                            {`Select ${formData.entityType}`}
+                                        </option>
+                                        {entityOptions.map(opt => (
+                                            <option key={opt.id} value={opt.id}>{opt.label}</option>
+                                        ))}
                                     </Select>
+                                    <FormErrorMessage>{errors.entityId}</FormErrorMessage>
                                 </FormControl>
                             </GridItem>
 
                             <GridItem colSpan={2}>
-                                <FormControl isInvalid={errors.description} isRequired>
+                                <FormControl>
                                     <FormLabel>Description</FormLabel>
-                                    <Input
+                                    <Textarea
                                         name="description"
                                         value={formData.description}
                                         onChange={handleChange}
                                         placeholder="Enter activity description"
-                                    />
-                                    <FormErrorMessage>{errors.description}</FormErrorMessage>
-                                </FormControl>
-                            </GridItem>
-
-                            <GridItem colSpan={2}>
-                                <FormControl>
-                                    <FormLabel>Date</FormLabel>
-                                    <Input
-                                        name="date"
-                                        value={formData.date}
-                                        onChange={handleChange}
-                                        type="datetime-local"
-                                    />
-                                </FormControl>
-                            </GridItem>
-
-                            <GridItem colSpan={2}>
-                                <FormControl>
-                                    <FormLabel>Tags</FormLabel>
-                                    <Input
-                                        name="tags"
-                                        value={formData.tags.join(', ')}
-                                        onChange={(e) => {
-                                            const tags = e.target.value
-                                                .split(',')
-                                                .map(tag => tag.trim())
-                                                .filter(tag => tag);
-                                            setFormData(prev => ({
-                                                ...prev,
-                                                tags
-                                            }));
-                                        }}
-                                        placeholder="Enter tags (comma-separated)"
                                     />
                                 </FormControl>
                             </GridItem>
@@ -198,4 +209,4 @@ const CreateActivityModal = ({ isOpen, onClose, workspaceId }) => {
     );
 };
 
-export default CreateActivityModal; 
+export default CreateActivityModal;

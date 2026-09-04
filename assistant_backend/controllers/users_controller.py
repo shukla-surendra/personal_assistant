@@ -27,6 +27,17 @@ async def login_user(users_cmd: LoginCommand):
     """Authenticate user with Cognito"""
     return UserHandler().login(cmd=users_cmd)
 
+@router.post("/demo", status_code=status.HTTP_200_OK)
+async def create_demo_account():
+    """Create a brand-new, fully-seeded demo account (unique user +
+    workspace with sample tasks/board/CRM/docs/chat data every call) and
+    return it in the same shape login() does -- deliberately public/
+    unauthenticated so a 'Try Demo' button can log a visitor straight in
+    with no signup form. Falls under the same per-IP unauthenticated rate
+    limit as signup/login (middleware/rate_limit.py) -- no separate
+    stricter limit for this route specifically."""
+    return UserHandler().create_demo_account()
+
 @router.get("/me", status_code=status.HTTP_200_OK)
 async def get_me(user: dict = Depends(get_auth_details)):
     """Get current user's profile"""

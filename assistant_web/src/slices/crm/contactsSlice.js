@@ -19,16 +19,16 @@ export const addContact = createAsyncThunk(
 
 export const editContact = createAsyncThunk(
     'contacts/editContact',
-    async ({ contactId, contactData }) => {
-        const response = await updateContact(contactId, contactData);
+    async ({ workspaceId, contactId, contactData }) => {
+        const response = await updateContact(workspaceId, contactId, contactData);
         return response;
     }
 );
 
 export const removeContact = createAsyncThunk(
     'contacts/removeContact',
-    async (contactId) => {
-        await deleteContact(contactId);
+    async ({ workspaceId, contactId }) => {
+        await deleteContact(workspaceId, contactId);
         return contactId;
     }
 );

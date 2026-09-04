@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
     Modal,
     ModalOverlay,
@@ -11,7 +11,6 @@ import {
     FormControl,
     FormLabel,
     Input,
-    FormErrorMessage,
     Grid,
     GridItem,
     Textarea,
@@ -21,26 +20,38 @@ import {
 import { useDispatch } from 'react-redux';
 import { editActivity } from '../../slices/crm/activitiesSlice';
 
-const EditActivityModal = ({ isOpen, onClose, activity, workspaceId }) => {
+// `activity` here is one of the items ActivitiesPanel's fetch already
+// tagged with entity_type/entity_id -- which contact/deal it belongs to
+// can't change on edit (there's no "move this activity" concept in the
+// API), so entity_type/entity_id are read-only, display-only fields here.
+const EditActivityModal = ({ isOpen, onClose, activity, workspaceId, contacts = [], deals = [], onUpdated }) => {
     const dispatch = useDispatch();
     const toast = useToast();
     const [formData, setFormData] = useState({
         type: activity.type || '',
+        title: activity.title || '',
         description: activity.description || '',
-        date: activity.date || '',
-        contact_id: activity.contact_id || '',
-        deal_id: activity.deal_id || '',
-        tags: activity.tags || []
     });
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const relatedLabel = activity.entity_type === 'contact'
+        ? contacts.find(c => c.contact_id === activity.entity_id)
+            ? `${contacts.find(c => c.contact_id === activity.entity_id).first_name} ${contacts.find(c => c.contact_id === activity.entity_id).last_name}`
+            : activity.contact_name
+        : deals.find(d => d.deal_id === activity.entity_id)?.title || activity.deal_name;
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await dispatch(editActivity({ 
-                workspaceId, 
-                activityId: activity.activity_id, 
-                activityData: formData 
+            setIsSubmitting(true);
+            await dispatch(editActivity({
+                workspaceId,
+                entityType: activity.entity_type,
+                entityId: activity.entity_id,
+                activityId: activity.activity_id,
+                activityData: formData,
             })).unwrap();
+            await onUpdated?.();
             toast({
                 title: 'Activity updated',
                 status: 'success',
@@ -56,6 +67,8 @@ const EditActivityModal = ({ isOpen, onClose, activity, workspaceId }) => {
                 duration: 5000,
                 isClosable: true,
             });
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -93,74 +106,33 @@ const EditActivityModal = ({ isOpen, onClose, activity, workspaceId }) => {
                             </GridItem>
 
                             <GridItem>
-                                <FormControl>
-                                    <FormLabel>Contact</FormLabel>
-                                    <Select
-                                        name="contact_id"
-                                        value={formData.contact_id}
+                                <FormControl isRequired>
+                                    <FormLabel>Title</FormLabel>
+                                    <Input
+                                        name="title"
+                                        value={formData.title}
                                         onChange={handleChange}
-                                    >
-                                        <option value="">Select contact</option>
-                                        {/* Add contact options here */}
-                                    </Select>
+                                    />
                                 </FormControl>
                             </GridItem>
 
-                            <GridItem>
+                            <GridItem colSpan={2}>
                                 <FormControl>
-                                    <FormLabel>Deal</FormLabel>
-                                    <Select
-                                        name="deal_id"
-                                        value={formData.deal_id}
-                                        onChange={handleChange}
-                                    >
-                                        <option value="">Select deal</option>
-                                        {/* Add deal options here */}
-                                    </Select>
+                                    <FormLabel>
+                                        Related {activity.entity_type === 'contact' ? 'contact' : 'deal'}
+                                    </FormLabel>
+                                    <Input value={relatedLabel || '-'} isReadOnly isDisabled />
                                 </FormControl>
                             </GridItem>
 
                             <GridItem colSpan={2}>
                                 <FormControl>
                                     <FormLabel>Description</FormLabel>
-                                    <Input
+                                    <Textarea
                                         name="description"
                                         value={formData.description}
                                         onChange={handleChange}
                                         placeholder="Enter activity description"
-                                    />
-                                </FormControl>
-                            </GridItem>
-
-                            <GridItem colSpan={2}>
-                                <FormControl>
-                                    <FormLabel>Date</FormLabel>
-                                    <Input
-                                        name="date"
-                                        value={formData.date}
-                                        onChange={handleChange}
-                                        type="datetime-local"
-                                    />
-                                </FormControl>
-                            </GridItem>
-
-                            <GridItem colSpan={2}>
-                                <FormControl>
-                                    <FormLabel>Tags</FormLabel>
-                                    <Input
-                                        name="tags"
-                                        value={formData.tags.join(', ')}
-                                        onChange={(e) => {
-                                            const tags = e.target.value
-                                                .split(',')
-                                                .map(tag => tag.trim())
-                                                .filter(tag => tag);
-                                            setFormData(prev => ({
-                                                ...prev,
-                                                tags
-                                            }));
-                                        }}
-                                        placeholder="Enter tags (comma-separated)"
                                     />
                                 </FormControl>
                             </GridItem>
@@ -173,6 +145,7 @@ const EditActivityModal = ({ isOpen, onClose, activity, workspaceId }) => {
                         <Button
                             colorScheme="blue"
                             type="submit"
+                            isLoading={isSubmitting}
                         >
                             Save Changes
                         </Button>
@@ -183,4 +156,4 @@ const EditActivityModal = ({ isOpen, onClose, activity, workspaceId }) => {
     );
 };
 
-export default EditActivityModal; 
+export default EditActivityModal;

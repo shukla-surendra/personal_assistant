@@ -7,7 +7,8 @@ import logging
 from adapters.orm.models.pg_models import Contact, Deal, ContactActivity, DealActivity
 from commands.crm_cmd import (
     ContactCreate, ContactUpdate, DealCreate, DealUpdate,
-    ContactActivityCreate, DealActivityCreate
+    ContactActivityCreate, DealActivityCreate,
+    ContactActivityUpdate, DealActivityUpdate
 )
 from sqlalchemy.orm import joinedload
 
@@ -156,6 +157,39 @@ class CRMHandler:
             ContactActivity.is_deleted == False
         ).order_by(ContactActivity.created_at.desc()).all()
 
+    def get_contact_activity(self, activity_id: UUID) -> ContactActivity:
+        activity = self.db.query(ContactActivity).filter(
+            ContactActivity.activity_id == activity_id,
+            ContactActivity.is_deleted == False
+        ).first()
+        if not activity:
+            raise HTTPException(status_code=404, detail="Activity not found")
+        return activity
+
+    def update_contact_activity(self, activity_id: UUID, activity: ContactActivityUpdate) -> ContactActivity:
+        db_activity = self.get_contact_activity(activity_id)
+        try:
+            for key, value in activity.model_dump(exclude_unset=True).items():
+                setattr(db_activity, key, value)
+            self.db.commit()
+            self.db.refresh(db_activity)
+            return db_activity
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"Error updating contact activity: {str(e)}")
+            raise HTTPException(status_code=500, detail="Failed to update contact activity")
+
+    def delete_contact_activity(self, activity_id: UUID) -> bool:
+        db_activity = self.get_contact_activity(activity_id)
+        try:
+            db_activity.is_deleted = True
+            self.db.commit()
+            return True
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"Error deleting contact activity: {str(e)}")
+            raise HTTPException(status_code=500, detail="Failed to delete contact activity")
+
     def create_deal_activity(self, activity: DealActivityCreate) -> DealActivity:
         try:
             db_activity = DealActivity(**activity.model_dump())
@@ -169,7 +203,44 @@ class CRMHandler:
             raise HTTPException(status_code=500, detail="Failed to create deal activity")
 
     def get_deal_activities(self, deal_id: UUID) -> List[DealActivity]:
+        # No is_deleted filter here -- DealActivity has no such column
+        # (unlike ContactActivity); this used to reference one anyway and
+        # threw AttributeError on every single call, 500ing this endpoint
+        # unconditionally.
         return self.db.query(DealActivity).filter(
-            DealActivity.deal_id == deal_id,
-            DealActivity.is_deleted == False
-        ).order_by(DealActivity.created_at.desc()).all() 
+            DealActivity.deal_id == deal_id
+        ).order_by(DealActivity.created_at.desc()).all()
+
+    def get_deal_activity(self, activity_id: UUID) -> DealActivity:
+        # DealActivity has no is_deleted column (unlike ContactActivity) --
+        # deletes below are hard deletes, so a plain existence check is enough.
+        activity = self.db.query(DealActivity).filter(
+            DealActivity.activity_id == activity_id
+        ).first()
+        if not activity:
+            raise HTTPException(status_code=404, detail="Activity not found")
+        return activity
+
+    def update_deal_activity(self, activity_id: UUID, activity: DealActivityUpdate) -> DealActivity:
+        db_activity = self.get_deal_activity(activity_id)
+        try:
+            for key, value in activity.model_dump(exclude_unset=True).items():
+                setattr(db_activity, key, value)
+            self.db.commit()
+            self.db.refresh(db_activity)
+            return db_activity
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"Error updating deal activity: {str(e)}")
+            raise HTTPException(status_code=500, detail="Failed to update deal activity")
+
+    def delete_deal_activity(self, activity_id: UUID) -> bool:
+        db_activity = self.get_deal_activity(activity_id)
+        try:
+            self.db.delete(db_activity)
+            self.db.commit()
+            return True
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"Error deleting deal activity: {str(e)}")
+            raise HTTPException(status_code=500, detail="Failed to delete deal activity") 

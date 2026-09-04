@@ -6,6 +6,8 @@ from dto.user_dto import UserDtoMapper
 from config import logger, get_config
 from commands.user_cmd import EmailVerificationRequest, LoginCommand
 from adapters.factory import AdapterFactory, StorageType, AuthType
+from adapters.orm.models.database import SessionLocal
+from adapters.orm.fixtures import create_demo_account
 
 config = get_config()
 
@@ -133,6 +135,46 @@ class UserHandler:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to login user"
             )
+
+    def create_demo_account(self):
+        """Creates a brand-new, fully-seeded demo user + workspace (see
+        adapters/orm/fixtures.py's create_demo_account) and returns the
+        exact same shape login() does, so the frontend can treat this as
+        an ordinary successful login -- no password, no signup form."""
+        db = SessionLocal()
+        try:
+            owner, workspace = create_demo_account(db)
+            # generate_token() only reads user_id/email/role -- build the
+            # plain dict it expects rather than passing the ORM object,
+            # since it indexes with user['key'] not attribute access.
+            token = self.auth.generate_token({
+                "user_id": owner.user_id,
+                "email": owner.email,
+                "role": owner.role,
+            })
+            return {
+                "access_token": token,
+                "token_type": "bearer",
+                "user": {
+                    "user_id": owner.user_id,
+                    "email": owner.email,
+                    "first_name": owner.first_name,
+                    "last_name": owner.last_name,
+                    "role": owner.role,
+                    "default_workspace": {
+                        "workspace_id": workspace.workspace_id,
+                        "name": workspace.name,
+                    }
+                }
+            }
+        except Exception as e:
+            logger.error(f"Error creating demo account: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create demo account"
+            )
+        finally:
+            db.close()
 
     def sign_up(self, cmd: UserCommand):
         try:

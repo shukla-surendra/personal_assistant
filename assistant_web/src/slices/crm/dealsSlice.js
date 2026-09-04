@@ -27,8 +27,8 @@ export const editDeal = createAsyncThunk(
 
 export const removeDeal = createAsyncThunk(
     'deals/removeDeal',
-    async (dealId) => {
-        await deleteDeal(dealId);
+    async ({ workspaceId, dealId }) => {
+        await deleteDeal(workspaceId, dealId);
         return dealId;
     }
 );

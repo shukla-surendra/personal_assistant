@@ -25,7 +25,7 @@ import {
     Progress
 } from '@chakra-ui/react';
 import { SearchIcon, AddIcon, ChevronDownIcon } from '@chakra-ui/icons';
-import { removeDeal, editDeal } from '../../slices/crm/dealsSlice';
+import { removeDeal } from '../../slices/crm/dealsSlice';
 import CreateDealModal from './CreateDealModal';
 import EditDealModal from './EditDealModal';
 import ViewDealModal from './ViewDealModal';
@@ -60,6 +60,8 @@ const DealsPanel = () => {
     const dispatch = useDispatch();
     const toast = useToast();
     const { deals, loading } = useSelector((state) => state.deals);
+    const { selectedWorkspace } = useSelector((state) => state.workspaces || {});
+    const workspaceId = selectedWorkspace?.workspace_id;
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedDeal, setSelectedDeal] = useState(null);
     const [viewMode, setViewMode] = useState('list'); // 'list' or 'grid'
@@ -84,7 +86,7 @@ const DealsPanel = () => {
 
     const handleDelete = async (dealId) => {
         try {
-            await dispatch(removeDeal(dealId)).unwrap();
+            await dispatch(removeDeal({ workspaceId, dealId })).unwrap();
             toast({
                 title: 'Deal deleted',
                 status: 'success',
@@ -283,6 +285,7 @@ const DealsPanel = () => {
             <CreateDealModal
                 isOpen={isCreateOpen}
                 onClose={onCreateClose}
+                workspaceId={workspaceId}
             />
 
             {selectedDeal && (
@@ -291,6 +294,7 @@ const DealsPanel = () => {
                         isOpen={isEditOpen}
                         onClose={onEditClose}
                         deal={selectedDeal}
+                        workspaceId={workspaceId}
                         onSuccess={handleDealUpdated}
                     />
                     <ViewDealModal

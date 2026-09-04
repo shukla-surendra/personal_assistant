@@ -83,22 +83,32 @@ export const getDealActivities = async (workspaceId, dealId) => {
     return response.data;
 };
 
-export const getActivities = async (workspaceId) => {
-    const response = await http.get(`/api/v1/workspaces/${workspaceId}/activities`);
+export const updateContactActivity = async (workspaceId, contactId, activityId, activityData) => {
+    const response = await http.put(
+        `/api/v1/workspaces/${workspaceId}/crm/contacts/${contactId}/activities/${activityId}`,
+        activityData
+    );
     return response.data;
 };
 
-export const createActivity = async (workspaceId, activityData) => {
-    const response = await http.post(`/api/v1/workspaces/${workspaceId}/activities`, activityData);
+export const deleteContactActivity = async (workspaceId, contactId, activityId) => {
+    const response = await http.delete(
+        `/api/v1/workspaces/${workspaceId}/crm/contacts/${contactId}/activities/${activityId}`
+    );
     return response.data;
 };
 
-export const updateActivity = async (workspaceId, activityId, activityData) => {
-    const response = await http.put(`/api/v1/workspaces/${workspaceId}/activities/${activityId}`, activityData);
+export const updateDealActivity = async (workspaceId, dealId, activityId, activityData) => {
+    const response = await http.put(
+        `/api/v1/workspaces/${workspaceId}/crm/deals/${dealId}/activities/${activityId}`,
+        activityData
+    );
     return response.data;
 };
 
-export const deleteActivity = async (workspaceId, activityId) => {
-    const response = await http.delete(`/api/v1/workspaces/${workspaceId}/activities/${activityId}`);
+export const deleteDealActivity = async (workspaceId, dealId, activityId) => {
+    const response = await http.delete(
+        `/api/v1/workspaces/${workspaceId}/crm/deals/${dealId}/activities/${activityId}`
+    );
     return response.data;
 }; 

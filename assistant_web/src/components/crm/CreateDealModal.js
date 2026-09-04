@@ -23,9 +23,12 @@ import {
     NumberDecrementStepper,
     useToast
 } from '@chakra-ui/react';
-import { createDeal } from '../../services/crmService';
+import { useDispatch, useSelector } from 'react-redux';
+import { addDeal } from '../../slices/crm/dealsSlice';
 
-const CreateDealModal = ({ isOpen, onClose, onDealCreated, workspaceId }) => {
+const CreateDealModal = ({ isOpen, onClose, workspaceId }) => {
+    const dispatch = useDispatch();
+    const { contacts } = useSelector((state) => state.contacts || {});
     const [formData, setFormData] = useState({
         title: '',
         description: '',
@@ -51,6 +54,9 @@ const CreateDealModal = ({ isOpen, onClose, onDealCreated, workspaceId }) => {
         if (!formData.value) newErrors.value = 'Value is required';
         if (!formData.expected_close_date) newErrors.expected_close_date = 'Expected close date is required';
         if (!formData.stage) newErrors.stage = 'Stage is required';
+        // DealCreate requires contact_id (see commands/crm_cmd.py) -- a deal
+        // always belongs to exactly one contact.
+        if (!formData.contact_id) newErrors.contact_id = 'Contact is required';
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -61,11 +67,7 @@ const CreateDealModal = ({ isOpen, onClose, onDealCreated, workspaceId }) => {
 
         try {
             setIsSubmitting(true);
-            const newDeal = await createDeal({
-                ...formData,
-                workspace_id: workspaceId
-            });
-            onDealCreated(newDeal);
+            await dispatch(addDeal({ workspaceId, dealData: formData })).unwrap();
             onClose();
             toast({
                 title: 'Deal created successfully',
@@ -120,6 +122,25 @@ const CreateDealModal = ({ isOpen, onClose, onDealCreated, workspaceId }) => {
                                         placeholder="Enter deal title"
                                     />
                                     <FormErrorMessage>{errors.title}</FormErrorMessage>
+                                </FormControl>
+                            </GridItem>
+
+                            <GridItem colSpan={2}>
+                                <FormControl isInvalid={errors.contact_id} isRequired>
+                                    <FormLabel>Contact</FormLabel>
+                                    <Select
+                                        name="contact_id"
+                                        value={formData.contact_id}
+                                        onChange={handleChange}
+                                    >
+                                        <option value="">Select contact</option>
+                                        {(contacts || []).map(c => (
+                                            <option key={c.contact_id} value={c.contact_id}>
+                                                {c.first_name} {c.last_name}
+                                            </option>
+                                        ))}
+                                    </Select>
+                                    <FormErrorMessage>{errors.contact_id}</FormErrorMessage>
                                 </FormControl>
                             </GridItem>
 

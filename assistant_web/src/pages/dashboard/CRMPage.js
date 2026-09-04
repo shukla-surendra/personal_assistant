@@ -22,7 +22,6 @@ import {
 } from '@chakra-ui/react';
 import { fetchContacts } from '../../slices/crm/contactsSlice';
 import { fetchDeals } from '../../slices/crm/dealsSlice';
-import { fetchActivities } from '../../slices/crm/activitiesSlice';
 import ActivitiesPanel from '../../components/crm/ActivitiesPanel';
 import ContactsPanel from '../../components/crm/ContactsPanel';
 import DealsPanel from '../../components/crm/DealsPanel';
@@ -40,11 +39,13 @@ const CRMPage = () => {
     const { selectedWorkspace, workspaces } = useSelector((state) => state.workspaces || {});
     const { contacts, loading: contactsLoading, error: contactsError } = useSelector((state) => state.contacts || {});
     const { deals, loading: dealsLoading, error: dealsError } = useSelector((state) => state.deals || {});
-    const { activities, loading: activitiesLoading, error: activitiesError } = useSelector((state) => state.activities || {});
+    // Activities has no top-level fetch of its own -- ActivitiesPanel loads
+    // its data (merged from the contact- and deal-scoped endpoints) on mount.
+    const { activities } = useSelector((state) => state.activities || {});
     const bgColor = useColorModeValue('gray.50', 'gray.900');
 
-    const isLoading = contactsLoading || dealsLoading || activitiesLoading;
-    const hasError = contactsError || dealsError || activitiesError;
+    const isLoading = contactsLoading || dealsLoading;
+    const hasError = contactsError || dealsError;
 
     // Debug logging for Redux state
     useEffect(() => {
@@ -113,7 +114,6 @@ const CRMPage = () => {
             console.log('Workspace ID:', selectedWorkspace.workspace_id);
             dispatch(fetchContacts(selectedWorkspace.workspace_id));
             dispatch(fetchDeals(selectedWorkspace.workspace_id));
-            dispatch(fetchActivities(selectedWorkspace.workspace_id));
         } else {
             console.log('No selected workspace available');
         }
@@ -174,7 +174,6 @@ const CRMPage = () => {
                     <AlertDescription>
                         {contactsError && <Text>Error loading contacts: {contactsError}</Text>}
                         {dealsError && <Text>Error loading deals: {dealsError}</Text>}
-                        {activitiesError && <Text>Error loading activities: {activitiesError}</Text>}
                     </AlertDescription>
                 </Alert>
             </Box>

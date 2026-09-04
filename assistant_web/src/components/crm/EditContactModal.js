@@ -17,9 +17,11 @@ import {
     Textarea,
     useToast
 } from '@chakra-ui/react';
-import { updateContact } from '../../services/crmService';
+import { useDispatch } from 'react-redux';
+import { editContact } from '../../slices/crm/contactsSlice';
 
-const EditContactModal = ({ isOpen, onClose, contact, onContactUpdated }) => {
+const EditContactModal = ({ isOpen, onClose, contact, workspaceId }) => {
+    const dispatch = useDispatch();
     const [formData, setFormData] = useState({
         first_name: '',
         last_name: '',
@@ -77,8 +79,7 @@ const EditContactModal = ({ isOpen, onClose, contact, onContactUpdated }) => {
 
         try {
             setIsSubmitting(true);
-            const updatedContact = await updateContact(contact.contact_id, formData);
-            onContactUpdated(updatedContact);
+            await dispatch(editContact({ workspaceId, contactId: contact.contact_id, contactData: formData })).unwrap();
             onClose();
             toast({
                 title: 'Contact updated successfully',

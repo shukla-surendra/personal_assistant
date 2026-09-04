@@ -17,9 +17,11 @@ import {
     Textarea,
     useToast
 } from '@chakra-ui/react';
-import { createContact } from '../../services/crmService';
+import { useDispatch } from 'react-redux';
+import { addContact } from '../../slices/crm/contactsSlice';
 
-const CreateContactModal = ({ isOpen, onClose, onContactCreated, workspaceId }) => {
+const CreateContactModal = ({ isOpen, onClose, workspaceId }) => {
+    const dispatch = useDispatch();
     const [formData, setFormData] = useState({
         first_name: '',
         last_name: '',
@@ -57,11 +59,7 @@ const CreateContactModal = ({ isOpen, onClose, onContactCreated, workspaceId }) 
 
         try {
             setIsSubmitting(true);
-            const newContact = await createContact({
-                ...formData,
-                workspace_id: workspaceId
-            });
-            onContactCreated(newContact);
+            await dispatch(addContact({ workspaceId, contactData: formData })).unwrap();
             onClose();
             toast({
                 title: 'Contact created successfully',

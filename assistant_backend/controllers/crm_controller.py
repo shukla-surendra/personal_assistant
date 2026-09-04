@@ -7,8 +7,8 @@ from handlers.crm_handler import CRMHandler
 from commands.crm_cmd import (
     ContactCreate, ContactUpdate, ContactResponse,
     DealCreate, DealUpdate, DealResponse,
-    ContactActivityCreate, ContactActivityResponse,
-    DealActivityCreate, DealActivityResponse
+    ContactActivityCreate, ContactActivityUpdate, ContactActivityResponse,
+    DealActivityCreate, DealActivityUpdate, DealActivityResponse
 )
 
 router = APIRouter(prefix="/api/v1/workspaces/{workspace_id}/crm", tags=["crm"])
@@ -87,6 +87,19 @@ def get_contact_activities(workspace_id: str, contact_id: UUID, user: dict = Dep
     handler = CRMHandler()
     return handler.get_contact_activities(contact_id)
 
+@router.put("/contacts/{contact_id}/activities/{activity_id}", response_model=ContactActivityResponse)
+def update_contact_activity(
+    workspace_id: str, contact_id: UUID, activity_id: UUID,
+    activity: ContactActivityUpdate, user: dict = Depends(get_auth_details)
+):
+    handler = CRMHandler()
+    return handler.update_contact_activity(activity_id, activity)
+
+@router.delete("/contacts/{contact_id}/activities/{activity_id}")
+def delete_contact_activity(workspace_id: str, contact_id: UUID, activity_id: UUID, user: dict = Depends(get_auth_details)):
+    handler = CRMHandler()
+    return handler.delete_contact_activity(activity_id)
+
 @router.post("/deals/{deal_id}/activities", response_model=DealActivityResponse)
 def create_deal_activity(
     workspace_id: str,
@@ -102,5 +115,18 @@ def create_deal_activity(
 def get_deal_activities(workspace_id: str, deal_id: UUID, user: dict = Depends(get_auth_details)):
     handler = CRMHandler()
     return handler.get_deal_activities(deal_id)
+
+@router.put("/deals/{deal_id}/activities/{activity_id}", response_model=DealActivityResponse)
+def update_deal_activity(
+    workspace_id: str, deal_id: UUID, activity_id: UUID,
+    activity: DealActivityUpdate, user: dict = Depends(get_auth_details)
+):
+    handler = CRMHandler()
+    return handler.update_deal_activity(activity_id, activity)
+
+@router.delete("/deals/{deal_id}/activities/{activity_id}")
+def delete_deal_activity(workspace_id: str, deal_id: UUID, activity_id: UUID, user: dict = Depends(get_auth_details)):
+    handler = CRMHandler()
+    return handler.delete_deal_activity(activity_id)
 
 crm_router = router 

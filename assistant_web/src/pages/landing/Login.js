@@ -39,11 +39,12 @@ import {
 import { Helmet } from 'react-helmet';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
-import { login } from '../../slices/auth';
+import { login, tryDemo } from '../../slices/auth';
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDemoLoading, setIsDemoLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
@@ -62,6 +63,25 @@ export default function Login() {
       ...formData,
       [e.target.name]: e.target.value
     });
+  };
+
+  const handleTryDemo = async () => {
+    setIsDemoLoading(true);
+    try {
+      await dispatch(tryDemo()).unwrap();
+      // auth.login() (called inside the tryDemo thunk) does a hard
+      // window.location redirect to '/' on success -- nothing else to do
+      // here on the happy path, this component is about to unmount.
+    } catch (error) {
+      toast({
+        title: "Couldn't start demo",
+        description: typeof error === 'string' ? error : 'Please try again',
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+      setIsDemoLoading(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -231,6 +251,21 @@ export default function Login() {
                   </Button>
                 </VStack>
               </form>
+
+              <Button
+                variant="outline"
+                colorScheme="blue"
+                size="lg"
+                w="full"
+                onClick={handleTryDemo}
+                isLoading={isDemoLoading}
+                loadingText="Setting up your demo..."
+              >
+                Try Demo
+              </Button>
+              <Text fontSize="sm" color="gray.500" textAlign="center" mt={-2}>
+                No signup needed — creates a fresh account pre-filled with sample tasks, contacts, and deals
+              </Text>
 
               {/* Sign Up Link */}
               <Text textAlign="center" mt={4}>

@@ -1,34 +1,50 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { getActivities, createActivity, updateActivity, deleteActivity } from '../../services/crmService';
+import {
+    createContactActivity, createDealActivity,
+    updateContactActivity, updateDealActivity,
+    deleteContactActivity, deleteDealActivity
+} from '../../services/crmService';
 
-export const fetchActivities = createAsyncThunk(
-    'activities/fetchActivities',
-    async (workspaceId) => {
-        const response = await getActivities(workspaceId);
-        return response;
-    }
-);
-
+// Every thunk here is scoped by entityType ('contact' | 'deal') + entityId --
+// CRM activities only exist nested under a contact or a deal
+// (crm_controller.py has no standalone /activities collection), so there's
+// no generic "activities" endpoint to call the way the old version of this
+// file assumed.
 export const addActivity = createAsyncThunk(
     'activities/addActivity',
-    async ({ workspaceId, activityData }) => {
-        const response = await createActivity(workspaceId, activityData);
-        return response;
+    async ({ workspaceId, entityType, entityId, activityData }, { getState }) => {
+        const userId = getState().auth?.user?.user_id;
+        const payload = {
+            ...activityData,
+            workspace_id: workspaceId,
+            user_id: userId,
+            ...(entityType === 'contact' ? { contact_id: entityId } : { deal_id: entityId }),
+        };
+        const response = entityType === 'contact'
+            ? await createContactActivity(workspaceId, entityId, payload)
+            : await createDealActivity(workspaceId, entityId, payload);
+        return { ...response, entity_type: entityType, entity_id: entityId };
     }
 );
 
 export const editActivity = createAsyncThunk(
     'activities/editActivity',
-    async ({ workspaceId, activityId, activityData }) => {
-        const response = await updateActivity(workspaceId, activityId, activityData);
-        return response;
+    async ({ workspaceId, entityType, entityId, activityId, activityData }) => {
+        const response = entityType === 'contact'
+            ? await updateContactActivity(workspaceId, entityId, activityId, activityData)
+            : await updateDealActivity(workspaceId, entityId, activityId, activityData);
+        return { ...response, entity_type: entityType, entity_id: entityId };
     }
 );
 
 export const removeActivity = createAsyncThunk(
     'activities/removeActivity',
-    async ({ workspaceId, activityId }) => {
-        await deleteActivity(workspaceId, activityId);
+    async ({ workspaceId, entityType, entityId, activityId }) => {
+        if (entityType === 'contact') {
+            await deleteContactActivity(workspaceId, entityId, activityId);
+        } else {
+            await deleteDealActivity(workspaceId, entityId, activityId);
+        }
         return activityId;
     }
 );
@@ -63,31 +79,34 @@ const activitiesSlice = createSlice({
                 tags: []
             };
         },
+        // Populated by ActivitiesPanel's own fetch (it merges contact- and
+        // deal-scoped activity lists client-side, since there's no single
+        // backend endpoint that returns both at once).
         setActivities: (state, action) => {
             state.activities = action.payload;
         }
     },
     extraReducers: (builder) => {
         builder
-            .addCase(fetchActivities.pending, (state) => {
+            .addCase(addActivity.pending, (state) => {
                 state.loading = true;
                 state.error = null;
             })
-            .addCase(fetchActivities.fulfilled, (state, action) => {
+            .addCase(addActivity.fulfilled, (state, action) => {
                 state.loading = false;
-                state.activities = action.payload;
+                state.activities.push(action.payload);
             })
-            .addCase(fetchActivities.rejected, (state, action) => {
+            .addCase(addActivity.rejected, (state, action) => {
                 state.loading = false;
                 state.error = action.error.message;
-            })
-            .addCase(addActivity.fulfilled, (state, action) => {
-                state.activities.push(action.payload);
             })
             .addCase(editActivity.fulfilled, (state, action) => {
                 const index = state.activities.findIndex(a => a.activity_id === action.payload.activity_id);
                 if (index !== -1) {
-                    state.activities[index] = action.payload;
+                    // Merge, not replace -- the backend response doesn't carry
+                    // the client-side display fields (contact_name/deal_name/
+                    // date) that ActivitiesPanel's fetch tagged onto this item.
+                    state.activities[index] = { ...state.activities[index], ...action.payload };
                 }
             })
             .addCase(removeActivity.fulfilled, (state, action) => {
@@ -97,4 +116,4 @@ const activitiesSlice = createSlice({
 });
 
 export const { setFilters, setSort, clearFilters, setActivities } = activitiesSlice.actions;
-export default activitiesSlice.reducer; 
+export default activitiesSlice.reducer;

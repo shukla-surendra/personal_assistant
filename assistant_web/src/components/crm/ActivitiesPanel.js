@@ -98,7 +98,7 @@ import {
     TemplateIcon,
     RepeatIcon
 } from '@chakra-ui/icons';
-import { getContactActivities, getDealActivities, deleteActivity, updateActivity } from '../../services/crmService';
+import { getContactActivities, getDealActivities } from '../../services/crmService';
 import CreateActivityModal from './CreateActivityModal';
 import EditActivityModal from './EditActivityModal';
 import ViewActivityModal from './ViewActivityModal';
@@ -117,7 +117,7 @@ import {
     Tooltip,
     Legend
 } from 'chart.js';
-import { removeActivity, setFilters, setSort, clearFilters, setActivities } from '../../slices/crm/activitiesSlice';
+import { editActivity, removeActivity, setFilters, setSort, clearFilters, setActivities } from '../../slices/crm/activitiesSlice';
 
 ChartJS.register(
     CategoryScale,
@@ -205,18 +205,49 @@ const ActivitiesPanel = ({ contacts, deals, workspaceId }) => {
                 return;
             }
 
+            // No single backend endpoint returns "all activities for a
+            // workspace" for CRM -- ContactActivity/DealActivity are each
+            // only listable per-contact / per-deal (see crm_controller.py),
+            // so this fans out one request per contact/deal and merges
+            // client-side. Each activity is tagged with entity_type/
+            // entity_id (which endpoint it actually came from -- needed to
+            // route edit/delete to the right one) and with the display
+            // fields (contact_name/deal_name/date) the API response itself
+            // doesn't carry.
             const contactActivities = await Promise.all(
-                (contacts || []).map(contact => getContactActivities(workspaceId, contact.contact_id))
+                (contacts || []).map(contact =>
+                    getContactActivities(workspaceId, contact.contact_id).then(acts =>
+                        acts.map(a => ({
+                            ...a,
+                            entity_type: 'contact',
+                            entity_id: contact.contact_id,
+                            contact_name: `${contact.first_name} ${contact.last_name}`,
+                            deal_name: null,
+                            date: a.scheduled_at || a.created_at,
+                        }))
+                    )
+                )
             );
             const dealActivities = await Promise.all(
-                (deals || []).map(deal => getDealActivities(workspaceId, deal.deal_id))
+                (deals || []).map(deal =>
+                    getDealActivities(workspaceId, deal.deal_id).then(acts =>
+                        acts.map(a => ({
+                            ...a,
+                            entity_type: 'deal',
+                            entity_id: deal.deal_id,
+                            contact_name: deal.contact ? `${deal.contact.first_name} ${deal.contact.last_name}` : null,
+                            deal_name: deal.title,
+                            date: a.scheduled_at || a.created_at,
+                        }))
+                    )
+                )
             );
-            
+
             const allActivities = [
                 ...contactActivities.flat(),
                 ...dealActivities.flat()
             ];
-            
+
             dispatch(setActivities(allActivities));
         } catch (error) {
             toast({
@@ -233,8 +264,8 @@ const ActivitiesPanel = ({ contacts, deals, workspaceId }) => {
 
     const filteredActivities = reduxActivities.filter((activity) => {
         const searchLower = searchQuery.toLowerCase();
-        const matchesSearch = 
-            activity.description.toLowerCase().includes(searchLower) ||
+        const matchesSearch =
+            activity.description?.toLowerCase().includes(searchLower) ||
             activity.notes?.toLowerCase().includes(searchLower) ||
             activity.tags?.some(tag => tag.toLowerCase().includes(searchLower));
 
@@ -251,9 +282,14 @@ const ActivitiesPanel = ({ contacts, deals, workspaceId }) => {
         return direction * (a[sort.field]?.localeCompare(b[sort.field]) || 0);
     });
 
-    const handleDelete = async (activityId) => {
+    const handleDelete = async (activity) => {
         try {
-            await dispatch(removeActivity({ workspaceId, activityId })).unwrap();
+            await dispatch(removeActivity({
+                workspaceId,
+                entityType: activity.entity_type,
+                entityId: activity.entity_id,
+                activityId: activity.activity_id,
+            })).unwrap();
             toast({
                 title: 'Activity deleted',
                 status: 'success',
@@ -306,9 +342,17 @@ const ActivitiesPanel = ({ contacts, deals, workspaceId }) => {
 
     const handleBulkEdit = async (updates) => {
         try {
-            await Promise.all(selectedActivities.map(id => 
-                updateActivity(workspaceId, id, updates)
-            ));
+            await Promise.all(selectedActivities.map(id => {
+                const activity = reduxActivities.find(a => a.activity_id === id);
+                if (!activity) return Promise.resolve();
+                return dispatch(editActivity({
+                    workspaceId,
+                    entityType: activity.entity_type,
+                    entityId: activity.entity_id,
+                    activityId: activity.activity_id,
+                    activityData: updates,
+                })).unwrap();
+            }));
             await fetchActivities();
             setSelectedActivities([]);
             toast({
@@ -594,7 +638,7 @@ const ActivitiesPanel = ({ contacts, deals, workspaceId }) => {
                                     <Button
                                         size="sm"
                                         colorScheme="red"
-                                        onClick={() => handleDelete(activity.activity_id)}
+                                        onClick={() => handleDelete(activity)}
                                     >
                                         Delete
                                     </Button>
@@ -653,7 +697,7 @@ const ActivitiesPanel = ({ contacts, deals, workspaceId }) => {
                                 <Button
                                     size="sm"
                                     colorScheme="red"
-                                    onClick={() => handleDelete(activity.activity_id)}
+                                    onClick={() => handleDelete(activity)}
                                 >
                                     Delete
                                 </Button>
@@ -666,6 +710,10 @@ const ActivitiesPanel = ({ contacts, deals, workspaceId }) => {
             <CreateActivityModal
                 isOpen={isCreateOpen}
                 onClose={onCreateClose}
+                workspaceId={workspaceId}
+                contacts={contacts}
+                deals={deals}
+                onCreated={fetchActivities}
             />
 
             {selectedActivity && (
@@ -674,6 +722,10 @@ const ActivitiesPanel = ({ contacts, deals, workspaceId }) => {
                         isOpen={isEditOpen}
                         onClose={onEditClose}
                         activity={selectedActivity}
+                        workspaceId={workspaceId}
+                        contacts={contacts}
+                        deals={deals}
+                        onUpdated={fetchActivities}
                     />
                     <ViewActivityModal
                         isOpen={isViewOpen}

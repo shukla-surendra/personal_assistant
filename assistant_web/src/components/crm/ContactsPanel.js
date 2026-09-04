@@ -34,6 +34,8 @@ const ContactsPanel = () => {
     const dispatch = useDispatch();
     const toast = useToast();
     const { contacts, loading } = useSelector((state) => state.contacts);
+    const { selectedWorkspace } = useSelector((state) => state.workspaces || {});
+    const workspaceId = selectedWorkspace?.workspace_id;
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedContact, setSelectedContact] = useState(null);
     const [viewMode, setViewMode] = useState('list'); // 'list' or 'grid'
@@ -58,7 +60,7 @@ const ContactsPanel = () => {
 
     const handleDelete = async (contactId) => {
         try {
-            await dispatch(removeContact(contactId)).unwrap();
+            await dispatch(removeContact({ workspaceId, contactId })).unwrap();
             toast({
                 title: 'Contact deleted',
                 status: 'success',
@@ -229,6 +231,7 @@ const ContactsPanel = () => {
             <CreateContactModal
                 isOpen={isCreateOpen}
                 onClose={onCreateClose}
+                workspaceId={workspaceId}
             />
 
             {selectedContact && (
@@ -237,6 +240,7 @@ const ContactsPanel = () => {
                         isOpen={isEditOpen}
                         onClose={onEditClose}
                         contact={selectedContact}
+                        workspaceId={workspaceId}
                     />
                     <ViewContactModal
                         isOpen={isViewOpen}
