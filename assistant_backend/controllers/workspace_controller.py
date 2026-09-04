@@ -85,7 +85,7 @@ async def update_workspace(
         return WorkspaceHandler().update_workspace(
             workspace_id=workspace_id,
             user_id=user.get("user_id"),
-            name=workspace_cmd.workspace_name,
+            name=workspace_cmd.name,
             description=workspace_cmd.description,
             settings=workspace_cmd.settings
         )

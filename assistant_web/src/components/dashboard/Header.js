@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
     IconButton,
     Flex,
@@ -23,7 +23,6 @@ import {
 } from '@chakra-ui/react';
 import { FiMenu, FiBell, FiSearch, FiSun, FiMoon, FiChevronDown, FiLogOut, FiUser, FiSettings } from 'react-icons/fi';
 import NotificationList from "./NotificationList";
-import ConfigService from '../../utils/config';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../../slices/auth';
@@ -47,33 +46,7 @@ const Header = ({ onMenuToggle }) => {
     const navigate = useNavigate();
     const dispatch = useDispatch();
     
-    const [workspaces, setWorkspaces] = useState([]);
-    const [currentWorkspace, setCurrentWorkspace] = useState(null);
     const user = useSelector(state => state.auth.user);
-
-    useEffect(() => {
-        // Fetch workspaces from API or localStorage
-        const defaultWorkspace = ConfigService.getDefaultWorkspace();
-        setCurrentWorkspace(defaultWorkspace);
-        
-        // TODO: Replace with actual API call to fetch user's workspaces
-        const userWorkspaces = [
-            defaultWorkspace,
-            { workspace_id: "workspace2", name: "Workspace 2" },
-            { workspace_id: "workspace3", name: "Workspace 3" }
-        ];
-        setWorkspaces(userWorkspaces);
-    }, []);
-
-    const handleWorkspaceChange = (workspaceId) => {
-        const selectedWorkspace = workspaces.find(w => w.workspace_id === workspaceId);
-        if (selectedWorkspace) {
-            ConfigService.setDefaultWorkspace(selectedWorkspace);
-            setCurrentWorkspace(selectedWorkspace);
-            // Refresh the page to update workspace context
-            window.location.reload();
-        }
-    };
 
     const handleLogout = () => {
         dispatch(logout()); // Dispatch Redux logout action
@@ -166,8 +139,8 @@ const Header = ({ onMenuToggle }) => {
             </Flex>
 
             {/* Modals and Drawers */}
-            <UserProfile isOpen={isProfileOpen} onClose={onProfileClose} />
-            <UserSettings isOpen={isSettingsOpen} onClose={onSettingsClose} />
+            <UserProfile isOpen={isProfileOpen} onClose={onProfileClose} user={user} />
+            <UserSettings isOpen={isSettingsOpen} onClose={onSettingsClose} user={user} />
             <NewTaskDrawer 
                 currentTask={{}} 
                 disclosures={{ 

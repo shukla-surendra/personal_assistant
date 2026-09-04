@@ -33,6 +33,7 @@ import Config from "../../../utils/config"
 function WorkspaceSelector() {
   const [currentWorkspace, setCurrentWorkspace] = useState(Config.getDefaultWorkspace());
   const workspaces = useSelector(state => state.workspaces.workspaces);
+  const user = useSelector(state => state.auth.user);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const disclosures = useDisclosure();
@@ -81,8 +82,8 @@ function WorkspaceSelector() {
 
   return (
     <>
-      <UserProfile disclosures={profileDisclosures} user={{ name: "Surendra Shukla", email: "surendra.shukla29@gmail.com" }} />
-      <UserSettings disclosures={settingsDisclosures} />
+      <UserProfile disclosures={profileDisclosures} user={user} />
+      <UserSettings disclosures={settingsDisclosures} user={user} />
       <Box p="2" fontSize="14px">
         <Center>
           <Flex align="center" minW={0}>

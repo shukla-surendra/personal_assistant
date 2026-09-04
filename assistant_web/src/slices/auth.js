@@ -3,6 +3,7 @@ import axios from 'axios';
 import auth from '../utils/auth';
 import ConfigService from '../utils/config';
 import { BACKEND_URL } from '../http-common';
+import UserService from '../services/userservice';
 
 // Async thunk for login
 export const login = createAsyncThunk(
@@ -31,6 +32,21 @@ export const tryDemo = createAsyncThunk(
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.detail || 'Could not start a demo session');
+    }
+  }
+);
+
+// Profile edits (currently first_name/last_name -- see UserUpdateCommand on
+// the backend, email/password aren't editable through this endpoint).
+export const updateProfile = createAsyncThunk(
+  'auth/updateProfile',
+  async ({ userId, data }, { rejectWithValue }) => {
+    try {
+      const response = await UserService.update(userId, data);
+      const merged = auth.updateProfile(response.data);
+      return merged;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.detail || 'Failed to update profile');
     }
   }
 );
@@ -88,6 +104,19 @@ const authSlice = createSlice({
         state.token = action.payload.access_token;
       })
       .addCase(tryDemo.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // Update profile cases
+      .addCase(updateProfile.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateProfile.fulfilled, (state, action) => {
+        state.loading = false;
+        state.user = action.payload;
+      })
+      .addCase(updateProfile.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });

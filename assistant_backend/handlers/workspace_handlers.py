@@ -48,8 +48,8 @@ class WorkspaceHandler:
             if not workspace:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workspace not found")
 
-            if workspace.owner_id != user_id:
-                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, 
+            if str(workspace.owner_id) != str(user_id):
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                                  detail="Not authorized to update this workspace")
 
             if name:
@@ -192,15 +192,22 @@ class WorkspaceHandler:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
                                  detail="Workspace not found")
 
-            if workspace.owner_id != owner_id:
-                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, 
+            if str(workspace.owner_id) != str(owner_id):
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                                  detail="Not authorized to modify this workspace")
 
-            if user_id in workspace.users:
-                workspace.users.remove(user_id)
-                workspace.updated_at = datetime.utcnow()
-                self.db.commit()
-                self.db.refresh(workspace)
+            if str(user_id) == str(owner_id):
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                 detail="Workspace owner cannot be removed")
+
+            self.db.execute(
+                workspace_users.delete()
+                .where(workspace_users.c.workspace_id == workspace.workspace_id)
+                .where(workspace_users.c.user_id == UUID(user_id))
+            )
+            workspace.updated_at = datetime.utcnow()
+            self.db.commit()
+            self.db.refresh(workspace)
 
             return WorkspaceDtoMapper.map_to_workspace_dto_mapper(workspace)
         except HTTPException as he:
@@ -385,8 +392,8 @@ class WorkspaceHandler:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
                                  detail="Workspace not found")
 
-            if workspace.owner_id != owner_id:
-                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, 
+            if str(workspace.owner_id) != str(owner_id):
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                                  detail="Not authorized to modify this workspace")
 
             # Check if user is a member

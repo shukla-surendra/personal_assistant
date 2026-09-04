@@ -77,6 +77,23 @@ class AuthService {
 		}
 	}
 
+	// Merge fresh fields (e.g. after a profile edit) into the stored user_info
+	// without touching the token/workspace -- whitelist keys so a raw DB row
+	// (which can carry password_hash) never lands in localStorage.
+	updateProfile(userData) {
+		const current = this.getProfile() || {};
+		const merged = {
+			...current,
+			...(userData.user_id !== undefined && { user_id: userData.user_id }),
+			...(userData.email !== undefined && { email: userData.email }),
+			...(userData.first_name !== undefined && { first_name: userData.first_name }),
+			...(userData.last_name !== undefined && { last_name: userData.last_name }),
+			...(userData.role !== undefined && { role: userData.role }),
+		};
+		localStorage.setItem('user_info', JSON.stringify(merged));
+		return merged;
+	}
+
 	// lear token from localstorage and force logout with reload
 	logout() {
 		localStorage.removeItem('access_token');
