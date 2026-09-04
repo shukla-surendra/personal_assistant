@@ -32,6 +32,13 @@ class TemplateHandler:
             logger.error(f"Error creating template: {str(e)}")
             raise HTTPException(status_code=500, detail="Failed to create template")
 
+    def list_templates(self, workspace_id: str) -> list[Template]:
+        try:
+            return self.db.query(Template).filter(Template.workspace_id == UUID(workspace_id)).all()
+        except SQLAlchemyError as e:
+            logger.error(f"Error listing templates: {str(e)}")
+            raise HTTPException(status_code=500, detail="Failed to list templates")
+
     def update_template(self, command: TemplateUpdateCommand) -> Template:
         try:
             template = self.db.query(Template).filter(Template.template_id == UUID(command.template_id)).first()

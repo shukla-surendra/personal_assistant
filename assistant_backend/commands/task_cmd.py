@@ -7,8 +7,8 @@ from uuid import UUID
 
 class TaskCommand(BaseModel):
     task_id: Optional[str] = None  # Will be generated if not provided
-    workspace_id: str
-    user_id: str
+    workspace_id: Optional[str] = None  # Set from the URL path by the controller
+    user_id: Optional[str] = None  # Set from the auth token by the controller
     title: str
     description: Optional[str] = None
     priority: str = "medium"

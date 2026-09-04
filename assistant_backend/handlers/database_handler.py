@@ -35,6 +35,13 @@ class DatabaseHandler:
             logger.error(f"Error creating database: {str(e)}")
             raise HTTPException(status_code=500, detail="Failed to create database")
 
+    def list_databases(self, workspace_id: str) -> list[Database]:
+        try:
+            return self.db.query(Database).filter(Database.workspace_id == UUID(workspace_id)).all()
+        except SQLAlchemyError as e:
+            logger.error(f"Error listing databases: {str(e)}")
+            raise HTTPException(status_code=500, detail="Failed to list databases")
+
     def update_database(self, command: DatabaseUpdateCommand) -> Database:
         try:
             database = self.db.query(Database).filter(Database.database_id == UUID(command.database_id)).first()

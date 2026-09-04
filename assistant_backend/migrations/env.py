@@ -8,8 +8,8 @@ from sqlalchemy import engine_from_config, pool
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 # Import your models
-from adapters.orm.models.pg_models import Base
-from adapters.orm.database import SQLALCHEMY_DATABASE_URL
+from adapters.orm.models.pg_models import Base  # noqa: F401 -- importing this registers every model on Base.metadata
+from config import settings
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -21,7 +21,7 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Set the database URL in the alembic.ini file
-config.set_main_option("sqlalchemy.url", SQLALCHEMY_DATABASE_URL)
+config.set_main_option("sqlalchemy.url", settings.database_url)
 
 # add your model's MetaData object here
 # for 'autogenerate' support

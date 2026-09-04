@@ -9,7 +9,7 @@ class Board(BaseModel):
     name = Column(String, nullable=False)
     description = Column(String, nullable=True)
     layout = Column(JSON, nullable=True)  # Store board layout configuration
-    metadata = Column(JSON, nullable=True)  # Additional board properties
+    board_metadata = Column(JSON, nullable=True)  # Additional board properties ('metadata' is reserved by SQLAlchemy's Declarative API)
     
     # Foreign Keys
     workspace_id = Column(Integer, ForeignKey('workspaces.id'), nullable=False)

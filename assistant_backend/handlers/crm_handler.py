@@ -76,6 +76,10 @@ class CRMHandler:
             self.db.add(db_deal)
             self.db.commit()
             self.db.refresh(db_deal)
+            _ = db_deal.contact  # force the lazy load now, while self.db is still open --
+            # DealResponse.contact needs it, and self.db closes in __del__ whenever this
+            # handler gets garbage collected, which can happen before FastAPI serializes
+            # the response (non-deterministic timing -> DetachedInstanceError under load).
             return db_deal
         except Exception as e:
             self.db.rollback()
@@ -83,7 +87,9 @@ class CRMHandler:
             raise HTTPException(status_code=500, detail="Failed to create deal")
 
     def get_deal(self, deal_id: UUID) -> Deal:
-        deal = self.db.query(Deal).filter(
+        deal = self.db.query(Deal).options(
+            joinedload(Deal.contact)
+        ).filter(
             Deal.deal_id == deal_id,
             Deal.is_deleted == False
         ).first()

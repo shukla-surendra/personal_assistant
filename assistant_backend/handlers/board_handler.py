@@ -30,6 +30,13 @@ class BoardHandler:
             logger.error(f"Error creating board: {str(e)}")
             raise HTTPException(status_code=500, detail="Failed to create board")
 
+    def list_boards(self, workspace_id: str) -> list[Board]:
+        try:
+            return self.db.query(Board).filter(Board.workspace_id == UUID(workspace_id)).all()
+        except SQLAlchemyError as e:
+            logger.error(f"Error listing boards: {str(e)}")
+            raise HTTPException(status_code=500, detail="Failed to list boards")
+
     def update_board(self, command: BoardUpdateCommand) -> Board:
         try:
             board = self.db.query(Board).filter(Board.board_id == UUID(command.board_id)).first()

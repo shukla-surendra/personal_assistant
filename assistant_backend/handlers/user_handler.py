@@ -202,6 +202,8 @@ class UserHandler:
                     pass
 
                 return user
+            except HTTPException:
+                raise
             except Exception as storage_error:
                 logger.error(f"Storage error in sign up: {str(storage_error)}")
                 raise HTTPException(

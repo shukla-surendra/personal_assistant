@@ -45,7 +45,12 @@ class User(Base):
     verification_token = Column(String, nullable=True)
     otp = Column(String, nullable=True)
     otp_time = Column(DateTime, nullable=True)
-    default_workspace_id = Column(UUID(as_uuid=True), ForeignKey("workspaces.workspace_id"), nullable=True)
+    last_login = Column(DateTime, nullable=True)
+    default_workspace_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("workspaces.workspace_id", use_alter=True, name="fk_users_default_workspace_id"),
+        nullable=True,
+    )
     created_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC))
     updated_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC), onupdate=datetime.datetime.now(datetime.UTC))
     default_workspace = relationship("Workspace", foreign_keys=[default_workspace_id])

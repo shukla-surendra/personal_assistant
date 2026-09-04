@@ -22,6 +22,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy project
 COPY . .
+RUN chmod +x entrypoint.sh
 
-# Run the application with auto-reload
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"] 
+# Apply pending Alembic migrations, then run the application with auto-reload
+CMD ["./entrypoint.sh"] 

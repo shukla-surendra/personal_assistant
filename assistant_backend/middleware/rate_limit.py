@@ -65,7 +65,9 @@ class RateLimitMiddleware:
         forwarded = request.headers.get("X-Forwarded-For")
         if forwarded:
             return f"ip:{forwarded.split(',')[0].strip()}"
-        return f"ip:{request.client.host}"
+        # request.client is optional per the ASGI spec (e.g. Unix sockets,
+        # some proxy setups, Starlette's TestClient) -- can legitimately be None.
+        return f"ip:{request.client.host if request.client else 'unknown'}"
 
     def _get_rate_limit(self, request: Request) -> int:
         """Get rate limit based on authentication status."""

@@ -42,6 +42,7 @@ class DatabaseManager:
 
     def init_db(self):
         """Initialize the database (create tables, etc.)."""
+        import models  # noqa: F401 — registers every model on Base.metadata before create_all
         from models.base import Base
         Base.metadata.create_all(bind=self.engine)
 

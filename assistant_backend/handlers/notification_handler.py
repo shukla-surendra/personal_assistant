@@ -33,6 +33,20 @@ class NotificationHandler:
             logger.error(f"Error creating notification: {str(e)}")
             raise HTTPException(status_code=500, detail="Failed to create notification")
 
+    def list_notifications(
+        self, workspace_id: str, entity_id: Optional[str] = None, entity_type: Optional[str] = None
+    ) -> list[Notification]:
+        try:
+            query = self.db.query(Notification).filter(Notification.workspace_id == UUID(workspace_id))
+            if entity_id is not None:
+                query = query.filter(Notification.entity_id == UUID(entity_id))
+            if entity_type is not None:
+                query = query.filter(Notification.entity_type == entity_type)
+            return query.all()
+        except SQLAlchemyError as e:
+            logger.error(f"Error listing notifications: {str(e)}")
+            raise HTTPException(status_code=500, detail="Failed to list notifications")
+
     def update_notification(self, command: NotificationUpdateCommand) -> Notification:
         try:
             notification = self.db.query(Notification).filter(Notification.notification_id == UUID(command.notification_id)).first()

@@ -3,6 +3,7 @@ import uvicorn
 from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
+from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from mangum import Mangum
 import openai
@@ -18,7 +19,7 @@ from utils.error_handlers import (
 )
 from docs.api_docs import custom_openapi
 from middleware.rate_limit import RateLimitMiddleware
-from database.connection import db_manager, get_db, DatabaseManager
+from adapters.orm.models.database import engine, get_db
 from controllers import (
     tasks_router,
     board_router,
@@ -114,7 +115,7 @@ try:
     async def health_check(db: Session = Depends(get_db)):
         try:
             # Check database connection
-            db.execute("SELECT 1")
+            db.execute(text("SELECT 1"))
             db_status = "healthy"
         except Exception as e:
             logger.error(f"Database health check failed: {str(e)}")
@@ -129,16 +130,18 @@ try:
 
     @app.on_event("startup")
     async def startup_event():
-        """Initialize services on startup."""
-        # Initialize database
-        db_manager.init_db()
-        logger.info("Database initialized")
+        """Log that the app is up. Schema creation/changes are Alembic's job
+        now (`alembic upgrade head`), run before the app starts -- not here.
+        Rebuilding the schema on every app boot was destroying real data on
+        every restart, which is fatal once this runs somewhere pods restart
+        routinely (crash-loops, rolling updates, autoscaling)."""
+        logger.info("Application startup")
 
     @app.on_event("shutdown")
     async def shutdown_event():
         """Cleanup on shutdown."""
         # Close database connections
-        db_manager.close()
+        engine.dispose()
         logger.info("Database connections closed")
 
 except Exception as e:

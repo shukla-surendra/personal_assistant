@@ -1,0 +1,69 @@
+# Full local stack: postgres + redis + backend (FastAPI) + frontend (React, built + served by nginx).
+# Same shape this will later take in AKS (Postgres as a StatefulSet, backend/frontend as Deployments) —
+# this is the local rehearsal before that move.
+services:
+  db:
+    image: postgres:15
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=productify
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    networks:
+      - app-network
+
+  backend:
+    build: ./assistant_backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./assistant_backend:/app
+    environment:
+      - ENVIRONMENT=dev
+      - STORAGE_TYPE=postgresql
+      - AUTH_TYPE=jwt
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=productify
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - REDIS_URL=redis://redis:6379/0
+      - ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://10.1.196.56:3000
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - app-network
+
+  frontend:
+    build: ./assistant_web
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

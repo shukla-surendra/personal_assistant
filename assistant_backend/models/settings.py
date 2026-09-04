@@ -1,13 +1,13 @@
-from sqlalchemy import Column, String, JSON, ForeignKey
+from sqlalchemy import Column, Integer, JSON, ForeignKey
 from sqlalchemy.orm import relationship
 from .base import BaseModel
 
 class UserSettings(BaseModel):
     """User settings and preferences model."""
-    
+
     __tablename__ = "user_settings"
-    
-    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     assistant_settings = Column(JSON, default={
         "name": "Assistant",
         "voice_enabled": False,

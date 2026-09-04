@@ -16,8 +16,10 @@ services:
       - DB_NAME=productify
       - DB_USER=postgres
       - DB_PASSWORD=postgres
+      - REDIS_URL=redis://redis:6379/0
     depends_on:
       - db
+      - redis
     networks:
       - app-network
 

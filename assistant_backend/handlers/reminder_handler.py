@@ -33,6 +33,16 @@ class ReminderHandler:
             logger.error(f"Error creating reminder: {str(e)}")
             raise HTTPException(status_code=500, detail="Failed to create reminder")
 
+    def list_reminders(self, workspace_id: str, user_id: str) -> list[Reminder]:
+        try:
+            return self.db.query(Reminder).filter(
+                Reminder.workspace_id == UUID(workspace_id),
+                Reminder.user_id == UUID(user_id),
+            ).all()
+        except SQLAlchemyError as e:
+            logger.error(f"Error listing reminders: {str(e)}")
+            raise HTTPException(status_code=500, detail="Failed to list reminders")
+
     def update_reminder(self, command: ReminderUpdateCommand) -> Reminder:
         try:
             reminder = self.db.query(Reminder).filter(Reminder.reminder_id == UUID(command.reminder_id)).first()

@@ -35,6 +35,13 @@ class PageHandler:
             logger.error(f"Error creating page: {str(e)}")
             raise HTTPException(status_code=500, detail="Failed to create page")
 
+    def list_pages(self, workspace_id: str) -> list[Page]:
+        try:
+            return self.db.query(Page).filter(Page.workspace_id == UUID(workspace_id)).all()
+        except SQLAlchemyError as e:
+            logger.error(f"Error listing pages: {str(e)}")
+            raise HTTPException(status_code=500, detail="Failed to list pages")
+
     def update_page(self, command: PageUpdateCommand) -> Page:
         try:
             page = self.db.query(Page).filter(Page.page_id == UUID(command.page_id)).first()

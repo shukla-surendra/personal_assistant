@@ -1,106 +1,119 @@
-import pytest
+"""
+CRM flow: contact -> deal -> contact activity. Real paths (all nested under
+/api/v1/workspaces/{workspace_id}/crm/...) and real payload shapes, verified
+against commands/crm_cmd.py and controllers/crm_controller.py -- the
+original version of this file used /api/crm/* paths and a generic
+/api/crm/activities/ list endpoint that don't exist anywhere in this app.
+
+Unlike tasks/boards, ContactActivityCreate's workspace_id/user_id are NOT
+filled in by the controller from the URL/auth token -- the client has to
+supply them directly. Kept as-is here since this is a test of what the API
+actually requires, not a place to silently paper over that inconsistency.
+"""
 from fastapi import status
-from datetime import datetime, timedelta
 
-# Test data
-TEST_ACTIVITY = {
-    "type": "call",
-    "description": "Follow-up call with client",
-    "notes": "Discuss project timeline",
-    "date": (datetime.now() + timedelta(days=1)).isoformat(),
-    "tags": ["follow-up", "client"],
-    "contact_id": None,  # Will be set after creating a contact
-    "deal_id": None     # Will be set after creating a deal
-}
 
-TEST_CONTACT = {
-    "first_name": "John",
-    "last_name": "Doe",
-    "email": "john.doe@example.com",
-    "phone": "+1234567890",
-    "company": "Test Company",
-    "job_title": "CEO"
-}
-
-TEST_DEAL = {
-    "name": "Test Deal",
-    "value": 10000,
-    "stage": "proposal",
-    "status": "in progress",
-    "probability": 75,
-    "contact_id": None  # Will be set after creating a contact
-}
-
-@pytest.mark.asyncio
-async def test_create_and_get_activity(client):
-    # First create a user and get token
-    user_response = client.post("/api/v1/users/", json={
-        "email": "test@example.com",
-        "password": "testpassword123",
-        "full_name": "Test User"
-    })
-    assert user_response.status_code == status.HTTP_201_CREATED
-
-    login_response = client.post("/api/v1/auth/login", data={
-        "username": "test@example.com",
-        "password": "testpassword123"
-    })
-    assert login_response.status_code == status.HTTP_200_OK
-    token = login_response.json()["access_token"]
-
-    # Create a contact first
-    contact_response = client.post(
-        "/api/crm/contacts/",
-        json=TEST_CONTACT,
-        headers={"Authorization": f"Bearer {token}"}
+def test_create_contact(client, signed_up_user):
+    workspace_id = signed_up_user["workspace_id"]
+    resp = client.post(
+        f"/api/v1/workspaces/{workspace_id}/crm/contacts",
+        headers=signed_up_user["headers"],
+        json={
+            "workspace_id": workspace_id,
+            "first_name": "John",
+            "last_name": "Doe",
+            "email": "john.doe@example.com",
+            "phone": "+1234567890",
+            "company": "Test Company",
+            "job_title": "CEO",
+        },
     )
-    assert contact_response.status_code == status.HTTP_201_CREATED
-    contact_id = contact_response.json()["contact_id"]
+    assert resp.status_code == status.HTTP_200_OK, resp.text
+    body = resp.json()
+    assert body["first_name"] == "John"
+    assert body["workspace_id"] == workspace_id
 
-    # Create a deal
-    TEST_DEAL["contact_id"] = contact_id
-    deal_response = client.post(
-        "/api/crm/deals/",
-        json=TEST_DEAL,
-        headers={"Authorization": f"Bearer {token}"}
-    )
-    assert deal_response.status_code == status.HTTP_201_CREATED
-    deal_id = deal_response.json()["deal_id"]
 
-    # Create an activity
-    TEST_ACTIVITY["contact_id"] = contact_id
-    TEST_ACTIVITY["deal_id"] = deal_id
-    activity_response = client.post(
-        "/api/crm/activities/",
-        json=TEST_ACTIVITY,
-        headers={"Authorization": f"Bearer {token}"}
-    )
-    assert activity_response.status_code == status.HTTP_201_CREATED
-    activity_data = activity_response.json()
-    assert activity_data["type"] == TEST_ACTIVITY["type"]
-    assert activity_data["description"] == TEST_ACTIVITY["description"]
-    assert "activity_id" in activity_data
+def test_list_contacts_includes_created_one(client, signed_up_user):
+    workspace_id = signed_up_user["workspace_id"]
+    headers = signed_up_user["headers"]
 
-    # Get the activity
-    get_response = client.get(
-        f"/api/crm/activities/{activity_data['activity_id']}",
-        headers={"Authorization": f"Bearer {token}"}
+    created = client.post(
+        f"/api/v1/workspaces/{workspace_id}/crm/contacts",
+        headers=headers,
+        json={
+            "workspace_id": workspace_id,
+            "first_name": "Jane",
+            "last_name": "Smith",
+        },
     )
-    assert get_response.status_code == status.HTTP_200_OK
-    get_data = get_response.json()
-    assert get_data["activity_id"] == activity_data["activity_id"]
-    assert get_data["type"] == TEST_ACTIVITY["type"]
-    assert get_data["description"] == TEST_ACTIVITY["description"]
-    assert get_data["contact_id"] == contact_id
-    assert get_data["deal_id"] == deal_id
+    assert created.status_code == status.HTTP_200_OK, created.text
+    contact_id = created.json()["contact_id"]
 
-    # Get all activities
-    list_response = client.get(
-        "/api/crm/activities/",
-        headers={"Authorization": f"Bearer {token}"}
+    listed = client.get(f"/api/v1/workspaces/{workspace_id}/crm/contacts", headers=headers)
+    assert listed.status_code == status.HTTP_200_OK, listed.text
+    ids = [c["contact_id"] for c in listed.json()]
+    assert contact_id in ids
+
+
+def test_create_deal_for_contact(client, signed_up_user):
+    workspace_id = signed_up_user["workspace_id"]
+    headers = signed_up_user["headers"]
+
+    contact = client.post(
+        f"/api/v1/workspaces/{workspace_id}/crm/contacts",
+        headers=headers,
+        json={"workspace_id": workspace_id, "first_name": "Deal", "last_name": "Contact"},
+    ).json()
+
+    resp = client.post(
+        f"/api/v1/workspaces/{workspace_id}/crm/deals",
+        headers=headers,
+        json={
+            "workspace_id": workspace_id,
+            "contact_id": contact["contact_id"],
+            "title": "Test Deal",
+            "value": 10000,
+            "stage": "proposal",
+            "probability": 75,
+        },
     )
-    assert list_response.status_code == status.HTTP_200_OK
-    list_data = list_response.json()
-    assert isinstance(list_data, list)
-    assert len(list_data) > 0
-    assert any(a["activity_id"] == activity_data["activity_id"] for a in list_data) 
+    assert resp.status_code == status.HTTP_200_OK, resp.text
+    deal = resp.json()
+    assert deal["title"] == "Test Deal"
+    assert deal["contact_id"] == contact["contact_id"]
+
+
+def test_create_and_list_contact_activity(client, signed_up_user):
+    workspace_id = signed_up_user["workspace_id"]
+    user_id = signed_up_user["user_id"]
+    headers = signed_up_user["headers"]
+
+    contact = client.post(
+        f"/api/v1/workspaces/{workspace_id}/crm/contacts",
+        headers=headers,
+        json={"workspace_id": workspace_id, "first_name": "Activity", "last_name": "Contact"},
+    ).json()
+    contact_id = contact["contact_id"]
+
+    activity = client.post(
+        f"/api/v1/workspaces/{workspace_id}/crm/contacts/{contact_id}/activities",
+        headers=headers,
+        json={
+            "workspace_id": workspace_id,
+            "contact_id": contact_id,
+            "user_id": user_id,
+            "type": "call",
+            "title": "Follow-up call",
+            "description": "Discuss project timeline",
+        },
+    )
+    assert activity.status_code == status.HTTP_200_OK, activity.text
+    assert activity.json()["title"] == "Follow-up call"
+
+    listed = client.get(
+        f"/api/v1/workspaces/{workspace_id}/crm/contacts/{contact_id}/activities",
+        headers=headers,
+    )
+    assert listed.status_code == status.HTTP_200_OK, listed.text
+    assert len(listed.json()) >= 1

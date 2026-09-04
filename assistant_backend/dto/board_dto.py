@@ -30,12 +30,10 @@ class BoardDtoMapper:
         return BoardDto(
             board_id=str(board.board_id),
             workspace_id=str(board.workspace_id),
-            title=board.title,
+            title=board.name,
             description=board.description,
             properties=board.properties,
             views=board.views,
-            is_template=board.is_template,
-            is_public=board.is_public,
             items=[BoardItemDtoMapper.map_to_board_item_dto(item) for item in board.items] if board.items else None
         )
 

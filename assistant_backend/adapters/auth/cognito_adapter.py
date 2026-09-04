@@ -11,7 +11,7 @@ class CognitoAdapter(AuthAdapter):
         self.config = get_config()
         self.cognito = boto3.client(
             'cognito-idp',
-            region_name=self.config.aws_region or 'ap-south-1'  # Default to ap-south-1 if not set
+            region_name=self.config.AWS_REGION or 'ap-south-1'  # Default to ap-south-1 if not set
         )
         self.factory = factory
         
@@ -71,7 +71,7 @@ class CognitoAdapter(AuthAdapter):
     def verify_token(self, token: str) -> Dict:
         try:
             # Get the public key from Cognito
-            jwks_url = f"https://cognito-idp.{self.config.aws_region or 'ap-south-1'}.amazonaws.com/{self.config.cognito_user_pool_id}/.well-known/jwks.json"
+            jwks_url = f"https://cognito-idp.{self.config.AWS_REGION or 'ap-south-1'}.amazonaws.com/{self.config.cognito_user_pool_id}/.well-known/jwks.json"
             jwks_client = jwt.PyJWKClient(jwks_url)
             signing_key = jwks_client.get_signing_key_from_jwt(token)
             
@@ -81,7 +81,7 @@ class CognitoAdapter(AuthAdapter):
                 signing_key.key,
                 algorithms=["RS256"],
                 audience=self.config.cognito_client_id,
-                issuer=f"https://cognito-idp.{self.config.aws_region or 'ap-south-1'}.amazonaws.com/{self.config.cognito_user_pool_id}"
+                issuer=f"https://cognito-idp.{self.config.AWS_REGION or 'ap-south-1'}.amazonaws.com/{self.config.cognito_user_pool_id}"
             )
             
             return {
