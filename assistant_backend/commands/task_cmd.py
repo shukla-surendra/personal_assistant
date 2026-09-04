@@ -52,6 +52,8 @@ class TaskUpdateCommand(BaseModel):
     priority: Optional[str] = None
     task_type: Optional[str] = None
     status: Optional[str] = None
+    board_id: Optional[str] = None
+    order: Optional[int] = None
     completed: Optional[bool] = None
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None

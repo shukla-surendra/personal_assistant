@@ -6,7 +6,7 @@ from commands.workspace_cmd import (
     WorkspaceInviteMemberCommand
 )
 from dto.workspace_dto import WorkspaceDtoMapper
-from adapters.orm.models.pg_models import Workspace, workspace_users, User
+from adapters.orm.models.pg_models import Workspace, workspace_users, User, Board
 from config import logger
 from adapters.orm.models.database import get_db
 from sqlalchemy import select
@@ -138,9 +138,15 @@ class WorkspaceHandler:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
                                  detail="Workspace not found")
 
-            if workspace.owner_id != user_id and user_id not in workspace.users:
-                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, 
-                                 detail="Not authorized to access this workspace")
+            if str(workspace.owner_id) != str(user_id):
+                is_member = self.db.execute(
+                    select(workspace_users)
+                    .where(workspace_users.c.workspace_id == workspace.workspace_id)
+                    .where(workspace_users.c.user_id == user_id)
+                ).first()
+                if not is_member:
+                    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                                     detail="Not authorized to access this workspace")
 
             return WorkspaceDtoMapper.map_to_workspace_dto_mapper(workspace)
         except HTTPException as he:
@@ -148,6 +154,24 @@ class WorkspaceHandler:
         except Exception as e:
             logger.error(f"Error getting workspace: {e}")
             raise HTTPException(status_code=500, detail="Failed to get workspace")
+
+    def get_workspace_boards(self, workspace_id: str, user_id: str):
+        """ Get all boards in a workspace -- same query BoardHandler.list_boards
+        does, exposed here too since workspace_controller.py's GET
+        /{workspace_id}/boards route already calls this method name. """
+        try:
+            self.get_workspace(workspace_id, user_id)  # raises 403/404 if not a member
+            from dto.board_dto import BoardDtoMapper
+            boards = self.db.query(Board).filter(
+                Board.workspace_id == workspace_id,
+                Board.is_deleted == False
+            ).all()
+            return [BoardDtoMapper.map_to_board_dto(board) for board in boards]
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Error getting workspace boards: {e}")
+            raise HTTPException(status_code=500, detail="Failed to get workspace boards")
 
     def add_user_to_workspace(self, workspace_id: str, owner_id: str, user_id: str):
         """ Add a user to a workspace """

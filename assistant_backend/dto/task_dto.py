@@ -49,6 +49,7 @@ class TaskDto(BaseModel):
     priority: str
     task_type: str
     status: str
+    order: Optional[int]
     completed: bool
     is_deleted: bool
     due_on: Optional[datetime]
@@ -164,6 +165,7 @@ class TaskDtoMapper:
             priority=task.priority,
             task_type=task.task_type,
             status=task.status,
+            order=task.order,
             completed=task.completed,
             is_deleted=task.is_deleted,
             due_on=task.due_on,

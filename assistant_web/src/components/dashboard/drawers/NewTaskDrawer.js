@@ -10,7 +10,7 @@ import {
   Avatar, Progress
 } from "@chakra-ui/react";
 import { useDispatch } from "react-redux";
-import { createTask } from "../../../slices/tasks";
+import { createGeneralTask } from "../../../slices/tasks";
 import { 
   FaArrowLeft, FaSave, FaCalendarAlt, FaTag, FaClipboardList, 
   FaUser, FaPaperclip, FaPlus, FaClock, FaUsers, FaHashtag,
@@ -65,7 +65,11 @@ export default function NewTaskDrawer(props) {
     due_on: "",
     assignees: [],
     labels: [],
-    task_type: 'task'
+    task_type: 'task',
+    // Lets a caller (e.g. a Kanban board's "+ Add card" on a specific
+    // column) pre-fill board_id/status without this drawer needing to know
+    // anything about boards -- unused by existing callers, who don't pass it.
+    ...props.defaultValues
   };
 
   const [size] = useState('xl');
@@ -289,7 +293,7 @@ export default function NewTaskDrawer(props) {
         task_type: 'task'  // Ensure task_type is set
       };
 
-      await dispatch(createTask(payload)).unwrap();
+      await dispatch(createGeneralTask(payload)).unwrap();
       toast({
         title: "Success",
         description: "Task created successfully",

@@ -99,6 +99,7 @@ class Task(Base):
     priority = Column(String, nullable=False)
     task_type = Column(String, nullable=False)
     status = Column(String, nullable=False)
+    order = Column(Integer, nullable=True)
     completed = Column(Boolean, default=False)
     is_deleted = Column(Boolean, default=False)
     due_on = Column(DateTime, nullable=True)

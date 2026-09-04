@@ -175,6 +175,10 @@ class TaskHandler:
                     task.status = TaskStatus(task_cmd.status.lower()).value
                 except ValueError:
                     logger.warning(f"Invalid status: {task_cmd.status}. Keeping existing value")
+            if task_cmd.board_id is not None:
+                task.board_id = task_cmd.board_id
+            if task_cmd.order is not None:
+                task.order = task_cmd.order
             if task_cmd.completed is not None:
                 task.completed = task_cmd.completed
             if task_cmd.due_on is not None:
@@ -213,13 +217,13 @@ class TaskHandler:
                 detail=f"Error updating task: {str(e)}"
             )
 
-    def list_tasks(self, user_id: str, workspace_id: str = None, skip: int = 0, limit: int = 10, 
+    def list_tasks(self, user_id: str, workspace_id: str = None, board_id: str = None, skip: int = 0, limit: int = 10,
                    task_status=None, task_type='todo', order='desc', priority=None):
         """List tasks with optional filtering"""
         try:
             logger.info(f"Listing tasks for user {user_id} with filters: workspace_id={workspace_id}, "
-                       f"task_status={task_status}, task_type={task_type}, order={order}, priority={priority}")
-            
+                       f"board_id={board_id}, task_status={task_status}, task_type={task_type}, order={order}, priority={priority}")
+
             query = self.db.query(Task).filter(
                 Task.user_id == user_id,
                 Task.is_deleted == False
@@ -227,6 +231,8 @@ class TaskHandler:
 
             if workspace_id:
                 query = query.filter(Task.workspace_id == workspace_id)
+            if board_id:
+                query = query.filter(Task.board_id == board_id)
             if task_status:
                 try:
                     status_enum = TaskStatus(task_status.lower())
@@ -242,8 +248,13 @@ class TaskHandler:
             if priority:
                 query = query.filter(Task.priority == priority.lower())
 
-            # Apply ordering
-            if order.lower() == 'desc':
+            # Board fetches care about column position, not recency -- order
+            # by the persisted drag position first (nulls last, i.e. newly
+            # created/never-dragged cards fall to the end of their column),
+            # then fall back to the normal recency ordering.
+            if board_id:
+                query = query.order_by(Task.order.asc().nulls_last(), Task.created_at.desc())
+            elif order.lower() == 'desc':
                 query = query.order_by(Task.created_at.desc())
             else:
                 query = query.order_by(Task.created_at.asc())

@@ -18,6 +18,12 @@ const getAllTimeBlocks = () => {
   return http.get(`/api/v1/workspaces/${ConfigService.getDefaultWorkspace().workspace_id}/tasks?order=desc&task_type=time_block`);
 };
 
+// No task_type filter -- a board's cards can be any type. page_size=200 is
+// a pragmatic cap, not real pagination; fine for a single board's cards.
+const getByBoard = (boardId) => {
+  return http.get(`/api/v1/workspaces/${ConfigService.getDefaultWorkspace().workspace_id}/tasks?board_id=${boardId}&page_size=200`);
+};
+
 const get = task_id => {
   // For shared notes, we don't need authentication
   const isSharedNote = window.location.pathname.startsWith('/shared/note/');
@@ -72,6 +78,7 @@ const TaskService = {
   findByTitle,
   getAllQuickNotes,
   getAllTimeBlocks,
+  getByBoard,
   getPostBySlug,
   getPublicNote
 };

@@ -1,11 +1,9 @@
 from pydantic import BaseModel
-from typing import Optional, List
-from datetime import datetime
-from uuid import UUID
+from typing import Optional
 
 
 class BoardCommand(BaseModel):
-    workspace_id: str
+    workspace_id: Optional[str] = None  # Set from the URL path by the controller
     name: str
     description: Optional[str] = None
     properties: Optional[dict] = None
@@ -21,30 +19,3 @@ class BoardUpdateCommand(BaseModel):
 class BoardDeleteCommand(BaseModel):
     board_id: str
     workspace_id: str
-
-
-class BoardItemCommand(BaseModel):
-    board_id: str
-    title: str
-    description: Optional[str] = None
-    status: Optional[str] = None
-    assignee_id: Optional[str] = None
-    due_date: Optional[datetime] = None
-    properties: Optional[dict] = None
-    order: Optional[int] = None
-
-
-class BoardItemUpdateCommand(BaseModel):
-    item_id: str
-    title: Optional[str] = None
-    description: Optional[str] = None
-    status: Optional[str] = None
-    assignee_id: Optional[str] = None
-    due_date: Optional[datetime] = None
-    properties: Optional[dict] = None
-    order: Optional[int] = None
-
-
-class BoardItemDeleteCommand(BaseModel):
-    item_id: str
-    board_id: str

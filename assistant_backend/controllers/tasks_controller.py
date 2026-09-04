@@ -42,7 +42,8 @@ async def list_tasks(
     user: dict = Depends(get_auth_details),
     task_status: str = None,
     order: str = 'desc',
-    task_type: str = 'todo',
+    task_type: str = None,
+    board_id: str = None,
     skip: int = 0,
     page_size: int = 50,
     priority: int = None
@@ -52,6 +53,7 @@ async def list_tasks(
         user_id = user.get("user_id")
         return TaskHandler().list_tasks(
             workspace_id=workspace_id,
+            board_id=board_id,
             user_id=user_id,
             skip=skip,
             limit=page_size,
