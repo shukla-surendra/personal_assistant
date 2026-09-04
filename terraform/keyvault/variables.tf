@@ -15,6 +15,12 @@ variable "key_vault_name" {
   default     = null
 }
 
+variable "storage_account_name" {
+  description = "Must be globally unique across ALL of Azure, 3-24 lowercase-alphanumeric-only characters (Storage Account naming rules, stricter than the Key Vault/ACR name constraints). Leave null to append the same random suffix the vault uses."
+  type        = string
+  default     = null
+}
+
 variable "oidc_issuer_url" {
   description = "From the aks-infra stage's output: terraform -chdir=../aks-infra output -raw oidc_issuer_url. This is what lets a Kubernetes ServiceAccount token be trusted as this Azure AD identity -- the federated_identity_credential's issuer."
   type        = string

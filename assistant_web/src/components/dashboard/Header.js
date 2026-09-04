@@ -116,7 +116,7 @@ const Header = ({ onMenuToggle }) => {
                             as={Button}
                             rightIcon={<FiChevronDown />}
                             variant="ghost"
-                            leftIcon={<Avatar size="sm" name={`${user?.first_name || ''} ${user?.last_name || ''}`.trim() || 'User'} />}
+                            leftIcon={<Avatar size="sm" name={`${user?.first_name || ''} ${user?.last_name || ''}`.trim() || 'User'} src={user?.avatar_url} />}
                         >
                             <Text display={{ base: "none", md: "block" }}>
                                 {`${user?.first_name || ''} ${user?.last_name || ''}`.trim() || 'User'}

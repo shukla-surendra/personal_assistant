@@ -27,6 +27,18 @@ services:
     networks:
       - app-network
 
+  # Azure Blob Storage emulator -- speaks the real Blob REST API, so the
+  # backend's azure-storage-blob SDK code (adapters/blob/azure_blob_storage.py)
+  # runs unmodified against this locally and against a real Storage Account
+  # in AKS (terraform/keyvault). "10000" is Azurite's fixed blob-service port.
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite
+    command: "azurite-blob --blobHost 0.0.0.0"
+    ports:
+      - "10000:10000"
+    networks:
+      - app-network
+
   backend:
     build: ./assistant_backend
     ports:
@@ -44,10 +56,20 @@ services:
       - DB_PASSWORD=postgres
       - REDIS_URL=redis://redis:6379/0
       - ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://10.1.196.56:3000
+      # Azurite's fixed, publicly-documented well-known dev account/key --
+      # not a real secret, same one every Azurite install ships with.
+      - AZURE_STORAGE_CONNECTION_STRING=DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;
+      - AZURE_STORAGE_CONTAINER=avatars
+      # Browser-facing -- the container above uses the internal docker-network
+      # hostname "azurite", which the browser can't resolve; this is the
+      # host-published port instead, same split as BACKEND_HOST in nginx.
+      - AZURE_STORAGE_PUBLIC_BASE_URL=http://localhost:10000/devstoreaccount1
     depends_on:
       db:
         condition: service_healthy
       redis:
+        condition: service_started
+      azurite:
         condition: service_started
     networks:
       - app-network

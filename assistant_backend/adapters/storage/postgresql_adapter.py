@@ -157,6 +157,7 @@ class PostgreSQLAdapter(StorageAdapter):
                     'verification_token': result.verification_token,
                     'otp': result.otp,
                     'otp_time': result.otp_time,
+                    'avatar_url': result.avatar_url,
                     'created_at': result.created_at,
                     'updated_at': result.updated_at
                 }
@@ -165,14 +166,14 @@ class PostgreSQLAdapter(StorageAdapter):
     def get_user_by_email(self, email: str) -> Optional[Dict]:
         try:
             query = text("""
-                SELECT user_id, email, password_hash, first_name, last_name, status, role, user_type
-                FROM users 
+                SELECT user_id, email, password_hash, first_name, last_name, status, role, user_type, avatar_url
+                FROM users
                 WHERE email = :email AND is_deleted = FALSE
             """)
-            
+
             with self.Session() as session:
                 result = session.execute(query, {"email": email}).fetchone()
-                
+
                 if result:
                     return {
                         'user_id': str(result.user_id),
@@ -182,7 +183,8 @@ class PostgreSQLAdapter(StorageAdapter):
                         'last_name': result.last_name,
                         'status': result.status,
                         'role': result.role,
-                        'user_type': result.user_type
+                        'user_type': result.user_type,
+                        'avatar_url': result.avatar_url
                     }
                 return None
 

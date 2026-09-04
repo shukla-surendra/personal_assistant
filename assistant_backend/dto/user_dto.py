@@ -19,6 +19,7 @@ class UserDto(BaseModel):
     status: str
     default_workspace_id: Optional[str] = None
     default_workspace_name: Optional[str] = None
+    avatar_url: Optional[str] = None
 
 
 class UserDtoMapper:
@@ -36,7 +37,8 @@ class UserDtoMapper:
                 tasks=user_object.get('tasks', []),
                 status=str(user_object.get('status')),
                 default_workspace_id=str(user_object.get('default_workspace', {}).get('workspace_id')) if user_object.get('default_workspace') else None,
-                default_workspace_name=user_object.get('default_workspace', {}).get('workspace_name') if user_object.get('default_workspace') else None
+                default_workspace_name=user_object.get('default_workspace', {}).get('workspace_name') if user_object.get('default_workspace') else None,
+                avatar_url=user_object.get('avatar_url')
             )
         # Handle object input
         return UserDto(
@@ -48,5 +50,6 @@ class UserDtoMapper:
             tasks=list(user_object.tasks),
             status=str(user_object.status.value),
             default_workspace_id=str(user_object.default_workspace.get("workspace_id")) if hasattr(user_object, 'default_workspace') else None,
-            default_workspace_name=user_object.default_workspace.get("workspace_name") if hasattr(user_object, 'default_workspace') else None
+            default_workspace_name=user_object.default_workspace.get("workspace_name") if hasattr(user_object, 'default_workspace') else None,
+            avatar_url=getattr(user_object, 'avatar_url', None)
         )

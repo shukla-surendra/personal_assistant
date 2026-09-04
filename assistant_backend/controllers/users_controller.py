@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, UploadFile, File
 from starlette.responses import Response
 from starlette import status
 from fastapi import HTTPException
@@ -49,6 +49,14 @@ async def update_users(user_id: str, user_cmd: UserUpdateCommand, user: dict = D
     if user.get("user_id") == str(user_id):
         user_cmd.user_id = user_id
         return UserHandler().update_user(user_cmd)
+    else:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Operation not permitted")
+
+@router.post("/{user_id}/avatar", status_code=status.HTTP_200_OK)
+async def upload_avatar(user_id: str, file: UploadFile = File(...), user: dict = Depends(get_auth_details)):
+    """Upload/replace the caller's own profile picture"""
+    if user.get("user_id") == str(user_id):
+        return await UserHandler().update_avatar(user_id, file)
     else:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Operation not permitted")
 

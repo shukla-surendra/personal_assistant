@@ -51,6 +51,19 @@ export const updateProfile = createAsyncThunk(
   }
 );
 
+export const uploadAvatar = createAsyncThunk(
+  'auth/uploadAvatar',
+  async ({ userId, file }, { rejectWithValue }) => {
+    try {
+      const response = await UserService.uploadAvatar(userId, file);
+      const merged = auth.updateProfile(response.data);
+      return merged;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.detail || 'Failed to upload avatar');
+    }
+  }
+);
+
 const initialState = {
   user: auth.getProfile(),
   token: auth.getToken(),
@@ -118,6 +131,13 @@ const authSlice = createSlice({
       })
       .addCase(updateProfile.rejected, (state, action) => {
         state.loading = false;
+        state.error = action.payload;
+      })
+      // Upload avatar cases
+      .addCase(uploadAvatar.fulfilled, (state, action) => {
+        state.user = action.payload;
+      })
+      .addCase(uploadAvatar.rejected, (state, action) => {
         state.error = action.payload;
       });
   }

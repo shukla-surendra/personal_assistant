@@ -52,6 +52,21 @@ class Settings(BaseSettings):
     
     # Redis
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+
+    # Avatar storage (Azure Blob in AKS, Azurite locally -- same SDK either
+    # way, see adapters/blob/azure_blob_storage.py). Exactly one of
+    # AZURE_STORAGE_CONNECTION_STRING (local/Azurite) or
+    # AZURE_STORAGE_ACCOUNT_URL (AKS, authenticates via Workload Identity)
+    # is expected to be set.
+    AZURE_STORAGE_CONNECTION_STRING: Optional[str] = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
+    AZURE_STORAGE_ACCOUNT_URL: Optional[str] = os.getenv("AZURE_STORAGE_ACCOUNT_URL")
+    AZURE_STORAGE_CONTAINER: str = os.getenv("AZURE_STORAGE_CONTAINER", "avatars")
+    # Browser-facing base URL for building returned avatar links -- Azurite's
+    # internal (docker-network) endpoint isn't reachable from the browser, so
+    # this is set separately from the endpoint the SDK itself connects
+    # through. Defaults to AZURE_STORAGE_ACCOUNT_URL, which already is
+    # publicly reachable in AKS.
+    AZURE_STORAGE_PUBLIC_BASE_URL: Optional[str] = os.getenv("AZURE_STORAGE_PUBLIC_BASE_URL")
     
     # Sentry
     SENTRY_DSN: Optional[str] = os.getenv("SENTRY_DSN")

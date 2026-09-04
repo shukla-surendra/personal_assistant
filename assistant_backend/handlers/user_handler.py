@@ -1,6 +1,6 @@
 """"""
 from starlette import status
-from fastapi import HTTPException
+from fastapi import HTTPException, UploadFile
 from commands.user_cmd import UserCommand, UserUpdateCommand
 from dto.user_dto import UserDtoMapper
 from config import logger, get_config
@@ -8,6 +8,10 @@ from commands.user_cmd import EmailVerificationRequest, LoginCommand
 from adapters.factory import AdapterFactory, StorageType, AuthType
 from adapters.orm.models.database import SessionLocal
 from adapters.orm.fixtures import create_demo_account
+from adapters.blob import AzureBlobStorage
+
+ALLOWED_AVATAR_TYPES = {"image/png", "image/jpeg", "image/webp", "image/gif"}
+MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024  # 5MB
 
 config = get_config()
 
@@ -55,6 +59,30 @@ class UserHandler:
         except Exception as e:
             logger.error(f"Error updating user: {e}")
             raise HTTPException(status_code=500, detail="Failed to update user")
+
+    async def update_avatar(self, user_id: str, file: UploadFile):
+        if file.content_type not in ALLOWED_AVATAR_TYPES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Unsupported image type: {file.content_type}"
+            )
+
+        content = await file.read(MAX_AVATAR_SIZE_BYTES + 1)
+        if len(content) > MAX_AVATAR_SIZE_BYTES:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Image must be 5MB or smaller")
+
+        try:
+            avatar_url = AzureBlobStorage().upload_avatar(user_id, content, file.content_type)
+            updated_user = self.storage.update_user(user_id, {"avatar_url": avatar_url})
+            if not updated_user:
+                raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to save avatar")
+            updated_user.pop("password_hash", None)
+            return updated_user
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Error uploading avatar: {e}")
+            raise HTTPException(status_code=500, detail="Failed to upload avatar")
 
     def list_users(self):
         try:
@@ -121,6 +149,7 @@ class UserHandler:
                     "first_name": user['first_name'],
                     "last_name": user['last_name'],
                     "role": user['role'],
+                    "avatar_url": user.get('avatar_url'),
                     "default_workspace": {
                         "workspace_id": default_workspace.workspace_id if default_workspace else None,
                         "name": default_workspace.name if default_workspace else None
@@ -161,6 +190,7 @@ class UserHandler:
                     "first_name": owner.first_name,
                     "last_name": owner.last_name,
                     "role": owner.role,
+                    "avatar_url": owner.avatar_url,
                     "default_workspace": {
                         "workspace_id": workspace.workspace_id,
                         "name": workspace.name,

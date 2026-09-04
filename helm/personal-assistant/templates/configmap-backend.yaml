@@ -10,6 +10,8 @@ data:
   AUTH_TYPE: {{ .Values.backend.env.authType | quote }}
   ALLOWED_ORIGINS: {{ .Values.backend.env.allowedOrigins | quote }}
   OPENAI_MODEL: {{ .Values.backend.env.openaiModel | quote }}
+  AZURE_STORAGE_ACCOUNT_URL: {{ .Values.backend.env.azureStorageAccountUrl | quote }}
+  AZURE_STORAGE_CONTAINER: {{ .Values.backend.env.azureStorageContainer | quote }}
   DB_HOST: {{ include "pa.fullname" . }}-postgres
   DB_PORT: "5432"
   DB_NAME: {{ .Values.postgres.database | quote }}

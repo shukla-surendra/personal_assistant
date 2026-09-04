@@ -74,3 +74,41 @@ resource "azurerm_role_assignment" "deployer_kv_secrets_officer" {
   role_definition_name = "Key Vault Secrets Officer"
   principal_id         = data.azurerm_client_config.current.object_id
 }
+
+# Profile picture storage. Deliberately NOT behind Key Vault -- unlike
+# OPENAI_API_KEY this needs no secret at all: the backend authenticates via
+# the same Workload Identity (azurerm_user_assigned_identity.backend) it
+# already uses for Key Vault, just granted a role on this account instead of
+# a vault. Standard/LRS -- cheapest tier, same "learning" cost-consciousness
+# as the vault above (rbac_authorization_enabled, no georedundancy needed).
+resource "azurerm_storage_account" "avatars" {
+  name                     = var.storage_account_name != null ? var.storage_account_name : "paavatars${random_string.kv_suffix.result}"
+  resource_group_name      = var.resource_group_name
+  location                 = var.location
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+
+  tags = {
+    purpose = "personal-assistant-learning"
+  }
+}
+
+# public_access = "blob" -- anonymous read on blob CONTENTS only, no
+# container listing. Avatars are non-sensitive and rendered directly as
+# <img src>, so a stable public URL beats minting/refreshing SAS tokens for
+# a picture that isn't secret to begin with (confirmed with the app owner).
+resource "azurerm_storage_container" "avatars" {
+  name                  = "avatars"
+  storage_account_id    = azurerm_storage_account.avatars.id
+  container_access_type = "blob"
+}
+
+# Storage Blob Data Contributor: read/write/delete blob contents, nothing
+# account-level (can't touch access keys, replication, network rules).
+# Same least-privilege-per-component shape as backend_kv_secrets_user above
+# -- this identity's entire job here is uploading one blob per user.
+resource "azurerm_role_assignment" "backend_storage_blob_contributor" {
+  scope                = azurerm_storage_account.avatars.id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = azurerm_user_assigned_identity.backend.principal_id
+}

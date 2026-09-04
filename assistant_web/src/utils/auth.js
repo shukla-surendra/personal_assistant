@@ -51,7 +51,8 @@ class AuthService {
 				email: loginResponse.user.email,
 				first_name: loginResponse.user.first_name,
 				last_name: loginResponse.user.last_name,
-				role: loginResponse.user.role
+				role: loginResponse.user.role,
+				avatar_url: loginResponse.user.avatar_url
 			};
 			localStorage.setItem('user_info', JSON.stringify(userInfo));
 			
@@ -89,6 +90,7 @@ class AuthService {
 			...(userData.first_name !== undefined && { first_name: userData.first_name }),
 			...(userData.last_name !== undefined && { last_name: userData.last_name }),
 			...(userData.role !== undefined && { role: userData.role }),
+			...(userData.avatar_url !== undefined && { avatar_url: userData.avatar_url }),
 		};
 		localStorage.setItem('user_info', JSON.stringify(merged));
 		return merged;

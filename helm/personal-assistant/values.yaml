@@ -31,6 +31,14 @@ backend:
                          # (nginx proxies /api/ server-side) -- this barely matters,
                          # kept configurable rather than hardcoded.
     openaiModel: gpt-3.5-turbo
+    # Set (via Terraform's application stage, from the keyvault stage's
+    # storage_account_blob_endpoint output) to enable avatar uploads. Not
+    # secret -- a public HTTPS endpoint; the backend authenticates to it via
+    # the same Workload Identity as Key Vault above (Storage Blob Data
+    # Contributor role, terraform/keyvault). Empty (e.g. minikube, no
+    # storage account) just means the avatar endpoint isn't usable there.
+    azureStorageAccountUrl: ""
+    azureStorageContainer: "avatars"
 
 frontend:
   image:

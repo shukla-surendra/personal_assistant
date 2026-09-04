@@ -44,6 +44,12 @@ variable "azure_tenant_id" {
   default     = ""
 }
 
+variable "backend_storage_account_url" {
+  description = "From the keyvault stage's output: terraform -chdir=../keyvault output -raw storage_account_blob_endpoint. Empty means no avatar upload storage available (e.g. minikube) -- the backend simply has no AZURE_STORAGE_ACCOUNT_URL/AZURE_STORAGE_CONNECTION_STRING set there, so the avatar endpoint would fail if called; nothing else in the app depends on it."
+  type        = string
+  default     = ""
+}
+
 variable "postgres_password" {
   type      = string
   sensitive = true

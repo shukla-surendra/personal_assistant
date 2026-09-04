@@ -14,7 +14,6 @@ import {
   TabPanels,
   Text,
   Button,
-  Avatar,
   Input,
   HStack,
   Divider,
@@ -35,6 +34,7 @@ import UserService from "../../../services/userservice";
 import MemberService from "../../../services/MemberService";
 import ConfigService from "../../../utils/config";
 import Auth from "../../../utils/auth";
+import AvatarUpload from "./AvatarUpload";
 
 function fullName(user) {
   return `${user?.first_name || ""} ${user?.last_name || ""}`.trim();
@@ -208,7 +208,7 @@ export default function UserSettings(props) {
               <TabPanel>
                 <VStack align="flex-start" spacing={6}>
                   <HStack spacing={4}>
-                    <Avatar size="xl" name={fullName(user) || user.email} />
+                    <AvatarUpload user={user} size="xl" />
                     <VStack align="flex-start" spacing={2}>
                       <Input
                         value={name}

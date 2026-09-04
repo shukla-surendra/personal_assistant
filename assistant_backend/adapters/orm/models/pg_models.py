@@ -42,6 +42,7 @@ class User(Base):
     is_deleted = Column(Boolean, default=False)
     is_email_verified = Column(Boolean, default=False)
     is_phone_verified = Column(Boolean, default=False)
+    avatar_url = Column(String, nullable=True)
     verification_token = Column(String, nullable=True)
     otp = Column(String, nullable=True)
     otp_time = Column(DateTime, nullable=True)

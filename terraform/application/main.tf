@@ -98,4 +98,12 @@ resource "helm_release" "personal_assistant" {
     name  = "keyVault.tenantId"
     value = var.azure_tenant_id
   }
+
+  # Not sensitive -- a public HTTPS endpoint. The backend authenticates to
+  # it via the same Workload Identity as Key Vault above, not a key, so
+  # nothing here needs set_sensitive treatment.
+  set {
+    name  = "backend.env.azureStorageAccountUrl"
+    value = var.backend_storage_account_url
+  }
 }

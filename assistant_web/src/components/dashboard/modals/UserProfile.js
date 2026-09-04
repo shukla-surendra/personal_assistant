@@ -7,7 +7,6 @@ import {
   ModalBody,
   ModalCloseButton,
   VStack,
-  Avatar,
   Input,
   Button,
   FormLabel,
@@ -19,6 +18,7 @@ import {
 } from "@chakra-ui/react";
 import { useDispatch } from "react-redux";
 import { updateProfile } from "../../../slices/auth";
+import AvatarUpload from "./AvatarUpload";
 
 function fullName(user) {
   return `${user?.first_name || ""} ${user?.last_name || ""}`.trim();
@@ -75,7 +75,7 @@ export default function UserProfile(props) {
             <Center py={10}><Spinner /></Center>
           ) : (
             <VStack align="center" spacing={6} pb={4}>
-              <Avatar size="2xl" name={fullName(user) || user.email} />
+              <AvatarUpload user={user} />
               <VStack align="flex-start" spacing={2} w="100%">
                 <FormLabel mb={0}>Name</FormLabel>
                 <Input
