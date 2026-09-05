@@ -7,9 +7,9 @@ from config import logger
 from constants import TaskType
 from authorization.auth import get_auth_details
 
-router = APIRouter()
+router = APIRouter(prefix="/api/v1/workspaces/{workspace_id}")
 
-@router.post("/api/v1/workspaces/{workspace_id}/timeblocks", status_code=status.HTTP_201_CREATED)
+@router.post("/timeblocks", status_code=status.HTTP_201_CREATED)
 async def create_time_block(
     workspace_id: str,
     task_cmd: TaskCommand,

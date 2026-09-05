@@ -11,7 +11,6 @@ class TemplateDto(BaseModel):
     properties: Optional[Dict[str, Any]] = None
     icon: Optional[str] = None
     cover: Optional[str] = None
-    is_public: bool = False
     tags: Optional[List[str]] = None
 
 class TemplateDtoMapper:
@@ -26,6 +25,5 @@ class TemplateDtoMapper:
             properties=template.properties,
             icon=template.icon,
             cover=template.cover,
-            is_public=template.is_public,
             tags=template.tags
-        ) 
+        )

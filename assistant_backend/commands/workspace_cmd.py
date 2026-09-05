@@ -29,8 +29,12 @@ class WorkspaceDeleteCommand(BaseModel):
 
 
 class WorkspaceInviteMemberCommand(BaseModel):
-    workspace_id: str
-    owner_id: str
+    # Both filled in by the controller from the URL path / auth token
+    # AFTER Pydantic validation -- Optional so a client that only sends
+    # {email, role} (the real shape the frontend actually sends) doesn't
+    # 422 before the controller ever gets a chance to fill these in.
+    workspace_id: Optional[str] = None
+    owner_id: Optional[str] = None
     email: EmailStr
     role: str = "member"
 

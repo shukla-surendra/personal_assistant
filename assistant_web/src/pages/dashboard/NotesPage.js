@@ -50,6 +50,7 @@ import UnifiedEditButton from "../../components/dashboard/UnifiedEditButton";
 import { useNavigate } from "react-router-dom";
 import NoteViewModal from "../../components/dashboard/modals/NoteViewModal";
 import { FiEye, FiMoreVertical, FiEdit2, FiTrash2, FiExternalLink, FiPlus } from "react-icons/fi";
+import { htmlToText } from "../../utils/htmlToText";
 
 export default function NotesPage() {
   const [isMenuCollapsed, setIsMenuCollapsed] = useState(false);
@@ -75,19 +76,6 @@ export default function NotesPage() {
   const textColor = useColorModeValue('gray.800', 'gray.200');
   const contentColor = useColorModeValue('gray.600', 'gray.400');
   const subTextColor = useColorModeValue('gray.500', 'gray.400');
-
-  const extractTextFromLexicalJSON = (json) => {
-    if (!json || !json.root || !json.root.children) return '';
-    
-    return json.root.children
-      .map(child => {
-        if (child.type === 'paragraph' && child.children) {
-          return child.children.map(text => text.text).join('');
-        }
-        return '';
-      })
-      .join('\n');
-  };
 
   const handleAddItem = (task) => {
     setCurrentTask(task);
@@ -188,19 +176,10 @@ export default function NotesPage() {
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
 
     useEffect(() => {
-      if (note?.description) {
-        try {
-          const jsonContent = typeof note.description === 'string' 
-            ? JSON.parse(note.description) 
-            : note.description;
-          
-          const textContent = extractTextFromLexicalJSON(jsonContent);
-          setContent(textContent);
-        } catch (error) {
-          console.error('Error parsing description:', error);
-          setContent(note.description);
-        }
-      }
+      // description is Tiptap HTML (the real editor everywhere in this
+      // app), not Lexical JSON -- no parsing needed, just strip tags for
+      // a plain-text preview.
+      setContent(htmlToText(note?.description));
     }, [note?.description]);
 
     return (
@@ -394,7 +373,7 @@ export default function NotesPage() {
                               noOfLines={3}
                               mb={4}
                             >
-                              {extractTextFromLexicalJSON(note.description)}
+                              {htmlToText(note.description, 150)}
                             </Text>
                             <Flex justify="space-between" align="center">
                               <Text fontSize="xs" color="gray.500">
@@ -447,7 +426,7 @@ export default function NotesPage() {
                               </Td>
                               <Td>
                                 <Text noOfLines={2}>
-                                  {extractTextFromLexicalJSON(note.description)}
+                                  {htmlToText(note.description, 150)}
                                 </Text>
                               </Td>
                               <Td>{formatLocalDateTime(note.updated_at)}</Td>

@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from typing import Optional, Dict, Any
-from uuid import UUID
+from typing import Dict
 from handlers.settings_handler import SettingsHandler
 from commands.settings_cmd import (
     SettingsCommand,
@@ -12,11 +11,6 @@ from commands.settings_cmd import (
 from dto.settings_dto import SettingsDto, SettingsDtoMapper
 from authorization.auth import get_auth_details
 import logging
-from sqlalchemy.orm import Session
-from database.connection import get_db
-from models.settings import UserSettings
-from models.user import User
-from utils.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -137,97 +131,5 @@ async def delete_settings(workspace_id: str, settings_id: str, user: dict = Depe
     except Exception as e:
         logger.error(f"Error deleting settings: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
-@router.get("/")
-async def get_settings_user(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-) -> Dict[str, Any]:
-    """Get user settings."""
-    settings = db.query(UserSettings).filter(UserSettings.user_id == current_user.id).first()
-    if not settings:
-        settings = UserSettings(user_id=current_user.id)
-        db.add(settings)
-        db.commit()
-        db.refresh(settings)
-    
-    return {
-        "assistant_settings": settings.assistant_settings,
-        "theme_settings": settings.theme_settings,
-        "privacy_settings": settings.privacy_settings,
-        "workspace_settings": settings.workspace_settings
-    }
-
-@router.put("/assistant")
-async def update_assistant_settings(
-    settings: Dict[str, Any],
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-) -> Dict[str, Any]:
-    """Update assistant settings."""
-    user_settings = db.query(UserSettings).filter(UserSettings.user_id == current_user.id).first()
-    if not user_settings:
-        user_settings = UserSettings(user_id=current_user.id)
-        db.add(user_settings)
-    
-    user_settings.assistant_settings.update(settings)
-    db.commit()
-    db.refresh(user_settings)
-    
-    return {"message": "Assistant settings updated", "settings": user_settings.assistant_settings}
-
-@router.put("/theme")
-async def update_theme_settings(
-    settings: Dict[str, Any],
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-) -> Dict[str, Any]:
-    """Update theme settings."""
-    user_settings = db.query(UserSettings).filter(UserSettings.user_id == current_user.id).first()
-    if not user_settings:
-        user_settings = UserSettings(user_id=current_user.id)
-        db.add(user_settings)
-    
-    user_settings.theme_settings.update(settings)
-    db.commit()
-    db.refresh(user_settings)
-    
-    return {"message": "Theme settings updated", "settings": user_settings.theme_settings}
-
-@router.put("/privacy")
-async def update_privacy_settings(
-    settings: Dict[str, Any],
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-) -> Dict[str, Any]:
-    """Update privacy settings."""
-    user_settings = db.query(UserSettings).filter(UserSettings.user_id == current_user.id).first()
-    if not user_settings:
-        user_settings = UserSettings(user_id=current_user.id)
-        db.add(user_settings)
-    
-    user_settings.privacy_settings.update(settings)
-    db.commit()
-    db.refresh(user_settings)
-    
-    return {"message": "Privacy settings updated", "settings": user_settings.privacy_settings}
-
-@router.put("/workspace")
-async def update_workspace_settings(
-    settings: Dict[str, Any],
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-) -> Dict[str, Any]:
-    """Update workspace settings."""
-    user_settings = db.query(UserSettings).filter(UserSettings.user_id == current_user.id).first()
-    if not user_settings:
-        user_settings = UserSettings(user_id=current_user.id)
-        db.add(user_settings)
-    
-    user_settings.workspace_settings.update(settings)
-    db.commit()
-    db.refresh(user_settings)
-    
-    return {"message": "Workspace settings updated", "settings": user_settings.workspace_settings}
 
 settings_router = router 

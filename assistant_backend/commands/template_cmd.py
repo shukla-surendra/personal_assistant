@@ -1,27 +1,30 @@
 from pydantic import BaseModel
-from typing import Optional
-from datetime import datetime
-from uuid import UUID
+from typing import Optional, List
 
 
 class TemplateCommand(BaseModel):
-    workspace_id: str
-    name: str
+    workspace_id: Optional[str] = None
+    title: str
     description: Optional[str] = None
-    type: str  # page, database, board, etc.
-    content: dict
-    is_public: bool = False
+    icon: Optional[str] = None
+    cover: Optional[str] = None
+    content: Optional[dict] = None
+    properties: Optional[dict] = None
+    tags: Optional[List[str]] = None
 
 
 class TemplateUpdateCommand(BaseModel):
-    template_id: str
-    name: Optional[str] = None
+    template_id: Optional[str] = None
+    workspace_id: Optional[str] = None
+    title: Optional[str] = None
     description: Optional[str] = None
-    type: Optional[str] = None
+    icon: Optional[str] = None
+    cover: Optional[str] = None
     content: Optional[dict] = None
-    is_public: Optional[bool] = None
+    properties: Optional[dict] = None
+    tags: Optional[List[str]] = None
 
 
 class TemplateDeleteCommand(BaseModel):
     template_id: str
-    workspace_id: str 
+    workspace_id: str

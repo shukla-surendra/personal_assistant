@@ -315,10 +315,23 @@ class WorkspaceHandler:
             if not workspace:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
                                  detail="Workspace not found")
-            print(f"######################## Workspace owner_id: {workspace.owner_id} and user_id: {user_id}")
-            # if workspace.owner_id != user_id and user_id not in workspace.users:
-            #     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, 
-            #                      detail="Not authorized to access this workspace")
+            # str(...) comparison: owner_id is a UUID object, user_id is a
+            # plain string from the JWT -- same bug class already fixed
+            # elsewhere in this file. workspace.users doesn't exist as a
+            # relationship on the real model; membership is checked against
+            # the real workspace_users join table instead, same as
+            # remove_user_from_workspace below.
+            if str(workspace.owner_id) != str(user_id):
+                is_member = self.db.execute(
+                    select(workspace_users.c.user_id)
+                    .where(
+                        workspace_users.c.workspace_id == workspace_id,
+                        workspace_users.c.user_id == user_id,
+                    )
+                ).first()
+                if not is_member:
+                    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                                     detail="Not authorized to access this workspace")
 
             # Get all members with their roles
             members = self.db.execute(
@@ -333,7 +346,10 @@ class WorkspaceHandler:
                     "name": f"{member[0].first_name} {member[0].last_name or ''}".strip(),
                     "email": member[0].email,
                     "role": member[1],
-                    "avatar": f"https://ui-avatars.com/api/?name={member[0].first_name}+{member[0].last_name or ''}"
+                    # Prefer the user's real avatar_url (set at signup/via
+                    # profile upload) -- ui-avatars.com's generated-initials
+                    # image is only a fallback for whoever hasn't set one.
+                    "avatar": member[0].avatar_url or f"https://ui-avatars.com/api/?name={member[0].first_name}+{member[0].last_name or ''}"
                 }
                 for member in members
             ]
@@ -447,7 +463,7 @@ class WorkspaceHandler:
                 "name": f"{user.first_name} {user.last_name or ''}".strip(),
                 "email": user.email,
                 "role": role,
-                "avatar": f"https://ui-avatars.com/api/?name={user.first_name}+{user.last_name or ''}"
+                "avatar": user.avatar_url or f"https://ui-avatars.com/api/?name={user.first_name}+{user.last_name or ''}"
             }
         except HTTPException as he:
             self.db.rollback()

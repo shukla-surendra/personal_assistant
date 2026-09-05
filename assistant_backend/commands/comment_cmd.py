@@ -12,7 +12,7 @@ class CommentCommand(BaseModel):
 
 
 class CommentUpdateCommand(BaseModel):
-    comment_id: str
+    comment_id: Optional[str] = None
     content: Optional[str] = None
     properties: Optional[dict] = None
 

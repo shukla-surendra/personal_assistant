@@ -1,245 +1,163 @@
-from typing import Dict, Any, List, Optional
 import json
-from datetime import datetime
-from config import logger
-from models.task import Task
-from models.reminder import Reminder
-from models.calendar import CalendarEvent
-from models.workspace import Workspace
-from database.connection import get_db
-from sqlalchemy.orm import Session
-from .context_manager import ContextManager
+from datetime import datetime, timedelta
+from typing import Any, Dict
+
+from openai import OpenAI
+
+from config import settings, logger
+from commands.task_cmd import TaskCommand
+from commands.reminder_cmd import ReminderCommand
+from handlers.task_handler import TaskHandler
+from handlers.reminder_handler import ReminderHandler
+
 
 class Agent:
-    """Agent system using Llama 2 for command processing and execution."""
-    
-    def __init__(self, user_id: str):
+    """Natural-language command processor for the /assistant/command
+    endpoint. Uses the same OpenAI chat-completion pattern as
+    ChatHandler.create_completion, not a local Llama-2 model -- the
+    original approach needed torch/transformers (not installed), a real
+    GPU (not available), and a gated HuggingFace model (no access token
+    configured), so it was undeployable by construction, not just slow.
+    Executes against the REAL TaskHandler/ReminderHandler (real
+    workspace-scoped models) -- the previous implementation imported a
+    dead models.task/models.reminder module tree with no user_id/workspace_id
+    scoping, and its own ContextManager dependency was an empty stub class
+    that would have raised AttributeError on first use regardless of the
+    LLM backend.
+    """
+
+    def __init__(self, user_id: str, workspace_id: str):
         self.user_id = user_id
-        self.db: Session = next(get_db())
-        self.context_manager = ContextManager(user_id)
-        
-        # Initialize Llama 2 -- imported here, not at module level, so the rest of the
-        # app can boot without torch/transformers installed (they're a multi-GB
-        # dependency this is the only feature that needs, and this feature needs a
-        # gated HF model + real GPU to work at all -- neither available in this
-        # deployment). Importing core.agent no longer requires torch; constructing
-        # an Agent still does, and fails with a clear error if it's not installed.
-        try:
-            import torch
-            from transformers import AutoModelForCausalLM, AutoTokenizer
+        self.workspace_id = workspace_id
 
-            self.tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-2-7b-chat-hf")
-            self.model = AutoModelForCausalLM.from_pretrained(
-                "meta-llama/Llama-2-7b-chat-hf",
-                torch_dtype=torch.float16,
-                device_map="auto"
-            )
-        except Exception as e:
-            logger.error(f"Error initializing Llama 2: {e}")
-            raise
+    def _build_prompt(self, command: str) -> str:
+        return f"""You are a productivity assistant. Read the user's request and \
+respond with ONLY a JSON object (no other text, no markdown fences) in exactly \
+this shape:
 
-    def _create_prompt(self, command: str) -> str:
-        """Create a prompt for Llama 2 with context and command."""
-        # Get relevant context
-        context = self.context_manager.get_formatted_context()
-        
-        # Get user preferences
-        preferences = self.context_manager.user_preferences
-        assistant_name = preferences["assistant_settings"]["name"]
-        
-        prompt = f"""You are {assistant_name}, a helpful AI assistant. Use the following context to help understand the user's request:
-
-Previous interactions:
-{context}
-
-Current request: {command}
-
-Please analyze the request and respond in the following JSON format:
 {{
-    "intent": "task|reminder|calendar|workspace|search|unknown",
-    "action": "create|list|update|delete",
-    "entities": {{
-        "title": "string or null",
-        "description": "string or null",
-        "due_date": "ISO datetime or null",
-        "priority": "HIGH|MEDIUM|LOW or null",
-        "message": "string or null",
-        "remind_at": "ISO datetime or null",
-        "query": "string or null"
-    }},
-    "confidence": float between 0 and 1,
-    "requires_clarification": boolean,
-    "clarification_questions": ["string"] or null
+  "intent": "task" | "reminder" | "search" | "unknown",
+  "action": "create" | "list",
+  "entities": {{
+    "title": string or null,
+    "description": string or null,
+    "due_date": ISO 8601 datetime string or null,
+    "priority": "high" | "medium" | "low" or null,
+    "query": string or null
+  }}
 }}
 
-Consider the following when analyzing:
-1. Use context from previous interactions to understand references
-2. If the request is ambiguous, set requires_clarification to true and provide questions
-3. Extract dates and times in ISO format
-4. Maintain a helpful and professional tone
-5. Consider user preferences and settings
+Rules:
+- "remind me to X" or "set a reminder..." -> intent "reminder".
+- "add a task..." / "create a task..." -> intent "task".
+- "show/list my tasks|reminders" -> action "list" with the matching intent.
+- If you can't confidently classify the request, use intent "unknown".
+- due_date: resolve relative dates (e.g. "tomorrow", "next Monday") against \
+the current time: {datetime.utcnow().isoformat()}Z (UTC).
 
-Response:"""
-        return prompt
+User request: {command}"""
 
-    async def process_command(self, command: str) -> Dict[str, Any]:
-        """Process a command using Llama 2 and execute appropriate action."""
+    def process_command(self, command: str) -> Dict[str, Any]:
+        if not settings.OPENAI_API_KEY:
+            return {
+                "message": "The assistant isn't configured yet -- no OPENAI_API_KEY is set on the backend.",
+                "data": {},
+            }
+
         try:
-            # Generate prompt and get Llama 2's response
-            prompt = self._create_prompt(command)
-            inputs = self.tokenizer(prompt, return_tensors="pt").to(self.model.device)
-            
-            with torch.no_grad():
-                outputs = self.model.generate(
-                    **inputs,
-                    max_length=512,
-                    temperature=0.7,
-                    top_p=0.9,
-                    do_sample=True
-                )
-            
-            response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
-            
-            # Extract JSON from response
-            try:
-                json_str = response.split("Response:")[-1].strip()
-                parsed_response = json.loads(json_str)
-            except json.JSONDecodeError:
-                logger.error(f"Failed to parse Llama 2 response: {response}")
-                return {
-                    "message": "I'm having trouble understanding that. Could you rephrase?",
-                    "data": {}
-                }
-
-            # Check if clarification is needed
-            if parsed_response.get("requires_clarification", False):
-                return {
-                    "message": "I need some clarification:",
-                    "data": {
-                        "questions": parsed_response["clarification_questions"],
-                        "requires_clarification": True
-                    }
-                }
-
-            # Execute the command based on Llama 2's understanding
-            result = await self._execute_command(parsed_response)
-            
-            # Update context
-            self.context_manager.add_to_history(command, result)
-            
-            return result
-
-        except Exception as e:
-            logger.error(f"Error processing command: {e}")
-            return {
-                "message": "I encountered an error processing your request.",
-                "data": {"error": str(e)}
-            }
-
-    async def _execute_command(self, parsed_response: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute the command based on Llama 2's understanding."""
-        intent = parsed_response["intent"]
-        action = parsed_response["action"]
-        entities = parsed_response["entities"]
-        
-        if intent == "task":
-            return await self._handle_task(action, entities)
-        elif intent == "reminder":
-            return await self._handle_reminder(action, entities)
-        elif intent == "calendar":
-            return await self._handle_calendar(action, entities)
-        elif intent == "workspace":
-            return await self._handle_workspace(action, entities)
-        elif intent == "search":
-            return await self._handle_search(action, entities)
-        else:
-            return {
-                "message": "I'm not sure how to help with that. Try asking for 'help'.",
-                "data": {}
-            }
-
-    async def _handle_task(self, action: str, entities: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle task-related commands."""
-        if action == "create":
-            task = Task(
-                title=entities.get("title"),
-                description=entities.get("description"),
-                due_date=datetime.fromisoformat(entities["due_date"]) if entities.get("due_date") else None,
-                priority=entities.get("priority", "MEDIUM"),
-                user_id=self.user_id
+            client = OpenAI(api_key=settings.OPENAI_API_KEY)
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": self._build_prompt(command)}],
+                temperature=0.2,
+                response_format={"type": "json_object"},
             )
-            self.db.add(task)
-            self.db.commit()
+            parsed = json.loads(response.choices[0].message.content)
+        except Exception as e:
+            logger.error(f"Assistant: failed to interpret command '{command}': {e}")
             return {
-                "message": f"I've created a task: {task.title}",
-                "data": {"task_id": str(task.id)}
+                "message": "I'm having trouble understanding that. Could you rephrase?",
+                "data": {},
             }
-        
-        elif action == "list":
-            tasks = self.db.query(Task).filter(
-                Task.user_id == self.user_id
-            ).all()
+
+        return self._execute(parsed)
+
+    def _execute(self, parsed: Dict[str, Any]) -> Dict[str, Any]:
+        intent = parsed.get("intent")
+        action = parsed.get("action")
+        entities = parsed.get("entities") or {}
+
+        if intent == "task":
+            return self._handle_task(action, entities)
+        if intent == "reminder":
+            return self._handle_reminder(action, entities)
+        if intent == "search":
+            query = entities.get("query") or ""
+            return {"message": f"Search isn't wired up yet -- you asked about: {query}", "data": {"query": query}}
+
+        return {
+            "message": "I'm not sure how to help with that yet -- try asking me to create or list a task or a reminder.",
+            "data": {},
+        }
+
+    def _handle_task(self, action: str, entities: Dict[str, Any]) -> Dict[str, Any]:
+        if action == "create":
+            cmd = TaskCommand(
+                workspace_id=self.workspace_id,
+                user_id=self.user_id,
+                title=entities.get("title") or "Untitled task",
+                description=entities.get("description"),
+                priority=entities.get("priority") or "medium",
+            )
+            task = TaskHandler().create_task(cmd)
+            return {
+                "message": f"Created task: {task.title}",
+                "data": {"task_id": str(task.task_id)},
+            }
+
+        if action == "list":
+            tasks = TaskHandler().list_tasks(
+                user_id=self.user_id, workspace_id=self.workspace_id, limit=10
+            )
             return {
                 "message": "Here are your tasks:",
                 "data": {
                     "tasks": [
-                        {
-                            "id": str(t.id),
-                            "title": t.title,
-                            "status": t.status,
-                            "due_date": t.due_date.isoformat() if t.due_date else None
-                        } for t in tasks
+                        {"id": str(t.task_id), "title": t.title, "status": t.status}
+                        for t in tasks
                     ]
-                }
+                },
             }
 
-    async def _handle_reminder(self, action: str, entities: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle reminder-related commands."""
+        return {"message": "I can create or list tasks -- try one of those.", "data": {}}
+
+    def _handle_reminder(self, action: str, entities: Dict[str, Any]) -> Dict[str, Any]:
         if action == "create":
-            reminder = Reminder(
-                message=entities.get("message"),
-                remind_at=datetime.fromisoformat(entities["remind_at"]) if entities.get("remind_at") else None,
-                user_id=self.user_id
+            due_date = entities.get("due_date")
+            cmd = ReminderCommand(
+                workspace_id=self.workspace_id,
+                user_id=self.user_id,
+                title=entities.get("title") or entities.get("description") or "Reminder",
+                due_date=due_date or (datetime.utcnow() + timedelta(hours=1)),
             )
-            self.db.add(reminder)
-            self.db.commit()
+            reminder = ReminderHandler().create_reminder(cmd)
             return {
-                "message": f"I've set a reminder: {reminder.message}",
-                "data": {"reminder_id": str(reminder.id)}
+                "message": f"Set a reminder: {reminder.title}",
+                "data": {"reminder_id": str(reminder.reminder_id)},
             }
-        
-        elif action == "list":
-            reminders = self.db.query(Reminder).filter(
-                Reminder.user_id == self.user_id
-            ).all()
+
+        if action == "list":
+            reminders = ReminderHandler().list_reminders(
+                workspace_id=self.workspace_id, user_id=self.user_id
+            )
             return {
                 "message": "Here are your reminders:",
                 "data": {
                     "reminders": [
-                        {
-                            "id": str(r.id),
-                            "message": r.message,
-                            "remind_at": r.remind_at.isoformat() if r.remind_at else None
-                        } for r in reminders
+                        {"id": str(r.reminder_id), "title": r.title}
+                        for r in reminders
                     ]
-                }
+                },
             }
 
-    async def _handle_calendar(self, action: str, entities: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle calendar-related commands."""
-        # TODO: Implement calendar functionality
-        return {"message": "Calendar functionality coming soon", "data": {}}
-
-    async def _handle_workspace(self, action: str, entities: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle workspace-related commands."""
-        # TODO: Implement workspace functionality
-        return {"message": "Workspace functionality coming soon", "data": {}}
-
-    async def _handle_search(self, action: str, entities: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle search-related commands."""
-        query = entities.get("query", "")
-        # TODO: Implement search across all relevant models
-        return {
-            "message": f"Search results for: {query}",
-            "data": {"query": query}
-        } 
+        return {"message": "I can create or list reminders -- try one of those.", "data": {}}

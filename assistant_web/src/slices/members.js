@@ -14,7 +14,8 @@ export const fetchMembers = createAsyncThunk(
 export const addMember = createAsyncThunk(
   'members/addMember',
   async ({ workspaceId, email, role }) => {
-    const response = await axios.post(`${BACKEND_URL}/api/v1/workspaces/${workspaceId}/members`, {
+    // Real route is .../invite (POST), not .../members -- that path 404'd.
+    const response = await axios.post(`${BACKEND_URL}/api/v1/workspaces/${workspaceId}/invite`, {
       email,
       role
     });
@@ -25,7 +26,8 @@ export const addMember = createAsyncThunk(
 export const removeMember = createAsyncThunk(
   'members/removeMember',
   async ({ workspaceId, memberId }) => {
-    await axios.delete(`${BACKEND_URL}/api/v1/workspaces/${workspaceId}/members/${memberId}`);
+    // Real route is .../users/{user_id} (DELETE), not .../members/{memberId}.
+    await axios.delete(`${BACKEND_URL}/api/v1/workspaces/${workspaceId}/users/${memberId}`);
     return memberId;
   }
 );
@@ -33,7 +35,8 @@ export const removeMember = createAsyncThunk(
 export const updateMemberRole = createAsyncThunk(
   'members/updateMemberRole',
   async ({ workspaceId, memberId, role }) => {
-    const response = await axios.patch(`${BACKEND_URL}/api/v1/workspaces/${workspaceId}/members/${memberId}`, {
+    // Real route is PUT .../users/{user_id}/role, not PATCH .../members/{memberId}.
+    const response = await axios.put(`${BACKEND_URL}/api/v1/workspaces/${workspaceId}/users/${memberId}/role`, {
       role
     });
     return response.data;

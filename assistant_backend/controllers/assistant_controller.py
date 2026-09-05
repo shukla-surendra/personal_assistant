@@ -16,6 +16,7 @@ router = APIRouter(
 class CommandRequest(BaseModel):
     """Request model for assistant commands."""
     command: str
+    workspace_id: str
 
 class CommandResponse(BaseModel):
     """Response model for assistant commands."""
@@ -27,10 +28,11 @@ async def process_command(
     request: CommandRequest,
     user: dict = Depends(get_auth_details)
 ):
-    """Process a natural language command using the agent system."""
+    """Process a natural language command via OpenAI, then execute it
+    against the real Task/Reminder handlers."""
     try:
-        agent = Agent(user.get("user_id"))
-        response = await agent.process_command(request.command)
+        agent = Agent(user.get("user_id"), request.workspace_id)
+        response = agent.process_command(request.command)
         return CommandResponse(**response)
     except Exception as e:
         raise HTTPException(
@@ -38,4 +40,4 @@ async def process_command(
             detail=str(e)
         )
 
-assistant_router = router 
+assistant_router = router

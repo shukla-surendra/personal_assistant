@@ -1,4 +1,3 @@
-import json
 import uuid
 from datetime import datetime, timedelta, timezone
 from passlib.hash import pbkdf2_sha256
@@ -13,32 +12,25 @@ from .models.pg_models import (
 from constants import TaskStatus, TaskType, TaskPriority, UserStatus, UserRoles, UserType
 
 
-def _lexical(*paragraphs: str) -> str:
-    """A Task's `description` for task_type='note'/'quick_note' isn't
-    plain text -- NewNoteDrawer.js/DashboardPage.js's
-    extractTextFromLexicalJSON() JSON.parse() it and walk
-    root.children[].children[].text, expecting the Lexical rich-text
-    editor's serialized state. Plain text here still round-trips fine
-    through the API (it's just a String column), but renders as a blank
-    note in the UI -- JSON.parse throws, caught and swallowed, nothing
-    shown. This builds the minimal valid shape, one paragraph per arg."""
-    return json.dumps({
-        "root": {
-            "children": [
-                {
-                    "children": [
-                        {"detail": 0, "format": 0, "mode": "normal", "style": "", "text": text, "type": "text", "version": 1}
-                    ],
-                    "direction": "ltr", "format": "", "indent": 0, "type": "paragraph", "version": 1,
-                }
-                for text in paragraphs
-            ],
-            "direction": "ltr", "format": "", "indent": 0, "type": "root", "version": 1,
-        }
-    })
+def _html(*paragraphs: str) -> str:
+    """A Task's `description` (any task_type, including 'note'/'quick_note')
+    is Tiptap HTML -- the actual editor everywhere in this app
+    (components/dashboard/editor/RichTextEditor.js, used by both
+    EditTaskDrawer.js and NewNoteDrawer.js/EditNoteDrawer.js) stores/reads
+    HTML strings via editor.getHTML(), not Lexical JSON. This used to be
+    named _lexical() and produce genuine Lexical-shaped JSON, matching
+    what NotesPage.js's list/grid/table previews incorrectly expected at
+    the time (extractTextFromLexicalJSON()) -- that was a fixture-side
+    workaround for a real frontend bug (every note's preview rendered
+    blank against real Tiptap-HTML content, fixtures included). Now that
+    NotesPage.js correctly strips HTML for its previews instead
+    (utils/htmlToText.js), fixture data needs to be real HTML too --
+    otherwise opening one of these notes to actually EDIT it would show
+    the raw JSON text as literal content inside the Tiptap editor."""
+    return "".join(f"<p>{p}</p>" for p in paragraphs)
 
 
-def _seed_workspace_content(db: Session, workspace: Workspace, owner: User, teammate: User):
+def _seed_workspace_content(db: Session, workspace: Workspace, owner: User, teammate: User, designer: User = None, qa_engineer: User = None):
     """Everything that lives INSIDE one workspace -- board, tasks, CRM
     data, docs, chat, etc. Shared by create_fixtures() (seeds the whole
     dev DB, 'Acme Workspace') and create_demo_account() (seeds one fresh
@@ -166,6 +158,7 @@ def _seed_workspace_content(db: Session, workspace: Workspace, owner: User, team
             board_id=board.board_id,
             order=1,
             user_id=owner.user_id,
+            assignee_id=designer.user_id if designer else None,
             title="Add dark mode toggle to settings",
             priority=TaskPriority.LOW.value,
             task_type=TaskType.FEATURE.value,
@@ -323,10 +316,9 @@ def _seed_workspace_content(db: Session, workspace: Workspace, owner: User, team
         # getAllNotes()/getAllQuickNotes()/getAllTimeBlocks(), each a plain
         # GET /tasks?task_type=<x>) -- not separate tables, so each needs
         # its own row here or that screen is empty regardless of how much
-        # other data exists. description uses _lexical() -- the Notes
-        # editor stores/reads Lexical rich-text JSON, not plain text (see
-        # that helper's docstring); plain text here would round-trip fine
-        # through the API but render as a blank note in the UI.
+        # other data exists. description uses _html() -- the Notes editor
+        # (Tiptap) stores/reads HTML, not plain text (see that helper's
+        # docstring for the fixture-side bug this used to paper over).
         Task(
             **task_defaults,
             task_id=uuid.uuid4(),
@@ -334,7 +326,7 @@ def _seed_workspace_content(db: Session, workspace: Workspace, owner: User, team
             board_id=None,
             user_id=owner.user_id,
             title="Demo account design notes",
-            description=_lexical(
+            description=_html(
                 "Kept simple on purpose -- one owner + one teammate, one shared workspace.",
                 "Real signup gives every new user their own default workspace instead.",
             ),
@@ -349,7 +341,7 @@ def _seed_workspace_content(db: Session, workspace: Workspace, owner: User, team
             board_id=None,
             user_id=owner.user_id,
             title="Meeting notes -- kickoff",
-            description=_lexical(
+            description=_html(
                 "Attendees: Demo User, Sam Teammate.",
                 "Agreed: ship the CRM fix first, demo-account feature second.",
                 "Action item: follow up with Northwind Traders by Friday.",
@@ -365,7 +357,7 @@ def _seed_workspace_content(db: Session, workspace: Workspace, owner: User, team
             board_id=None,
             user_id=owner.user_id,
             title="Ideas for next sprint",
-            description=_lexical(
+            description=_html(
                 "Dark mode for the CRM tables.",
                 "Bulk-import contacts from CSV.",
                 "Slack notification when a deal changes stage.",
@@ -381,7 +373,7 @@ def _seed_workspace_content(db: Session, workspace: Workspace, owner: User, team
             board_id=None,
             user_id=owner.user_id,
             title="Remember to check the Activities tab",
-            description=_lexical("Confirm create/edit/delete all still work after the last deploy."),
+            description=_html("Confirm create/edit/delete all still work after the last deploy."),
             priority=TaskPriority.LOW.value,
             task_type=TaskType.QUICK_NOTE.value,
             status=TaskStatus.DONE.value,
@@ -393,7 +385,7 @@ def _seed_workspace_content(db: Session, workspace: Workspace, owner: User, team
             board_id=None,
             user_id=owner.user_id,
             title="Ask Sam about the Globex deal",
-            description=_lexical("They mentioned budget was confirmed -- get the exact number."),
+            description=_html("They mentioned budget was confirmed -- get the exact number."),
             priority=TaskPriority.MEDIUM.value,
             task_type=TaskType.QUICK_NOTE.value,
             status=TaskStatus.TODO.value,
@@ -423,6 +415,164 @@ def _seed_workspace_content(db: Session, workspace: Workspace, owner: User, team
             status=TaskStatus.SCHEDULED.value,
             start_time=now + timedelta(days=1, hours=1),
             end_time=now + timedelta(days=1, hours=2),
+        ),
+        # ---- More time blocks, spread across the rest of the week --------
+        # ReportsPage.js's Schedule Analysis chart only had 2 data points
+        # (both on the same 2 days) before this -- not enough to show a
+        # real "busiest day" or a believable hours-by-day distribution.
+        Task(
+            **task_defaults,
+            task_id=uuid.uuid4(),
+            workspace_id=workspace.workspace_id,
+            board_id=None,
+            user_id=owner.user_id,
+            title="Focus block: reports feature polish",
+            priority=TaskPriority.MEDIUM.value,
+            task_type=TaskType.TIME_BLOCK.value,
+            status=TaskStatus.SCHEDULED.value,
+            start_time=now + timedelta(days=2, hours=3),
+            end_time=now + timedelta(days=2, hours=5),
+        ),
+        Task(
+            **task_defaults,
+            task_id=uuid.uuid4(),
+            workspace_id=workspace.workspace_id,
+            board_id=None,
+            user_id=owner.user_id,
+            title="Focus block: customer calls",
+            priority=TaskPriority.HIGH.value,
+            task_type=TaskType.TIME_BLOCK.value,
+            status=TaskStatus.SCHEDULED.value,
+            start_time=now + timedelta(days=3, hours=1),
+            end_time=now + timedelta(days=3, hours=2, minutes=30),
+        ),
+        Task(
+            **task_defaults,
+            task_id=uuid.uuid4(),
+            workspace_id=workspace.workspace_id,
+            board_id=None,
+            user_id=owner.user_id,
+            title="Focus block: code review catch-up",
+            priority=TaskPriority.MEDIUM.value,
+            task_type=TaskType.TIME_BLOCK.value,
+            status=TaskStatus.SCHEDULED.value,
+            start_time=now + timedelta(days=4, hours=4),
+            end_time=now + timedelta(days=4, hours=6),
+        ),
+        Task(
+            **task_defaults,
+            task_id=uuid.uuid4(),
+            workspace_id=workspace.workspace_id,
+            board_id=None,
+            user_id=owner.user_id,
+            title="Focus block: architecture doc writing",
+            priority=TaskPriority.LOW.value,
+            task_type=TaskType.TIME_BLOCK.value,
+            status=TaskStatus.SCHEDULED.value,
+            start_time=now + timedelta(days=5, hours=2),
+            end_time=now + timedelta(days=5, hours=5),
+        ),
+        # ---- Historical tasks, backdated across the last 6 weeks --------
+        # Everything above gets created_at defaulted to "now" (fixture-seed
+        # time), so ReportsPage.js's Performance Trends chart (completion
+        # rate per week, last 6 weeks) would show 0% for 5 of its 6 buckets
+        # and one artificially-high "this week" spike -- not a believable
+        # trend. Explicit created_at/updated_at here backdates a realistic
+        # spread of completed + still-open work across each week.
+        Task(
+            **task_defaults, task_id=uuid.uuid4(), workspace_id=workspace.workspace_id, board_id=None,
+            user_id=owner.user_id, title="Migrate CI to GitHub Actions",
+            description=_html("The old Jenkins pipeline was flaky and slow to iterate on -- every config change meant a 20-minute round trip to find out if the YAML was even valid."),
+            priority=TaskPriority.HIGH.value, task_type=TaskType.TASK.value, status=TaskStatus.DONE.value,
+            completed=True, created_at=now - timedelta(weeks=6, days=2), updated_at=now - timedelta(weeks=6),
+        ),
+        Task(
+            **task_defaults, task_id=uuid.uuid4(), workspace_id=workspace.workspace_id, board_id=None,
+            user_id=owner.user_id, title="Audit unused npm dependencies",
+            priority=TaskPriority.LOW.value, task_type=TaskType.TASK.value, status=TaskStatus.TODO.value,
+            created_at=now - timedelta(weeks=6, days=1),
+        ),
+        Task(
+            **task_defaults, task_id=uuid.uuid4(), workspace_id=workspace.workspace_id, board_id=None,
+            user_id=owner.user_id, title="Set up error tracking with Sentry",
+            description=_html("We were finding out about production errors from users, not from monitoring -- that's backwards."),
+            priority=TaskPriority.MEDIUM.value, task_type=TaskType.TASK.value, status=TaskStatus.DONE.value,
+            completed=True, created_at=now - timedelta(weeks=5, days=3), updated_at=now - timedelta(weeks=5, days=1),
+        ),
+        Task(
+            **task_defaults, task_id=uuid.uuid4(), workspace_id=workspace.workspace_id, board_id=None,
+            user_id=owner.user_id, title="Rewrite auth middleware to use refresh tokens",
+            description=_html("The old implementation never rotated tokens -- a stolen access token was valid forever, with no way to revoke it short of rotating the signing secret for every user at once."),
+            priority=TaskPriority.HIGH.value, task_type=TaskType.BUG.value, status=TaskStatus.DONE.value,
+            completed=True, created_at=now - timedelta(weeks=4, days=4), updated_at=now - timedelta(weeks=4),
+        ),
+        Task(
+            **task_defaults, task_id=uuid.uuid4(), workspace_id=workspace.workspace_id, board_id=None,
+            user_id=owner.user_id, title="Evaluate Postgres read replicas",
+            priority=TaskPriority.MEDIUM.value, task_type=TaskType.TASK.value, status=TaskStatus.TODO.value,
+            created_at=now - timedelta(weeks=4, days=2),
+        ),
+        Task(
+            **task_defaults, task_id=uuid.uuid4(), workspace_id=workspace.workspace_id, board_id=None,
+            user_id=owner.user_id, title="Deprecate the old /v0 API routes",
+            priority=TaskPriority.LOW.value, task_type=TaskType.TASK.value, status=TaskStatus.BLOCKED.value,
+            created_at=now - timedelta(weeks=4),
+        ),
+        Task(
+            **task_defaults, task_id=uuid.uuid4(), workspace_id=workspace.workspace_id, board_id=None,
+            user_id=owner.user_id, title="Add rate limiting to the public API",
+            description=_html("One misbehaving script was enough to degrade the API for every other tenant -- there was nothing stopping it."),
+            priority=TaskPriority.HIGH.value, task_type=TaskType.FEATURE.value, status=TaskStatus.DONE.value,
+            completed=True, created_at=now - timedelta(weeks=2, days=3), updated_at=now - timedelta(weeks=2, days=1),
+        ),
+        Task(
+            **task_defaults, task_id=uuid.uuid4(), workspace_id=workspace.workspace_id, board_id=None,
+            user_id=owner.user_id, assignee_id=qa_engineer.user_id if qa_engineer else None,
+            title="Write load tests for the checkout flow",
+            priority=TaskPriority.MEDIUM.value, task_type=TaskType.TASK.value, status=TaskStatus.IN_PROGRESS.value,
+            created_at=now - timedelta(weeks=2, days=1),
+        ),
+        Task(
+            **task_defaults, task_id=uuid.uuid4(), workspace_id=workspace.workspace_id, board_id=None,
+            user_id=owner.user_id, title="Fix memory leak in the background worker",
+            description=_html("Memory climbs steadily under load and never comes back down until the pod is restarted -- looks like a retained reference in the queue consumer's message-processing loop."),
+            priority=TaskPriority.URGENT.value, task_type=TaskType.BUG.value, status=TaskStatus.TODO.value,
+            created_at=now - timedelta(weeks=2),
+        ),
+        # ---- Daily-spread completions, last 5 days -----------------------
+        # Task Completion's own trend chart is daily (not weekly) over the
+        # last 7 days -- without these, everything completed "today" piles
+        # onto one bar and the other 6 days show zero.
+        Task(
+            **task_defaults, task_id=uuid.uuid4(), workspace_id=workspace.workspace_id, board_id=None,
+            user_id=owner.user_id, title="Rotate the staging DB credentials",
+            priority=TaskPriority.MEDIUM.value, task_type=TaskType.TASK.value, status=TaskStatus.DONE.value,
+            completed=True, created_at=now - timedelta(days=5), updated_at=now - timedelta(days=5),
+        ),
+        Task(
+            **task_defaults, task_id=uuid.uuid4(), workspace_id=workspace.workspace_id, board_id=None,
+            user_id=owner.user_id, title="Update the onboarding checklist",
+            priority=TaskPriority.LOW.value, task_type=TaskType.TASK.value, status=TaskStatus.DONE.value,
+            completed=True, created_at=now - timedelta(days=4), updated_at=now - timedelta(days=4),
+        ),
+        Task(
+            **task_defaults, task_id=uuid.uuid4(), workspace_id=workspace.workspace_id, board_id=None,
+            user_id=owner.user_id, title="Reply to customer escalation on Zendesk",
+            description=_html("Northwind Traders' integration broke after our last deploy -- walked them through a workaround and filed the real fix as a bug."),
+            priority=TaskPriority.HIGH.value, task_type=TaskType.TASK.value, status=TaskStatus.DONE.value,
+            completed=True, created_at=now - timedelta(days=3), updated_at=now - timedelta(days=3),
+        ),
+        Task(
+            **task_defaults, task_id=uuid.uuid4(), workspace_id=workspace.workspace_id, board_id=None,
+            user_id=owner.user_id, title="Pair with Sam on the CRM bug",
+            priority=TaskPriority.MEDIUM.value, task_type=TaskType.TASK.value, status=TaskStatus.DONE.value,
+            completed=True, created_at=now - timedelta(days=2), updated_at=now - timedelta(days=2),
+        ),
+        Task(
+            **task_defaults, task_id=uuid.uuid4(), workspace_id=workspace.workspace_id, board_id=None,
+            user_id=owner.user_id, title="Cut the v1.3 release branch",
+            priority=TaskPriority.HIGH.value, task_type=TaskType.TASK.value, status=TaskStatus.DONE.value,
+            completed=True, created_at=now - timedelta(days=1), updated_at=now - timedelta(days=1),
         ),
     ]
     db.add_all(tasks)
@@ -851,6 +1001,7 @@ def create_fixtures(db: Session):
             password_hash=pbkdf2_sha256.hash("Admin@123"),
             first_name="Ada",
             last_name="Admin",
+            avatar_url="https://i.pravatar.cc/300?img=5",
             status=UserStatus.ACTIVE.value,
             role=UserRoles.ADMIN.value,
             user_type=UserType.PREMIUM.value,
@@ -862,6 +1013,7 @@ def create_fixtures(db: Session):
             password_hash=pbkdf2_sha256.hash("Member@123"),
             first_name="Mia",
             last_name="Member",
+            avatar_url="https://i.pravatar.cc/300?img=25",
             status=UserStatus.ACTIVE.value,
             role=UserRoles.USER.value,
             user_type=UserType.FREE.value,
@@ -873,6 +1025,7 @@ def create_fixtures(db: Session):
             password_hash=pbkdf2_sha256.hash("Guest@123"),
             first_name="Gus",
             last_name="Guest",
+            avatar_url="https://i.pravatar.cc/300?img=51",
             status=UserStatus.ACTIVE.value,
             role=UserRoles.GUEST.value,
             user_type=UserType.FREE.value,
@@ -974,6 +1127,17 @@ def create_demo_account(db: Session):
     """
     suffix = uuid.uuid4().hex[:8]
 
+    # Real, stable, freely-hotlinkable photo placeholders (i.pravatar.cc) --
+    # referenced directly by URL, not downloaded and re-uploaded to our own
+    # Azure Blob storage. Deliberate: fixture seeding runs synchronously on
+    # every real "Try Demo" click (a live, user-facing request), so making
+    # it depend on fetching external images over the network would mean any
+    # hiccup reaching that host slows down or breaks a real visitor's demo
+    # signup. This is the same category of choice already made elsewhere in
+    # this app -- get_workspace_members() (handlers/workspace_handlers.py)
+    # already hands back a ui-avatars.com URL rather than storing a file --
+    # just swapping a generated-initials avatar for a real-looking stock
+    # photo for the users that already have a persisted avatar_url column.
     owner = User(
         user_id=uuid.uuid4(),
         email=f"demo-{suffix}@example.com",
@@ -983,6 +1147,7 @@ def create_demo_account(db: Session):
         password_hash=pbkdf2_sha256.hash(uuid.uuid4().hex),
         first_name="Demo",
         last_name="User",
+        avatar_url="https://i.pravatar.cc/300?img=12",
         status=UserStatus.ACTIVE.value,
         role=UserRoles.ADMIN.value,
         user_type=UserType.FREE.value,
@@ -994,12 +1159,42 @@ def create_demo_account(db: Session):
         password_hash=pbkdf2_sha256.hash(uuid.uuid4().hex),
         first_name="Sam",
         last_name="Teammate",
+        avatar_url="https://i.pravatar.cc/300?img=33",
         status=UserStatus.ACTIVE.value,
         role=UserRoles.USER.value,
         user_type=UserType.FREE.value,
         is_email_verified=True,
     )
-    db.add_all([owner, teammate])
+    # A couple more dummy members, purely so the Members page
+    # (MembersPage.js, now actually functional -- see the invite/role/
+    # remove fixes earlier this session) has more than one teammate to
+    # show, and so Board/Task assignee fields have a wider real cast than
+    # just "Sam Teammate" every time.
+    designer = User(
+        user_id=uuid.uuid4(),
+        email=f"demo-designer-{suffix}@example.com",
+        password_hash=pbkdf2_sha256.hash(uuid.uuid4().hex),
+        first_name="Priya",
+        last_name="Patel",
+        avatar_url="https://i.pravatar.cc/300?img=47",
+        status=UserStatus.ACTIVE.value,
+        role=UserRoles.USER.value,
+        user_type=UserType.FREE.value,
+        is_email_verified=True,
+    )
+    qa_engineer = User(
+        user_id=uuid.uuid4(),
+        email=f"demo-qa-{suffix}@example.com",
+        password_hash=pbkdf2_sha256.hash(uuid.uuid4().hex),
+        first_name="Jordan",
+        last_name="Kim",
+        avatar_url="https://i.pravatar.cc/300?img=68",
+        status=UserStatus.ACTIVE.value,
+        role=UserRoles.USER.value,
+        user_type=UserType.FREE.value,
+        is_email_verified=True,
+    )
+    db.add_all([owner, teammate, designer, qa_engineer])
     db.commit()
 
     workspace = Workspace(
@@ -1018,14 +1213,22 @@ def create_demo_account(db: Session):
     db.execute(workspace_users.insert().values(
         workspace_id=workspace.workspace_id, user_id=teammate.user_id, role="member"
     ))
+    db.execute(workspace_users.insert().values(
+        workspace_id=workspace.workspace_id, user_id=designer.user_id, role="member"
+    ))
+    db.execute(workspace_users.insert().values(
+        workspace_id=workspace.workspace_id, user_id=qa_engineer.user_id, role="member"
+    ))
     db.commit()
 
     db.add_all([
         UserSettings(user_id=owner.user_id, workspace_id=workspace.workspace_id, theme="light", language="en", timezone="UTC"),
         UserSettings(user_id=teammate.user_id, workspace_id=workspace.workspace_id, theme="light", language="en", timezone="UTC"),
+        UserSettings(user_id=designer.user_id, workspace_id=workspace.workspace_id, theme="light", language="en", timezone="UTC"),
+        UserSettings(user_id=qa_engineer.user_id, workspace_id=workspace.workspace_id, theme="light", language="en", timezone="UTC"),
     ])
     db.commit()
 
-    _seed_workspace_content(db, workspace, owner=owner, teammate=teammate)
+    _seed_workspace_content(db, workspace, owner=owner, teammate=teammate, designer=designer, qa_engineer=qa_engineer)
 
     return owner, workspace

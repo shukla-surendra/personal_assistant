@@ -20,7 +20,7 @@ async def create_comment(command: CommentCommand, workspace_id: str, user: dict 
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.put("/{comment_id}", response_model=CommentDto)
-async def update_comment(comment_id: str, command: CommentUpdateCommand):
+async def update_comment(comment_id: str, workspace_id: str, command: CommentUpdateCommand, user: dict = Depends(get_auth_details)):
     handler = CommentHandler()
     try:
         command.comment_id = comment_id
@@ -32,7 +32,7 @@ async def update_comment(comment_id: str, command: CommentUpdateCommand):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.delete("/{comment_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_comment(comment_id: str, workspace_id: str):
+async def delete_comment(comment_id: str, workspace_id: str, user: dict = Depends(get_auth_details)):
     handler = CommentHandler()
     try:
         command = CommentDeleteCommand(comment_id=comment_id, workspace_id=workspace_id)
@@ -43,7 +43,7 @@ async def delete_comment(comment_id: str, workspace_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/{comment_id}", response_model=CommentDto)
-async def get_comment(comment_id: str):
+async def get_comment(comment_id: str, workspace_id: str, user: dict = Depends(get_auth_details)):
     handler = CommentHandler()
     try:
         comment = handler.get_comment(comment_id)
@@ -57,7 +57,7 @@ async def get_comment(comment_id: str):
 async def list_comments(workspace_id: str, task_id: str, user: dict = Depends(get_auth_details)):
     handler = CommentHandler()
     try:
-        comments = handler.list_comments(workspace_id, task_id, user.get("user_id"))
+        comments = handler.list_comments(workspace_id, task_id)
         return [CommentDtoMapper.map_to_comment_dto(comment) for comment in comments]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

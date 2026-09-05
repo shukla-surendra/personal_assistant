@@ -38,7 +38,8 @@ from controllers import (
     assistant_router,
     workspace_router,
     users_router,
-    queue_router
+    queue_router,
+    reports_router
 )
 from workers.queue_consumer import run_consumer
 from observability import setup_telemetry
@@ -95,6 +96,7 @@ try:
     app.include_router(workspace_router)
     app.include_router(users_router)
     app.include_router(queue_router)
+    app.include_router(reports_router)
 
     # Configure CORS with environment-based settings
     allowed_origins = settings.ALLOWED_ORIGINS.split(",") if settings.ALLOWED_ORIGINS else []

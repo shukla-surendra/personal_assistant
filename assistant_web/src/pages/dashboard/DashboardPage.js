@@ -129,19 +129,6 @@ export default function DashboardResponsive() {
   const borderColor = useColorModeValue('gray.200', 'gray.700');
   const textColor = useColorModeValue('gray.800', 'gray.200');
 
-  const extractTextFromLexicalJSON = (json) => {
-    if (!json || !json.root || !json.root.children) return '';
-    
-    return json.root.children
-      .map(child => {
-        if (child.type === 'paragraph' && child.children) {
-          return child.children.map(text => text.text).join('');
-        }
-        return '';
-      })
-      .join('\n');
-  };
-
   const TaskCard = React.memo(({ task }) => {
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
 

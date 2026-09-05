@@ -33,32 +33,6 @@ import html2canvas from 'html2canvas';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx';
 import TurndownService from 'turndown';
 
-// Function to extract text from Lexical JSON
-const extractTextFromLexicalJSON = (jsonString) => {
-  try {
-    const content = JSON.parse(jsonString);
-    let text = '';
-    
-    const processNode = (node) => {
-      if (node.text) {
-        text += node.text;
-      }
-      if (node.children) {
-        node.children.forEach(processNode);
-      }
-    };
-    
-    if (content.root && content.root.children) {
-      content.root.children.forEach(processNode);
-    }
-    
-    return text;
-  } catch (error) {
-    console.error('Error parsing Lexical JSON:', error);
-    return '';
-  }
-};
-
 // Note templates
 const NOTE_TEMPLATES = [
   { id: 'meeting', name: 'Meeting Notes', description: 'Template for meeting notes' },

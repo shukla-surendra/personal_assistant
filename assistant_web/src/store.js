@@ -13,6 +13,7 @@ import boardsReducer from './slices/boards';
 import pagesReducer from './slices/pages';
 import remindersReducer from './slices/reminders';
 import databasesReducer from './slices/databases';
+import reportsReducer from './slices/reports';
 
 const store = configureStore({
   reducer: {
@@ -29,7 +30,8 @@ const store = configureStore({
     boards: boardsReducer,
     pages: pagesReducer,
     reminders: remindersReducer,
-    databases: databasesReducer
+    databases: databasesReducer,
+    reports: reportsReducer
   },
   devTools: true,
   middleware: (getDefaultMiddleware) =>

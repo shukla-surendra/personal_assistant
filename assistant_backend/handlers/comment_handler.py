@@ -58,7 +58,7 @@ class CommentHandler:
             if not comment:
                 raise HTTPException(status_code=404, detail="Comment not found")
 
-            self.db.delete(comment)
+            comment.is_deleted = True
             self.db.commit()
             return True
         except SQLAlchemyError as e:
@@ -66,20 +66,31 @@ class CommentHandler:
             logger.error(f"Error deleting comment: {str(e)}")
             raise HTTPException(status_code=500, detail="Failed to delete comment")
 
-    def list_comments(self, workspace_id: str, task_id: str, user_id: str) -> List[Comment]:
-        """List all comments for a specific task"""
+    def list_comments(self, workspace_id: str, task_id: str) -> List[Comment]:
+        """List every comment on a task -- not just the caller's own. A
+        comment thread everyone in the workspace can see is the entire
+        point; filtering by the caller's user_id here (the previous
+        behavior) meant no one ever saw anyone else's comments."""
         try:
             comments = self.db.query(Comment).filter(
                 Comment.workspace_id == UUID(workspace_id),
                 Comment.task_id == UUID(task_id),
-                Comment.user_id == UUID(user_id),
                 Comment.is_deleted == False
             ).order_by(Comment.created_at.desc()).all()
-            
+
             return comments
         except SQLAlchemyError as e:
             logger.error(f"Error listing comments: {str(e)}")
             raise HTTPException(status_code=500, detail="Failed to list comments")
+
+    def get_comment(self, comment_id: str) -> Comment:
+        comment = self.db.query(Comment).filter(
+            Comment.comment_id == UUID(comment_id),
+            Comment.is_deleted == False
+        ).first()
+        if not comment:
+            raise HTTPException(status_code=404, detail="Comment not found")
+        return comment
 
     def __del__(self):
         self.db.close() 
