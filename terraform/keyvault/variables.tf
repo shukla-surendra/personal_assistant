@@ -1,5 +1,5 @@
 variable "resource_group_name" {
-  description = "Must match the aks-infra stage's resource_group_name -- the vault lives alongside the cluster, not in its own RG like container-registry does (ACR is deliberately separate so it survives an AKS teardown; this vault's only consumer IS the AKS workload, so there's no equivalent reason to isolate it)."
+  description = "Must match the container-registry stage's resource_group_name -- the one shared RG for the whole project. The vault lives here too, same as everything else; it's this stage's own Terraform state (not RG placement) that keeps it isolated from an aks-infra teardown -- destroying aks-infra only removes what ITS state manages, never this vault."
   type        = string
   default     = "personal-assistant-learning"
 }
@@ -36,4 +36,16 @@ variable "backend_service_account_name" {
   description = "Must match the ServiceAccount name the Helm chart creates for the backend pod (helm/personal-assistant/templates/serviceaccount-backend.yaml uses `{{ include \"pa.fullname\" . }}-backend`, i.e. \"personal-assistant-backend\" with the chart's default release name)."
   type        = string
   default     = "personal-assistant-backend"
+}
+
+variable "keda_namespace" {
+  description = "Must match the namespace terraform/application's helm_release.keda installs into."
+  type        = string
+  default     = "keda"
+}
+
+variable "keda_service_account_name" {
+  description = "Must match the kedacore/keda chart's serviceAccount.operator.name (default \"keda-operator\" -- not overridden anywhere in this project, see terraform/application/main.tf)."
+  type        = string
+  default     = "keda-operator"
 }

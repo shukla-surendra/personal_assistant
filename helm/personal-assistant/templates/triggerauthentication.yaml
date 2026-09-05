@@ -1,0 +1,23 @@
+{{- if .Values.keda.enabled }}
+# Tells KEDA to poll the queue AS the backend's own Workload Identity --
+# the SAME identity/client ID the backend pod itself uses for Key Vault
+# and Blob (terraform/keyvault's azurerm_user_assigned_identity.backend).
+# Works because that identity has a SECOND federated credential trusting
+# KEDA's own "keda-operator" ServiceAccount (terraform/keyvault's
+# azurerm_federated_identity_credential.keda), in addition to the one
+# trusting this backend pod's ServiceAccount. No stored key either way.
+# v1alpha1, not v2 -- this CRD only serves v1alpha1 in the installed chart
+# version (kedacore/keda 2.20.2), confirmed live via `kubectl get crd
+# triggerauthentications.keda.sh -o jsonpath='{.spec.versions[*].name}'`,
+# not assumed from docs/memory.
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: {{ include "pa.fullname" . }}-queue-auth
+  labels:
+    {{- include "pa.labels" . | nindent 4 }}
+spec:
+  podIdentity:
+    provider: azure-workload
+    identityId: {{ .Values.backend.workloadIdentityClientId | quote }}
+{{- end }}

@@ -52,6 +52,22 @@ resource "azurerm_federated_identity_credential" "backend" {
   subject                   = "system:serviceaccount:${var.backend_service_account_namespace}:${var.backend_service_account_name}"
 }
 
+# A SECOND federated credential on the SAME identity, trusting a totally
+# different ServiceAccount (KEDA's own operator, not the backend pod's).
+# One Azure AD identity can have multiple federated credentials, each
+# trusting a different K8s subject -- this is what lets KEDA poll the
+# queue AS this identity (same role assignment below, reused) without
+# a second identity or any stored credential. Namespace/name match the
+# kedacore/keda chart's default serviceAccount.operator.name -- see
+# terraform/application/main.tf's helm_release.keda.
+resource "azurerm_federated_identity_credential" "keda" {
+  name                      = "personal-assistant-keda-operator"
+  user_assigned_identity_id = azurerm_user_assigned_identity.backend.id
+  audience                  = ["api://AzureADTokenExchange"]
+  issuer                    = var.oidc_issuer_url
+  subject                   = "system:serviceaccount:${var.keda_namespace}:${var.keda_service_account_name}"
+}
+
 # Key Vault Secrets User only -- can read secret VALUES, nothing else.
 # Can't create/delete/list-all secrets, can't touch access policies, can't
 # manage the vault itself. Same least-privilege shape as CI's AcrPush-only
@@ -110,5 +126,35 @@ resource "azurerm_storage_container" "avatars" {
 resource "azurerm_role_assignment" "backend_storage_blob_contributor" {
   scope                = azurerm_storage_account.avatars.id
   role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = azurerm_user_assigned_identity.backend.principal_id
+}
+
+# Job queue for the KEDA scaling test. Same storage account as avatars --
+# a Storage Account natively hosts blob+queue+table+file, no reason to
+# spin up a second account just to isolate two data types this project
+# already treats as equally non-sensitive/low-stakes. "backend-jobs" is
+# the real work queue; "backend-jobs-poison" is a hand-rolled dead-letter
+# queue (Storage Queue has no native DLQ the way Service Bus does -- the
+# consumer itself tracks each message's dequeue_count and moves it here
+# after too many failed attempts, see adapters/queue/azure_queue_storage.py).
+resource "azurerm_storage_queue" "backend_jobs" {
+  name               = "backend-jobs"
+  storage_account_id = azurerm_storage_account.avatars.id
+}
+
+resource "azurerm_storage_queue" "backend_jobs_poison" {
+  name               = "backend-jobs-poison"
+  storage_account_id = azurerm_storage_account.avatars.id
+}
+
+# Storage Queue Data Contributor: read/add/update/delete queue MESSAGES and
+# the queues themselves, nothing account-level -- same shape as the blob
+# role above. One assignment covers both jobs this identity does with
+# queues: the backend pod producing/consuming as itself, and KEDA polling
+# queue length as this same identity (federated_identity_credential.keda
+# above) -- no separate reader role needed for KEDA specifically.
+resource "azurerm_role_assignment" "backend_storage_queue_contributor" {
+  scope                = azurerm_storage_account.avatars.id
+  role_definition_name = "Storage Queue Data Contributor"
   principal_id         = azurerm_user_assigned_identity.backend.principal_id
 }

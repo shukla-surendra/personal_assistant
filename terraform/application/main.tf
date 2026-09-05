@@ -34,14 +34,57 @@ resource "helm_release" "ingress_nginx" {
   }
 }
 
+# Event-driven autoscaling operator, open-source, deployed via Helm --
+# same pattern as ingress-nginx above. Configured with Azure Workload
+# Identity via the chart's own first-class podIdentity.azureWorkload block
+# (sets the label + client-id/tenant-id annotations on KEDA's own
+# "keda-operator" ServiceAccount automatically) rather than a manual
+# kubectl patch after install -- reuses the SAME backend identity the app
+# already uses for Key Vault/Blob (terraform/keyvault's
+# azurerm_federated_identity_credential.keda federates that identity to
+# THIS exact ServiceAccount+namespace). No separate identity, no stored
+# credential either way.
+resource "helm_release" "keda" {
+  name             = "keda"
+  repository       = "https://kedacore.github.io/charts"
+  chart            = "keda"
+  namespace        = "keda"
+  create_namespace = true
+
+  set {
+    name  = "podIdentity.azureWorkload.enabled"
+    value = "true"
+  }
+  set {
+    name  = "podIdentity.azureWorkload.clientId"
+    value = var.backend_workload_identity_client_id
+  }
+  set {
+    name  = "podIdentity.azureWorkload.tenantId"
+    value = var.azure_tenant_id
+  }
+}
+
 resource "helm_release" "personal_assistant" {
-  name  = "personal-assistant"
-  chart = "${path.module}/../../helm/personal-assistant"
+  name             = "personal-assistant"
+  chart            = "${path.module}/../../helm/personal-assistant"
+  # Own namespace, not "default" -- this cluster is meant to host multiple
+  # projects (see the observability stack below, which is genuinely
+  # cluster-wide/shared), so each app gets its own namespace the way a
+  # real multi-tenant cluster would. Must match keyvault's
+  # backend_service_account_namespace (terraform.tfvars) -- the federated
+  # credential's subject is scoped to this exact namespace+ServiceAccount
+  # pair, same gotcha class as the OIDC-issuer one already documented for
+  # cluster recreates.
+  namespace        = "personal-assistant"
+  create_namespace = true
 
   # Waits for ingress-nginx's public IP/LB to exist first -- otherwise the
   # app's own Ingress would be created against an ingress class with no
-  # controller behind it yet.
-  depends_on = [helm_release.ingress_nginx]
+  # controller behind it yet. Also waits for KEDA's CRDs (ScaledObject,
+  # TriggerAuthentication) to be registered before this chart tries to
+  # create resources of those kinds.
+  depends_on = [helm_release.ingress_nginx, helm_release.keda]
 
   set {
     name  = "backend.image.repository"
@@ -105,5 +148,25 @@ resource "helm_release" "personal_assistant" {
   set {
     name  = "backend.env.azureStorageAccountUrl"
     value = var.backend_storage_account_url
+  }
+
+  # Same non-secret pattern as the blob endpoint above, for the KEDA
+  # scaling test's job queue.
+  set {
+    name  = "backend.env.azureStorageQueueUrl"
+    value = var.backend_storage_queue_url
+  }
+  set {
+    name  = "queue.accountName"
+    value = var.storage_account_name
+  }
+  set {
+    name  = "keda.enabled"
+    value = "true"
+  }
+
+  set {
+    name  = "backend.env.otelExporterOtlpEndpoint"
+    value = var.otel_collector_endpoint
   }
 }

@@ -39,6 +39,41 @@ backend:
     # storage account) just means the avatar endpoint isn't usable there.
     azureStorageAccountUrl: ""
     azureStorageContainer: "avatars"
+    # Set (via Terraform's application stage, from the keyvault stage's
+    # storage_account_queue_endpoint output) to enable the KEDA scaling
+    # test's job queue. Same non-secret/Workload-Identity pattern as the
+    # blob URL above. Empty means the queue producer/consumer endpoints
+    # are unusable (e.g. minikube) -- nothing else in the app depends on it.
+    azureStorageQueueUrl: ""
+    # Set (via Terraform's application stage) to the shared, cluster-wide
+    # OTel Collector's OTLP HTTP endpoint (terraform/observability) --
+    # not this app's own resource, same "infra side, not app side" shape
+    # as everything else in that stage. Empty disables instrumentation
+    # entirely (see assistant_backend/observability.py's graceful-absence
+    # check), e.g. on minikube where there's no observability stack at all.
+    otelExporterOtlpEndpoint: ""
+
+# Only used when keda.enabled is true -- KEDA's azure-queue scaler trigger
+# needs the bare account name (not a URL) plus which queue to watch.
+queue:
+  accountName: ""
+  name: "backend-jobs"
+  poisonName: "backend-jobs-poison"
+
+# Off by default (e.g. minikube, or before terraform/application's
+# helm_release.keda has installed KEDA's CRDs) -- turning this on renders
+# templates/scaledobject.yaml + templates/triggerauthentication.yaml,
+# which the API server will reject if the ScaledObject/TriggerAuthentication
+# CRDs don't exist yet.
+keda:
+  enabled: false
+  minReplicaCount: 1
+  maxReplicaCount: 5
+  # KEDA target: desired replicas = ceil(queue length / queueLength). At 5,
+  # 12 queued messages -> 3 replicas (capped at maxReplicaCount).
+  queueLength: 5
+  pollingInterval: 10   # seconds between KEDA checking queue length
+  cooldownPeriod: 60    # seconds queue must stay empty before scaling back to minReplicaCount
 
 frontend:
   image:

@@ -23,24 +23,39 @@ container-registry/  →  aks-infra/  →  keyvault/  →  application/
 ```
 
 Why split at all (this is the one thing worth understanding before
-anything else): **an Azure resource group is a deletion blast radius.**
-`terraform destroy` on a stage usually means "delete this stage's resource
-group," and that cascades to *everything* inside it regardless of which
-Terraform state owns which resource. If ACR lived in the same RG as the
-AKS cluster, tearing down the cluster to save money mid-week would take
-your pushed images with it. So the registry gets its own RG
-(`personal-assistant-registry`), and everything cluster-related gets a
-second RG (`personal-assistant-learning`). This is a genuinely different
-mental model from AWS, where resource groups are just tags with no
-deletion semantics — in Azure the RG boundary *is* the blast-radius
-boundary.
+anything else): **as of 2026-09-05 everything lives in ONE resource group**
+(`personal-assistant-learning`) — a deliberate constraint, not the
+original design. The original design used *two* RGs and leaned on "an
+Azure resource group is a deletion blast radius": `terraform destroy` on
+a stage usually means "delete this stage's resource group," and that
+cascades to everything inside it regardless of which Terraform state owns
+which resource, so ACR got its own RG to survive a cluster teardown.
 
-## Stage 1 — `container-registry/`: the one thing that outlives everything else
+Consolidating to one RG meant moving that blast-radius boundary somewhere
+else: **the boundary is now which Terraform *state* owns a resource, not
+which RG it sits in.** `container-registry/` is the only stage that
+actually *creates* the resource group (`resource "azurerm_resource_group"
+"this"`) — every later stage (`aks-infra`, `keyvault`, `application`)
+reads the same RG via a **`data "azurerm_resource_group"`** block instead.
+A `data` source is read-only: `terraform destroy` against a stage using it
+can never delete the RG or anything a different stage's state manages
+inside it, because there's nothing there for that destroy to act on. So
+`terraform destroy` on `aks-infra` still only removes the cluster, VNet,
+and budget it actually owns — ACR (and, now, Key Vault too) survives
+exactly as before, just via state isolation instead of RG isolation. This
+is still a genuinely different mental model from AWS, where resource
+groups are just tags with no deletion semantics at all — in Azure an RG
+you *own* is still a real blast-radius boundary, it's just no longer the
+*only* one available.
+
+## Stage 1 — `container-registry/`: creates the one shared resource group
 
 ```hcl
-azurerm_resource_group.this        # "personal-assistant-registry"
+azurerm_resource_group.this        # "personal-assistant-learning" -- the ONLY
+                                    #    stage that creates this; everyone else
+                                    #    reads it via a data source
 azurerm_container_registry.this    # sku = Basic, admin_enabled = false
-random_string.acr_suffix           # -> "personalassistantfoylsi" (ACR names
+random_string.acr_suffix           # -> e.g. "personalassistant7qkzxh" (ACR names
                                     #    are globally unique, like S3 buckets)
 ```
 
@@ -54,7 +69,7 @@ namespaces, ECR is the reverse).
 ## Stage 2 — `aks-infra/`: the cluster, its network, its money guardrail
 
 ```hcl
-azurerm_resource_group.this            # "personal-assistant-learning"
+data.azurerm_resource_group.this       # reads Stage 1's RG -- doesn't create one
 azurerm_virtual_network.this           # 10.10.0.0/16
 azurerm_subnet.aks                     # 10.10.1.0/24 -- the node's real VNet range
 azurerm_kubernetes_cluster.this        # the cluster itself
@@ -127,14 +142,21 @@ Two `helm_release` resources, applied in order (`depends_on`):
 
 1. **`ingress_nginx`** — this is the resource that actually gets you a
    public IP. Its Service is `type: LoadBalancer`, which is what triggers
-   AKS's `cloud-controller-manager` to provision a real
-   `Microsoft.Network/loadBalancers` resource behind the scenes — not a
-   pod, a genuine separate Azure object, sitting in a *third*,
-   auto-managed resource group
+   AKS's `cloud-controller-manager` to add a **second frontend IP
+   configuration** to the cluster's existing `Microsoft.Network/loadBalancers`
+   resource (named `kubernetes`) — not a new LB, the same Standard LB that
+   was already there from cluster creation for default outbound SNAT
+   traffic (confirmed live, 2026-09-05: that LB had exactly one frontend IP
+   right after `aks-infra` applied, before `application/` ever ran; a
+   second appeared only once ingress-nginx's Service existed). Either way
+   it's a genuine separate Azure object, not a pod — sitting in a
+   *second*, auto-managed resource group
    (`MC_personal-assistant-learning_personal-assistant-aks_eastus`) that
-   AKS creates for itself. `architecture.md` walks the full LB → NodePort
-   → kube-proxy → pod path live, with real IPs — the best doc in the repo
-   for "how does a packet actually get to my pod."
+   AKS creates for itself regardless of how many resource groups the
+   Terraform in this repo uses (see the note at the very bottom of this
+   doc). `architecture.md` walks the full LB → NodePort → kube-proxy → pod
+   path live, with real IPs — the best doc in the repo for "how does a
+   packet actually get to my pod."
 2. **`personal_assistant`** — the app's own chart, pointed at Stage 1's
    ACR (`backend.image.repository`), wired to Stage 3's Key Vault by three
    *non-secret* values (`workloadIdentityClientId`, vault name, tenant ID
@@ -156,6 +178,25 @@ resources. This exists purely so GitHub Actions can push images to ACR
 without a stored secret, using the same OIDC-federation pattern as
 Stage 3, just federated to GitHub's issuer instead of AKS's.
 
+## "One resource group" has a limit: the `MC_*` group is not optional
+
+Consolidating Stages 1-4 into `personal-assistant-learning` (see "Why split
+at all" above) covers every resource this repo's Terraform actually
+creates. It does **not** cover one thing: AKS itself, unconditionally,
+creates a second resource group per cluster —
+`MC_<rg>_<cluster-name>_<region>` — to hold the worker node's real Azure
+objects: the VM Scale Set backing the node pool, its NSG, its route table
+(kubenet needs one, since pod IPs aren't natively routable on the VNet),
+and the Standard Load Balancer + public IP(s) for outbound SNAT and any
+`type: LoadBalancer` Service. There is no `azurerm_kubernetes_cluster`
+argument to suppress this or fold it into the primary RG — it's a
+structural fact of how AKS provisions node infrastructure, not a Terraform
+design choice. "One resource group" is accurate for everything under this
+project's control; a second, Azure-managed one for the node pool exists
+regardless. See `AKS_DEPLOYMENT_GUIDE.md`'s 2026-09-05 entry for the live
+`az resource list` output against both RGs, and the control-plane vs.
+worker-node breakdown that goes with it.
+
 ## What Helm adds on top (not Terraform's job)
 
 `helm/personal-assistant/templates/` is where the 4 pods, their Services,
@@ -173,6 +214,7 @@ pod label is required or the identity webhook silently ignores the pod.
 | How does a request actually get from my browser to a pod? | `docs/architecture.md` |
 | Why does this Terraform look the way it does vs. the AWS way I know? | `docs/AWS_vs_AZURE_PERMISSIONS.md` |
 | What do I actually run, in what order, and how do I tear it down without a surprise bill? | `AKS_DEPLOYMENT_GUIDE.md` |
+| Where do traces/metrics/logs go, and why does the observability stack look the way it does? | `docs/observability.md` |
 
 `AWS_vs_AZURE_PERMISSIONS.md` ends with four questions ("say these back
 before we run `terraform apply` for real") — a good self-check once this

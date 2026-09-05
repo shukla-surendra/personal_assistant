@@ -67,7 +67,35 @@ class Settings(BaseSettings):
     # through. Defaults to AZURE_STORAGE_ACCOUNT_URL, which already is
     # publicly reachable in AKS.
     AZURE_STORAGE_PUBLIC_BASE_URL: Optional[str] = os.getenv("AZURE_STORAGE_PUBLIC_BASE_URL")
-    
+
+    # KEDA scaling-test job queue (same account as avatars -- a Storage
+    # Account hosts blob+queue+table+file). AZURE_STORAGE_QUEUE_URL is the
+    # queue-service endpoint (https://<acct>.queue.core.windows.net),
+    # distinct from AZURE_STORAGE_ACCOUNT_URL's blob-service endpoint --
+    # same account, different service. Empty means the queue
+    # producer/consumer/background poller are all inert (adapters/queue's
+    # QUEUE_AVAILABLE flag), same graceful-absence pattern as blob storage.
+    AZURE_STORAGE_QUEUE_URL: Optional[str] = os.getenv("AZURE_STORAGE_QUEUE_URL")
+    AZURE_STORAGE_QUEUE_NAME: str = os.getenv("AZURE_STORAGE_QUEUE_NAME", "backend-jobs")
+    AZURE_STORAGE_QUEUE_POISON_NAME: str = os.getenv("AZURE_STORAGE_QUEUE_POISON_NAME", "backend-jobs-poison")
+    # SQS-style maxReceiveCount: a message dequeued more than this many
+    # times without being deleted (i.e. processing keeps failing) gets
+    # moved to the poison queue instead of retried forever.
+    AZURE_QUEUE_MAX_DELIVERY_COUNT: int = int(os.getenv("AZURE_QUEUE_MAX_DELIVERY_COUNT", "5"))
+    # How long a received-but-unprocessed message stays invisible to other
+    # consumers before it's eligible for redelivery -- SQS calls this the
+    # same thing. Must comfortably exceed how long processing actually
+    # takes, or a still-in-progress message gets picked up by a second
+    # consumer too.
+    AZURE_QUEUE_VISIBILITY_TIMEOUT_SECONDS: int = int(os.getenv("AZURE_QUEUE_VISIBILITY_TIMEOUT_SECONDS", "30"))
+
+    # Traces + metrics -> the shared OTel Collector (terraform/observability),
+    # a cluster-wide service, not something this app owns. Empty means
+    # instrumentation never activates (see observability.py's OTEL_AVAILABLE
+    # check) -- same graceful-absence pattern as the queue/blob settings above.
+    OTEL_EXPORTER_OTLP_ENDPOINT: Optional[str] = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+    OTEL_SERVICE_NAME: str = os.getenv("OTEL_SERVICE_NAME", "personal-assistant-backend")
+
     # Sentry
     SENTRY_DSN: Optional[str] = os.getenv("SENTRY_DSN")
     

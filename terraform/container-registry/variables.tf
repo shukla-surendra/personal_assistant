@@ -1,7 +1,7 @@
 variable "resource_group_name" {
-  description = "Deliberately its OWN resource group, separate from aks-infra's -- the whole point of this stage is that ACR survives an AKS cluster teardown/recreate. If this lived in the same RG as the cluster, destroying that RG would take ACR (and every image in it) down with it, regardless of which Terraform state manages which resource."
+  description = "The ONE resource group for the whole project -- created here because this is the stage that always applies first and is never casually torn down mid-week. Every other stage (aks-infra, keyvault, application) reads this same RG via a `data \"azurerm_resource_group\"` block instead of creating its own, so there's a single RG in the subscription rather than one-per-stage. ACR still survives an AKS teardown/recreate -- not via RG isolation anymore, but because aks-infra's `terraform destroy` only touches resources ITS OWN state manages (a `data` source is read-only; destroying the state that reads it can't delete the real resource behind it)."
   type        = string
-  default     = "personal-assistant-registry"
+  default     = "personal-assistant-learning"
 }
 
 variable "location" {

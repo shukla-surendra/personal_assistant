@@ -1,13 +1,7 @@
 variable "resource_group_name" {
-  description = "Resource group that holds every resource this config creates -- deleting it deletes everything, which is the whole teardown story."
+  description = "Must match the container-registry stage's resource_group_name -- that stage creates the one shared RG for the whole project (applied first); this stage only reads it via a data source, it doesn't own it. Region comes from that RG too (see container-registry/variables.tf's `location`), which is why there's no separate `location` variable here anymore."
   type        = string
   default     = "personal-assistant-learning"
-}
-
-variable "location" {
-  description = "Azure region. eastus is usually the cheapest/most available for burstable B-series VMs; check your subscription's quota if this fails."
-  type        = string
-  default     = "eastus"
 }
 
 variable "cluster_name" {

@@ -15,3 +15,4 @@ from .activity_controller import activity_router
 from .public_controller import public_router
 from .assistant_controller import assistant_router
 from .database_controller import database_router
+from .queue_controller import queue_router

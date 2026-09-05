@@ -28,12 +28,18 @@ terraform/application/          ingress-nginx + the app itself, on top of
 OIDC-federated image-build identity -- optional, not part of this
 core runbook. See its own resources for details.)
 
-The registry is deliberately its own stage, in its **own resource group**,
-separate from the cluster's. If ACR lived in the same resource group as the
-AKS cluster, destroying that resource group (the normal teardown/recreate
-move) would take every pushed image down with it — Azure resource group
-deletion cascades to everything inside it, regardless of which Terraform
-state manages which resource.
+The registry is still its own stage, but as of 2026-09-05 it's no longer
+its own resource group -- everything now lives in **one shared RG**
+(`personal-assistant-learning`), which `container-registry/` creates and
+every other stage reads via a Terraform `data` source instead of creating
+its own. The protection this used to get from RG isolation (destroying the
+cluster's RG can't be allowed to take ACR down with it) now comes from
+**state** isolation instead: a `data` source is read-only, so
+`terraform destroy` against `aks-infra` can only remove what `aks-infra`'s
+own state manages (VNet, cluster, budget) -- it has no ability to delete
+the RG or anything a different stage created inside it, ACR included. See
+the 2026-09-05 entry near the bottom of this doc for the full rebuild and
+why this changed.
 
 ## What gets built, and roughly what it costs for one week
 
@@ -77,8 +83,11 @@ minikube deployment earlier).
 
 ## Step 1 — Container registry (`terraform/container-registry/`), apply once
 
-Creates: its own resource group (`personal-assistant-registry` by default)
-+ an ACR (Basic tier). Nothing here references the AKS cluster at all.
+Creates: the one shared resource group for the whole project
+(`personal-assistant-learning` by default) + an ACR (Basic tier). Nothing
+here references the AKS cluster at all -- this stage just happens to be
+where the shared RG gets created, because it's always applied first and
+is never casually torn down mid-week.
 
 ```bash
 cd terraform/container-registry
@@ -122,8 +131,7 @@ per-minute compute charge, negligible for images this size.)
 
 ## Step 3 — Cluster infrastructure (`terraform/aks-infra/`)
 
-Creates: its own resource group (`personal-assistant-learning` by default),
-VNet+subnet, AKS cluster (Free tier, 1x `Standard_D2s_v7` — see the cost
+Creates: VNet+subnet, AKS cluster (Free tier, 1x `Standard_D2s_v7` — see the cost
 table above for why this isn't `Standard_B2s` as originally planned), an
 `AcrPull` role assignment against Step 1's ACR (so AKS can pull images
 without stored credentials), and an Azure Budget with email alerts at
@@ -310,25 +318,34 @@ or `helm upgrade` with `--set ingress.rateLimit.requestsPerSecond=<n>`.
 ## Monitoring cost during the week
 
 - Azure Portal → **Cost Management + Billing → Cost analysis**, scoped to
-  the `personal-assistant-learning` **and** `personal-assistant-registry`
-  resource groups — check daily, costs lag by ~24-48h so don't expect
-  same-day numbers.
+  the `personal-assistant-learning` resource group (as of 2026-09-05 this
+  is the only one this project's Terraform creates; also check the
+  AKS-managed `MC_personal-assistant-learning_personal-assistant-aks_eastus`
+  pair, since the node VM/LB/public IP costs live there) — check daily,
+  costs lag by ~24-48h so don't expect same-day numbers.
 - The budget alerts from Step 3 email you at 50/80/100% of `budget_amount_usd`.
 - `az consumption usage list --output table` for a CLI-side check.
 
-## Recreating just the cluster mid-week (keeping the registry)
+## Recreating just the cluster mid-week (keeping the registry AND the vault)
 
-The whole point of the multi-stage split. To tear down and rebuild the
-cluster without touching your pushed images:
+As of 2026-09-05, `keyvault` no longer needs destroying before `aks-infra`
+-- see the gotcha below for why. It still needs *reapplying* afterward,
+just not destroying first:
 
 ```bash
-cd terraform/application && terraform destroy
-cd ../keyvault && terraform destroy      # see the gotcha below for why this can't be skipped
-cd ../aks-infra && terraform destroy
+cd terraform/application && terraform destroy   # must go first regardless: once aks-infra
+                                                  # is gone, this stage's Helm release no
+                                                  # longer exists in any real cluster, but
+                                                  # Terraform's own state doesn't know that
+                                                  # yet -- destroy it while it can still act
+cd ../aks-infra && terraform destroy             # keyvault is UNTOUCHED by this -- it no
+                                                  # longer lives in a resource group
+                                                  # aks-infra owns
 # ... later, whenever you want it back:
-cd ../aks-infra && terraform apply       # same acr_id, same images already in ACR
+cd ../aks-infra && terraform apply               # same acr_id, same images already in ACR
 cd ../keyvault && terraform apply -var "oidc_issuer_url=$(terraform -chdir=../aks-infra output -raw oidc_issuer_url)"
-$(terraform output -raw set_openai_secret_command)   # re-set the secret -- see below
+                                                  # a plain re-apply, not destroy+recreate --
+                                                  # see the gotcha below for what this fixes
 cd ../application && terraform apply
 ```
 
@@ -339,52 +356,57 @@ a *different* URL than before. The `keyvault` stage's
 `federated_identity_credential` is pinned to whatever URL it was applied
 with, so a stale one silently stops matching the new cluster's pod
 tokens -- Workload Identity auth would fail with no obvious error
-pointing at "the issuer URL changed." Reapplying `keyvault` after recreating `aks-infra` fixes the mismatch --
-but `keyvault`'s vault lives inside `aks-infra`'s own resource group
-(deliberately, see `terraform/keyvault/variables.tf`'s comment), so
-destroying `aks-infra` while `keyvault` still exists would take the
-vault down as an uncontrolled side effect of the resource-group
-deletion, orphaning `keyvault`'s own Terraform state. Destroying
-`keyvault` first, as shown above, avoids that. Either way, the vault
-comes back empty on recreate -- re-run the `az keyvault secret set`
-command afterward.
+pointing at "the issuer URL changed." Reapplying `keyvault` with the new
+issuer URL updates just that one drifted field in place -- the vault and
+its secrets are untouched, no re-running `az keyvault secret set` needed.
+
+**Historical note (this changed 2026-09-05):** before consolidating to one
+resource group, `keyvault`'s vault lived inside `aks-infra`'s own resource
+group, so destroying `aks-infra` would have taken the vault down as an
+uncontrolled side effect of the RG deletion, orphaning `keyvault`'s own
+Terraform state -- that's why this section used to destroy `keyvault`
+first. With `aks-infra` reading the shared RG via a `data` source instead
+of owning it, that hazard is gone: `terraform destroy` there can only
+remove what `aks-infra`'s own state manages, so the vault now survives
+untouched and only needs the re-apply above.
 
 ## Teardown — do this before the week is out, not after
 
 Destroy in this order — application first, so Helm gets a chance to clean
 up the Load Balancer/Public IP *before* the VNet they sit in disappears out
-from under them; then keyvault, since it lives inside aks-infra's resource
-group and would otherwise get taken down as an uncontrolled side effect
-of that group's deletion (see the recreate-gotcha above); then the
-cluster; then finally the registry (the one thing you were deliberately
-keeping alive all week):
+from under them, and so its Terraform state doesn't go stale once the
+cluster it deployed into is gone; then the cluster; then keyvault; then
+finally the registry, since it owns the one shared resource group itself
+now and deleting that RG is what actually removes it and everything ACR
+holds:
 
 ```bash
 cd terraform/application
 terraform destroy       # removes the Helm releases -- LB, Public IP, Ingress cleanly torn down
 
+cd ../aks-infra
+terraform destroy       # removes the AKS cluster (+ its MC_* resource group), VNet, budget --
+                         # does NOT touch the shared personal-assistant-learning RG itself
+
 cd ../keyvault
 terraform destroy       # removes the vault, the backend identity, its federated credential + role assignments
 
-cd ../aks-infra
-terraform destroy       # removes the AKS cluster (+ its MC_* resource group), VNet, budget, resource group
-
 cd ../container-registry
-terraform destroy       # removes the ACR and every image in it -- do this LAST, only once you're actually done
+terraform destroy       # removes the ACR, every image in it, AND the shared resource group
+                         # itself (this is the stage that owns it) -- do this LAST
 ```
 
 Confirm nothing's left:
 
 ```bash
-az group list --output table   # personal-assistant-learning, its MC_* pair, and personal-assistant-registry should all be gone
+az group list --output table   # personal-assistant-learning and its MC_* pair should both be gone
 ```
 
 If `terraform destroy` fails partway (it happens), the reliable fallback is
-deleting both resource groups directly:
+deleting the resource group directly (one now, not two):
 
 ```bash
 az group delete --name personal-assistant-learning --yes --no-wait
-az group delete --name personal-assistant-registry --yes --no-wait
 ```
 
 That's a real destructive action against your real subscription — run it
@@ -555,3 +577,258 @@ region disappeared. It'll sit there, empty and free, until the next VNet
 gets created in `eastus` — including the next AKS rebuild from this same
 doc. Safe to leave alone; optional removal if it bothers you:
 `az network watcher configure --locations eastus --enabled false`.
+
+### 2026-09-05 — full rebuild from scratch, consolidated to one resource group
+
+Starting point: confirmed, not assumed, that yesterday's teardown really
+was clean before touching anything —
+
+```bash
+az group list --output table
+# RG-EAST_US and NetworkWatcherRG only. No personal-assistant-* RG, no MC_* pair.
+
+for d in aks-infra container-registry keyvault cicd application; do
+  python3 -c "import json; print('$d', len(json.load(open('terraform/$d/terraform.tfstate'))['resources']))"
+done
+# every stage: 0 resources tracked
+```
+
+So this was a genuine from-scratch rebuild, not a destroy-then-recreate —
+matching the "rebuilding from here is Steps 1-6 again" line at the end of
+yesterday's entry. New requirement this time: **consolidate every stage
+into a single resource group.** The existing design used two
+(`personal-assistant-registry` + `personal-assistant-learning`)
+specifically so a cluster teardown couldn't take ACR down with it (RG
+deletion cascades to everything inside it, regardless of which Terraform
+state manages which resource — see `docs/terraform-infra-walkthrough.md`).
+Collapsing to one RG without losing that protection meant moving the
+blast-radius boundary from **RG ownership** to **Terraform state
+ownership**:
+
+- `container-registry/` (applies first, never torn down mid-week) keeps
+  creating the RG — renamed its default from `personal-assistant-registry`
+  to the shared `personal-assistant-learning`.
+- `aks-infra/main.tf` changed from `resource "azurerm_resource_group" "this"`
+  to `data "azurerm_resource_group" "this"` — every reference
+  (`azurerm_resource_group.this.location/name/id`) updated to the `data.`
+  form. A `data` source is read-only, so this stage's `terraform destroy`
+  can never delete the RG or anything another stage's state manages inside
+  it — the exact property RG isolation used to provide, now provided by
+  state isolation instead. `keyvault/` and `application/` already only
+  *referenced* `resource_group_name` by variable, never owned the resource,
+  so no equivalent change was needed there — just updated their variable
+  descriptions to say "matches container-registry's RG," not aks-infra's.
+
+`terraform validate` clean on all four touched stages before running
+anything real. Then the actual rebuild, each stage confirmed via
+`terraform plan` before `apply`:
+
+```
+terraform/container-registry   -> 3 added   (29s RG, 26s ACR)
+terraform/aks-infra            -> 5 added   (cluster itself: 6m48s)
+terraform/keyvault              -> 9 added   (~1m total)
+```
+
+Images built and pushed as `v3` (`./scripts/build-and-push.sh v3 all`) in
+parallel with the cluster provisioning — Step 2 doesn't depend on Step 3,
+same as the doc above already says.
+
+**A real failure, not a hypothetical**: `terraform apply` on `application/`
+hit `Error: context deadline exceeded` after ~5 minutes (Helm's default
+install timeout). `kubectl get pods` showed the backend stuck in
+`ContainerCreating`; `kubectl describe pod` had the actual cause:
+
+```
+Warning  FailedMount  ...  MountVolume.SetUp failed for volume "openai-secrets" :
+  ... failed to get objectType:secret, objectName:openai-api-key ...
+  RESPONSE 404: SecretNotFound
+```
+
+Root cause: the Secrets Store CSI driver's `SecretProviderClass` mounts
+`openai-api-key` from the **new** Key Vault (`pa-kv-we5kzd`) into the
+backend pod at startup, and that secret had never been set — the guide's
+"leave it blank, chat returns a clean 503" fallback only applies when
+Key Vault integration is *not* wired up at all; once
+`backend_workload_identity_client_id`/`key_vault_name` are set (they were,
+deliberately, to actually exercise the feature), the volume mount itself
+blocks pod startup until the secret exists, whether or not it's a working
+key. Fixed by setting a placeholder value (no real `OPENAI_API_KEY` was
+available in this session's shell — `/completion` will still 503 with a
+placeholder key, same graceful-degradation the guide already documents,
+just at the OpenAI-API-call layer instead of the missing-secret layer):
+
+```bash
+az keyvault secret set --vault-name pa-kv-we5kzd --name openai-api-key --value "placeholder-not-a-real-key"
+```
+
+kubelet's mount retry has its own exponential backoff — `kubectl describe
+pod` still showed a 404 nearly a minute after the secret was set, purely
+from backoff timing, not because the fix hadn't taken (`az keyvault secret
+show` confirmed the secret existed immediately). `kubectl rollout status
+deployment/personal-assistant-backend --timeout=180s` waited it out
+correctly rather than guessing with a fixed sleep.
+
+That left the Terraform-managed Helm release itself **tainted** (Helm's
+own state: `STATUS: failed`) even though the underlying pods eventually
+came up — Terraform doesn't reconcile that on its own. `terraform plan`
+confirmed a clean replace (`1 to add, 1 to destroy`, i.e. uninstall the
+failed release and reinstall), and since nothing had written real data yet
+(migrations hadn't even run), this was zero-risk:
+
+```
+helm_release.personal_assistant: Destroying...  (14s)
+helm_release.personal_assistant: Creating...    (1m12s)
+```
+
+Second install succeeded cleanly on the first try (the secret already
+existed this time, no backoff wait): `helm list` → `STATUS: deployed`,
+migration Job `personal-assistant-migrate-1` → `Complete` in 5s, all 4
+pods `Running`.
+
+**Verified end-to-end, not just "pods are Running"**:
+
+```bash
+IP=$(kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+curl -s -o /dev/null -w "%{http_code}\n" http://$IP/                      # 200
+curl -s -X POST http://$IP/api/v1/users/demo                              # 200, real token + seeded workspace
+```
+
+**Confirmed the one-resource-group requirement actually held**:
+
+```bash
+az resource list --resource-group personal-assistant-learning --output table
+# personalassistant7qkzxh (ACR), personal-assistant-aks-vnet, personal-assistant-aks (AKS),
+# personal-assistant-backend-identity, paavatarswe5kzd (Storage), pa-kv-we5kzd (Key Vault)
+# -- everything this project's Terraform creates, one RG.
+
+az group list --output table
+# RG-EAST_US, NetworkWatcherRG (pre-existing, unrelated) + personal-assistant-learning
+# + MC_personal-assistant-learning_personal-assistant-aks_eastus (AKS-managed, see below)
+```
+
+One shared RG for everything under this project's own control. The `MC_*`
+pair still exists — that's not a design choice any of this Terraform
+made, it's unconditional AKS behavior, covered next.
+
+### What AKS actually handed over: control plane vs. worker node
+
+The instructions asked specifically what's in the control plane versus the
+worker node for this cluster. Answered with live evidence from the cluster
+above, right after it first came up — not a generic diagram.
+
+**Control plane: not a resource in this subscription at all.**
+
+```bash
+kubectl cluster-info
+# Kubernetes control plane is running at
+#   https://personal-assistant-aks-we5px1hs.hcp.eastus.azmk8s.io:443
+```
+
+That URL is the whole story: `kube-apiserver`, `etcd`,
+`kube-scheduler`, `kube-controller-manager`, and Azure's own
+`cloud-controller-manager` all run on Microsoft-managed infrastructure,
+multi-tenant, in a Microsoft-owned subscription — not
+`personal-assistant-learning`, not the `MC_*` group, not anywhere `az
+resource list` against this account can ever show. There is no VM to
+`kubectl describe node` for the control plane, because there isn't one in
+this account to describe. This is the literal meaning of
+`aks-infra/main.tf`'s `sku_tier = "Free"` — "$0 for the control plane" is
+true because nothing here provisions any compute for it; the fee-based
+`Standard` tier only buys an uptime SLA on top of the same
+Microsoft-managed arrangement, not dedicated hardware.
+
+The one structural consequence of the control plane living outside this
+account's network: it can't natively route into the cluster's VNet
+(`10.10.0.0/16`) to do things like `kubectl exec`, `kubectl logs`, or call
+an admission webhook. That's what the `konnectivity-agent` pods
+(`kubectl get pods -n kube-system`) are for — they run *inside* the VNet,
+on the worker node, and open an outbound tunnel to the control plane; the
+control plane routes API-initiated calls back down that tunnel instead of
+trying to reach in on its own. It's the concrete plumbing cost of "hide
+the control plane," not incidental noise in `kube-system`.
+
+**Worker node: the one thing that actually is a billable resource in this
+subscription** — but in the AKS-managed `MC_*` resource group, not the
+primary one:
+
+```bash
+az vmss list --resource-group MC_personal-assistant-learning_personal-assistant-aks_eastus \
+  --query "[].{name:name, sku:sku.name, capacity:sku.capacity}" -o table
+# aks-system-74744284-vmss   Standard_D2s_v7   1
+```
+
+That VM Scale Set (1 instance, since `node_count = 1`) is the actual
+compute `kubectl get nodes` shows as `aks-system-74744284-vmss000000`. Its
+supporting network objects live in the same `MC_*` group, all
+auto-created by AKS, none of it hand-written in this repo's Terraform: an
+NSG (`aks-agentpool-98868521-nsg`), a route table (kubenet needs one,
+since pod IPs on `10.244.0.0/24` aren't natively routable on the VNet —
+the route table is what makes them reachable node-to-node), and a
+Standard Load Balancer named `kubernetes` that existed with **one**
+frontend IP from the moment the cluster was created (default outbound
+SNAT, present even with zero user-created Services) and gained a
+**second** frontend IP only once `application/`'s ingress-nginx Service
+(`type: LoadBalancer`) was deployed — confirmed by checking
+`az network lb list` before and after that stage ran, not assumed from
+the chart alone.
+
+On the node itself, `kubectl describe node aks-system-74744284-vmss000000`:
+
+```
+Container Runtime Version:  containerd://2.3.3-2
+Kubelet Version:             v1.35.7
+OS Image:                    Ubuntu 24.04.4 LTS
+Capacity:      cpu: 2, memory: 8126904Ki, pods: 110
+Allocatable:   cpu: 1900m, memory: 5927352Ki   (system-reserved eats the rest)
+PodCIDR:                     10.244.0.0/24
+```
+
+`kubectl get pods -n kube-system -o wide` — everything here schedules onto
+that single node (there's only one), and each earns its place:
+
+- **`kube-proxy`** — programs the iptables/ipvs rules that make every
+  `ClusterIP` Service actually route to a pod; without it, `10.0.84.164`
+  (the backend's ClusterIP, from `kubectl get svc`) resolves to nothing.
+- **`coredns` (x2) + `coredns-autoscaler`** — cluster DNS; what lets the
+  backend pod resolve `personal-assistant-postgres` as a hostname instead
+  of hardcoding `10.244.0.20`.
+- **`azure-ip-masq-agent`** — SNATs pod-to-external traffic so it looks
+  like it's coming from the node's own IP, not the internal
+  `10.244.0.0/24` range nothing outside the VNet would know how to route
+  back to.
+- **`cloud-node-manager`** — keeps the Kubernetes `Node` object's
+  labels/taints/lifecycle in sync with the actual Azure VM underneath it
+  (this is the `cloud-controller-manager`'s per-node counterpart; the
+  controller-manager itself is control-plane-side, this agent is its
+  worker-node half).
+- **`csi-azuredisk-node` + `csi-azurefile-node`** — the per-node halves of
+  Azure's storage CSI drivers. `csi-azuredisk-node` is specifically what
+  attached the Postgres StatefulSet's PVC (`data-personal-assistant-postgres-0`,
+  confirmed `Bound` via `kubectl get pvc`) to this node.
+- **`aks-secrets-store-csi-driver` + `aks-secrets-store-provider-azure`** —
+  the Key Vault CSI driver and its Azure-specific provider plugin. This is
+  exactly the pair that failed above — the mechanism that's supposed to
+  mount `openai-api-key` from Key Vault into a pod's filesystem, which is
+  precisely why a missing secret blocks pod startup instead of the pod
+  just not having the file.
+- **`azure-wi-webhook-controller-manager` (x2)** — Workload Identity's
+  mutating admission webhook. It's what actually injects the token-
+  projection volume and environment variables into any pod carrying the
+  `azure.workload.identity/use: "true"` label (the backend pod has it,
+  confirmed via `kubectl get pod ... -o jsonpath='{.metadata.labels}'`) —
+  without this webhook running, that label does nothing and Workload
+  Identity auth silently never happens.
+- **`metrics-server` (x2)** — feeds `kubectl top`; unrelated to anything
+  the app needs, present because AKS installs it by default.
+- **`konnectivity-agent` (x2) + its autoscaler** — covered above, the
+  control-plane-to-VNet tunnel.
+
+**The one-resource-group instruction has a hard limit, and this is it**:
+everything above in the `MC_*` group — the VMSS, its NSG, its route table,
+the `kubernetes` LB — is AKS's own unconditional behavior. There is no
+`azurerm_kubernetes_cluster` setting to fold it into
+`personal-assistant-learning`; it exists regardless of how many resource
+groups this repo's Terraform uses. "One resource group" is accurate for
+everything actually under this project's control (confirmed above); a
+second, Azure-managed one for the node pool's real infrastructure is a
+structural fact of AKS, not a consolidation this rebuild could reach.

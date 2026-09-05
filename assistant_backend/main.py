@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import uvicorn
 from fastapi import FastAPI, Request, Depends
@@ -36,8 +37,11 @@ from controllers import (
     chat_router,
     assistant_router,
     workspace_router,
-    users_router
+    users_router,
+    queue_router
 )
+from workers.queue_consumer import run_consumer
+from observability import setup_telemetry
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -56,6 +60,12 @@ try:
 
     # Set custom OpenAPI schema
     app.openapi = lambda: custom_openapi(app)
+
+    # No-op if OTEL_EXPORTER_OTLP_ENDPOINT isn't set (see observability.py).
+    # Must run before any request is served -- FastAPIInstrumentor wraps
+    # the app's own request-handling, not something that can be bolted on
+    # after routes are already being hit.
+    setup_telemetry(app)
 
     # Register exception handlers
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
@@ -84,6 +94,7 @@ try:
     app.include_router(assistant_router)
     app.include_router(workspace_router)
     app.include_router(users_router)
+    app.include_router(queue_router)
 
     # Configure CORS with environment-based settings
     allowed_origins = settings.ALLOWED_ORIGINS.split(",") if settings.ALLOWED_ORIGINS else []
@@ -124,18 +135,38 @@ try:
             "database": db_status
         }
 
+    # Module-level (not app.state) so the shutdown handler below can reach
+    # them without threading state through FastAPI's app object -- this
+    # process only ever runs one app instance anyway.
+    _consumer_stop_event = asyncio.Event()
+    _consumer_task = None
+
     @app.on_event("startup")
     async def startup_event():
         """Log that the app is up. Schema creation/changes are Alembic's job
         now (`alembic upgrade head`), run before the app starts -- not here.
         Rebuilding the schema on every app boot was destroying real data on
         every restart, which is fatal once this runs somewhere pods restart
-        routinely (crash-loops, rolling updates, autoscaling)."""
+        routinely (crash-loops, rolling updates, autoscaling).
+
+        Also starts the queue consumer as a background task -- a no-op if
+        the queue isn't configured (see workers/queue_consumer.py's
+        QUEUE_AVAILABLE check). Under KEDA, every scaled-up replica of this
+        pod runs its own copy of this loop, all polling the same queue."""
+        global _consumer_task
+        _consumer_task = asyncio.create_task(run_consumer(_consumer_stop_event))
         logger.info("Application startup")
 
     @app.on_event("shutdown")
     async def shutdown_event():
         """Cleanup on shutdown."""
+        # Stop the queue consumer first -- let it finish whatever message
+        # it's mid-processing rather than killing it mid-flight, so a pod
+        # scaling down doesn't silently drop work that would otherwise
+        # have completed and been deleted (acked) cleanly.
+        _consumer_stop_event.set()
+        if _consumer_task:
+            await _consumer_task
         # Close database connections
         engine.dispose()
         logger.info("Database connections closed")

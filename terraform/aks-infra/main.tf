@@ -1,10 +1,14 @@
-resource "azurerm_resource_group" "this" {
-  name     = var.resource_group_name
-  location = var.location
-
-  tags = {
-    purpose = "personal-assistant-learning"
-  }
+# NOT a resource -- the one shared resource group is created by the
+# container-registry stage (applies first, never casually torn down
+# mid-week). Reading it via `data` instead of owning it as a `resource`
+# means `terraform destroy` here can never delete the RG or anything
+# another stage's state manages inside it: a data source is read-only,
+# so destroying THIS state only removes what this state actually created
+# (VNet, subnet, cluster, budget) -- consolidates every stage into one RG
+# without losing the "recreate the cluster without nuking everything else"
+# property the old per-stage-RG design existed for.
+data "azurerm_resource_group" "this" {
+  name = var.resource_group_name
 }
 
 # A real VNet rather than AKS's auto-managed default -- this is the same
@@ -14,13 +18,13 @@ resource "azurerm_resource_group" "this" {
 resource "azurerm_virtual_network" "this" {
   name                = "${var.cluster_name}-vnet"
   address_space       = ["10.10.0.0/16"]
-  location            = azurerm_resource_group.this.location
-  resource_group_name = azurerm_resource_group.this.name
+  location            = data.azurerm_resource_group.this.location
+  resource_group_name = data.azurerm_resource_group.this.name
 }
 
 resource "azurerm_subnet" "aks" {
   name                 = "aks-subnet"
-  resource_group_name  = azurerm_resource_group.this.name
+  resource_group_name  = data.azurerm_resource_group.this.name
   virtual_network_name = azurerm_virtual_network.this.name
   address_prefixes     = ["10.10.1.0/24"]
 }
@@ -31,16 +35,16 @@ resource "azurerm_subnet" "aks" {
 resource "azurerm_log_analytics_workspace" "this" {
   count               = var.enable_container_insights ? 1 : 0
   name                = "${var.cluster_name}-logs"
-  location            = azurerm_resource_group.this.location
-  resource_group_name = azurerm_resource_group.this.name
+  location            = data.azurerm_resource_group.this.location
+  resource_group_name = data.azurerm_resource_group.this.name
   sku                 = "PerGB2018"
   retention_in_days   = 30
 }
 
 resource "azurerm_kubernetes_cluster" "this" {
   name                = var.cluster_name
-  location            = azurerm_resource_group.this.location
-  resource_group_name = azurerm_resource_group.this.name
+  location            = data.azurerm_resource_group.this.location
+  resource_group_name = data.azurerm_resource_group.this.name
   dns_prefix          = var.cluster_name
   kubernetes_version  = var.kubernetes_version
 
@@ -117,10 +121,12 @@ resource "azurerm_role_assignment" "aks_acr_pull" {
 
 # Budget + email alert -- the actual point of this block, given the $200
 # constraint. Azure evaluates this against ACTUAL + FORECASTED cost for the
-# whole resource group, so it can warn you before you're already over.
+# whole resource group -- now the ONE shared RG, so this also captures ACR
+# and every other stage's spend, not just the cluster's -- so it can warn
+# you before you're already over.
 resource "azurerm_consumption_budget_resource_group" "this" {
   name              = "${var.cluster_name}-weekly-learning-budget"
-  resource_group_id = azurerm_resource_group.this.id
+  resource_group_id = data.azurerm_resource_group.this.id
 
   amount     = var.budget_amount_usd
   time_grain = "Monthly"

@@ -6,6 +6,7 @@ budget_alert_email = "you@example.com"
 acr_id = ""
 
 # Uncomment to override any other default from variables.tf, e.g.:
-# location     = "westus2"
 # node_count   = 1
 # node_vm_size = "Standard_B2ms"
+# Region is no longer set here -- it comes from the shared resource group
+# created by container-registry/ (override its `location` variable instead).

@@ -1,5 +1,5 @@
 variable "resource_group_name" {
-  description = "Must match the aks-infra stage's resource_group_name (default: personal-assistant-learning)."
+  description = "Must match the container-registry stage's resource_group_name -- the one shared RG for the whole project (default: personal-assistant-learning)."
   type        = string
   default     = "personal-assistant-learning"
 }
@@ -48,6 +48,24 @@ variable "backend_storage_account_url" {
   description = "From the keyvault stage's output: terraform -chdir=../keyvault output -raw storage_account_blob_endpoint. Empty means no avatar upload storage available (e.g. minikube) -- the backend simply has no AZURE_STORAGE_ACCOUNT_URL/AZURE_STORAGE_CONNECTION_STRING set there, so the avatar endpoint would fail if called; nothing else in the app depends on it."
   type        = string
   default     = ""
+}
+
+variable "backend_storage_queue_url" {
+  description = "From the keyvault stage's output: terraform -chdir=../keyvault output -raw storage_account_queue_endpoint. Empty means no job queue available -- same graceful-absence pattern as backend_storage_account_url."
+  type        = string
+  default     = ""
+}
+
+variable "storage_account_name" {
+  description = "From the keyvault stage's output: terraform -chdir=../keyvault output -raw storage_account_name. Feeds KEDA's azure-queue scaler trigger, which wants the bare account name rather than a URL."
+  type        = string
+  default     = ""
+}
+
+variable "otel_collector_endpoint" {
+  description = "The observability stage's shared OTel Collector service (terraform/observability's helm_release.otel_collector) -- a separate Terraform stage/state, not this one, hence a plain default rather than a cross-stage output reference (same independent-stage pattern as every other stage in this project). Empty disables app-side telemetry entirely."
+  type        = string
+  default     = "http://otel-collector-opentelemetry-collector.monitoring.svc.cluster.local:4318"
 }
 
 variable "postgres_password" {

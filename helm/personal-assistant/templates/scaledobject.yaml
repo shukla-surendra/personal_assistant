@@ -1,0 +1,29 @@
+{{- if .Values.keda.enabled }}
+# Scales the EXISTING backend Deployment (backend.yaml) based on the
+# job queue's depth -- not a separate worker Deployment. KEDA creates and
+# manages a real HorizontalPodAutoscaler behind this (`kubectl get hpa`),
+# it's not its own scaling mechanism from scratch.
+# v1alpha1, not v2 -- see triggerauthentication.yaml's comment.
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{ include "pa.fullname" . }}-backend
+  labels:
+    {{- include "pa.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    name: {{ include "pa.fullname" . }}-backend
+  minReplicaCount: {{ .Values.keda.minReplicaCount }}
+  maxReplicaCount: {{ .Values.keda.maxReplicaCount }}
+  pollingInterval: {{ .Values.keda.pollingInterval }}
+  cooldownPeriod: {{ .Values.keda.cooldownPeriod }}
+  triggers:
+    - type: azure-queue
+      metadata:
+        queueName: {{ .Values.queue.name | quote }}
+        accountName: {{ .Values.queue.accountName | quote }}
+        queueLength: {{ .Values.keda.queueLength | quote }}
+        cloud: AzurePublicCloud
+      authenticationRef:
+        name: {{ include "pa.fullname" . }}-queue-auth
+{{- end }}

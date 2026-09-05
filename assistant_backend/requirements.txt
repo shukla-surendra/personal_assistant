@@ -15,7 +15,20 @@ boto3==1.34.34  # AWS SDK for DynamoDB
 alembic==1.13.1  # Database migrations
 sqlalchemy-utils==0.41.1
 azure-storage-blob==12.24.0  # Avatar uploads (prod: Azure Blob; local: Azurite, same SDK)
+azure-storage-queue==12.17.0  # KEDA scaling-test job queue (prod: Storage Queue; local: Azurite, same SDK)
 azure-identity==1.19.0  # DefaultAzureCredential -- Workload Identity in AKS
+
+# Observability (traces + metrics -> shared OTel Collector -> Tempo/Prometheus,
+# terraform/observability). Logs aren't shipped by this SDK -- the Collector's
+# filelog receiver already tails every pod's stdout cluster-wide; the logging
+# instrumentation below only injects trace/span IDs so log lines correlate
+# with traces in Grafana.
+opentelemetry-sdk==1.44.0
+opentelemetry-exporter-otlp==1.44.0
+opentelemetry-instrumentation-fastapi==0.65b0
+opentelemetry-instrumentation-sqlalchemy==0.65b0
+opentelemetry-instrumentation-logging==0.65b0
+opentelemetry-instrumentation-requests==0.65b0
 
 # Authentication and Security
 python-jose[cryptography]>=3.3.0  # JWT tokens
@@ -49,9 +62,12 @@ pre-commit==3.6.0  # Git hooks
 # Monitoring and Logging
 sentry-sdk==1.39.1
 prometheus-client==0.19.0
-opentelemetry-api==1.21.0
-opentelemetry-sdk==1.21.0
-opentelemetry-instrumentation-fastapi==0.42b0
+# OTel packages live in the "Observability" section above -- these two
+# lines used to duplicate/conflict with it (opentelemetry-api==1.21.0 /
+# opentelemetry-sdk==1.21.0 / opentelemetry-instrumentation-fastapi==0.42b0,
+# a leftover from an earlier attempt that was never actually wired into any
+# app code -- confirmed via grep, zero imports anywhere). Removed rather
+# than reconciled, since nothing depended on the old versions.
 
 # Task Queue and Background Jobs (Optional)
 celery==5.3.6
