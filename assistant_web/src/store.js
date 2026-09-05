@@ -10,6 +10,9 @@ import activitiesReducer from './slices/crm/activitiesSlice';
 import memberReducer from './slices/members';
 import chatReducer from './slices/chatSlice';
 import boardsReducer from './slices/boards';
+import pagesReducer from './slices/pages';
+import remindersReducer from './slices/reminders';
+import databasesReducer from './slices/databases';
 
 const store = configureStore({
   reducer: {
@@ -23,7 +26,10 @@ const store = configureStore({
     activities: activitiesReducer,
     members: memberReducer,
     chat: chatReducer,
-    boards: boardsReducer
+    boards: boardsReducer,
+    pages: pagesReducer,
+    reminders: remindersReducer,
+    databases: databasesReducer
   },
   devTools: true,
   middleware: (getDefaultMiddleware) =>

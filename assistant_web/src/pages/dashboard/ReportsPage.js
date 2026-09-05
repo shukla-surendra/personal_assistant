@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Flex,
@@ -17,11 +17,10 @@ import {
 import { FiBarChart2, FiPieChart, FiTrendingUp, FiCalendar } from 'react-icons/fi';
 import Navbar from '../../components/dashboard/Navbar';
 import Header from '../../components/dashboard/Header';
-import { useDisclosure } from '@chakra-ui/react';
 
 export default function ReportsPage() {
-  const menu_open = useDisclosure();
-  
+  const [isMenuCollapsed, setIsMenuCollapsed] = useState(false);
+
   // Move hooks to component level
   const cardBg = useColorModeValue('white', 'gray.700');
   const textColor = useColorModeValue('gray.600', 'gray.300');
@@ -58,13 +57,12 @@ export default function ReportsPage() {
   return (
     <>
       <Box minH="100vh" bg={pageBg}>
-        <Navbar />
+        <Navbar isCollapsed={isMenuCollapsed} />
         <Box
-          ml={{ base: 0, md: 60 }}
-          transition=".3s ease"
-          p={{ base: 4, md: 6, lg: 8 }}
+          ml={{ base: 0, md: isMenuCollapsed ? '60px' : '250px' }}
+          transition="all 0.3s ease"
         >
-          <Header menu_open={menu_open} />
+          <Header onMenuToggle={() => setIsMenuCollapsed(!isMenuCollapsed)} />
           <Box
             as="main"
             p={{ base: 4, md: 6 }}

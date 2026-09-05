@@ -171,7 +171,7 @@ export default function FrontPage() {
                   boxShadow="2xl"
                 >
                   <Image
-                    src="/img/dashboard-preview.png"
+                    src="/img/banner.png"
                     alt="Dashboard Preview"
                     w="full"
                     objectFit="cover"

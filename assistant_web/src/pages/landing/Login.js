@@ -303,7 +303,7 @@ export default function Login() {
             color="white"
           >
             <Image
-              src="/images/login-illustration.svg"
+              src="/img/login-img.png"
               alt="Login Illustration"
               maxW="400px"
               mb={8}

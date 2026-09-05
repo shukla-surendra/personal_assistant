@@ -1,209 +1,120 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  Box,
-  Flex,
-  Grid,
-  Text,
-  useColorModeValue,
-  Card,
-  CardHeader,
-  CardBody,
-  CardFooter,
-  Heading,
-  Icon,
-  Button,
-  Stack,
-  Input,
-  InputGroup,
-  InputLeftElement,
-  IconButton,
-  Menu,
-  MenuButton,
-  MenuList,
-  MenuItem,
-  Avatar,
-  AvatarGroup,
-  Badge,
+  Box, Heading, Text, SimpleGrid, Card, CardBody, Button, Icon, HStack, VStack,
+  useColorModeValue, useDisclosure, Modal, ModalOverlay, ModalContent, ModalHeader,
+  ModalCloseButton, ModalBody, ModalFooter, Input, useToast, Spinner, Center,
 } from '@chakra-ui/react';
-import { FiSearch, FiBook, FiEdit2, FiTrash2, FiMoreVertical } from 'react-icons/fi';
+import { FiBook, FiPlus } from 'react-icons/fi';
+import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import Navbar from '../../components/dashboard/Navbar';
 import Header from '../../components/dashboard/Header';
-import { useDisclosure } from '@chakra-ui/react';
+import { fetchPages, createPage } from '../../slices/pages';
 
-export default function WikiPage() {
-  const menu_open = useDisclosure();
-  const [articles, setArticles] = useState([]);
-  
-  // Move hooks to component level
-  const cardBg = useColorModeValue('white', 'gray.700');
-  const textColor = useColorModeValue('gray.600', 'gray.300');
-  const inputBg = useColorModeValue('white', 'gray.700');
-  const pageBg = useColorModeValue('gray.50', 'gray.900');
-  const mainBg = useColorModeValue('gray.50', 'gray.800');
+function NewPageModal({ isOpen, onClose }) {
+  const dispatch = useDispatch();
+  const toast = useToast();
+  const navigate = useNavigate();
+  const [title, setTitle] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
-  const wikiSections = [
-    {
-      title: 'Getting Started',
-      description: 'Learn the basics and get up to speed quickly',
-      icon: FiBook,
-      color: 'blue.500',
-      articleCount: 5,
-      lastUpdated: '2 days ago',
-      contributors: 3,
-    },
-    {
-      title: 'Features Guide',
-      description: 'Detailed documentation of all features',
-      icon: FiBook,
-      color: 'green.500',
-      articleCount: 12,
-      lastUpdated: '1 week ago',
-      contributors: 5,
-    },
-    {
-      title: 'Team Collaboration',
-      description: 'Best practices for team collaboration',
-      icon: FiBook,
-      color: 'purple.500',
-      articleCount: 8,
-      lastUpdated: '3 days ago',
-      contributors: 4,
-    },
-    {
-      title: 'Best Practices',
-      description: 'Guidelines and recommendations',
-      icon: FiBook,
-      color: 'orange.500',
-      articleCount: 6,
-      lastUpdated: '1 day ago',
-      contributors: 2,
-    },
-  ];
+  const handleCreate = () => {
+    if (!title.trim()) {
+      toast({ title: "Page title can't be empty", status: "warning", duration: 2500, isClosable: true });
+      return;
+    }
+    setIsSaving(true);
+    dispatch(createPage({ title: title.trim() }))
+      .unwrap()
+      .then((page) => {
+        toast({ title: "Page created", status: "success", duration: 2000, isClosable: true });
+        setTitle('');
+        onClose();
+        navigate(`/wiki/${page.page_id}`);
+      })
+      .catch(err => toast({ title: "Couldn't create page", description: err, status: "error", duration: 3500, isClosable: true }))
+      .finally(() => setIsSaving(false));
+  };
 
   return (
-    <>
-      <Box minH="100vh" bg={pageBg}>
-        <Navbar />
-        <Box
-          ml={{ base: 0, md: 60 }}
-          transition=".3s ease"
-          p={{ base: 4, md: 6, lg: 8 }}
-        >
-          <Header menu_open={menu_open} />
-          <Box
-            as="main"
-            p={{ base: 4, md: 6 }}
-            minH="calc(100vh - 4rem)"
-            bg={mainBg}
-            borderRadius="lg"
-            boxShadow="sm"
-          >
-            <Stack spacing={6}>
-              <Flex
-                justifyContent="space-between"
-                alignItems="center"
-                mb={6}
-              >
-                <Heading size="lg">Wiki & Documentation</Heading>
-                <Button colorScheme="blue" size="sm">
-                  New Article
-                </Button>
-              </Flex>
+    <Modal isOpen={isOpen} onClose={onClose}>
+      <ModalOverlay />
+      <ModalContent>
+        <ModalHeader>New Page</ModalHeader>
+        <ModalCloseButton />
+        <ModalBody>
+          <Input placeholder="Page title" value={title} onChange={e => setTitle(e.target.value)} autoFocus
+            onKeyDown={e => { if (e.key === 'Enter') handleCreate(); }} />
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="ghost" mr={3} onClick={onClose}>Cancel</Button>
+          <Button colorScheme="blue" onClick={handleCreate} isLoading={isSaving}>Create</Button>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
+  );
+}
 
-              <InputGroup maxW="400px">
-                <InputLeftElement pointerEvents="none">
-                  <Icon as={FiSearch} color="gray.400" />
-                </InputLeftElement>
-                <Input
-                  placeholder="Search articles..."
-                  bg={inputBg}
-                />
-              </InputGroup>
+export default function WikiPage() {
+  const [isMenuCollapsed, setIsMenuCollapsed] = useState(false);
+  const newPageModal = useDisclosure();
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const { pages, loading, error } = useSelector(state => state.pages);
+  const pageBg = useColorModeValue('gray.50', 'gray.900');
+  const mainBg = useColorModeValue('gray.50', 'gray.800');
+  const cardBg = useColorModeValue('white', 'gray.700');
 
-              <Grid
-                templateColumns={{
-                  base: "1fr",
-                  sm: "repeat(2, 1fr)",
-                  md: "repeat(2, 1fr)",
-                  lg: "repeat(2, 1fr)"
-                }}
-                gap={6}
+  useEffect(() => {
+    dispatch(fetchPages());
+  }, [dispatch]);
+
+  return (
+    <Box minH="100vh" bg={pageBg}>
+      <Navbar isCollapsed={isMenuCollapsed} />
+      <Box ml={{ base: 0, md: isMenuCollapsed ? '60px' : '250px' }} transition="all 0.3s ease">
+        <Header onMenuToggle={() => setIsMenuCollapsed(!isMenuCollapsed)} />
+        <Box as="main" p={{ base: 4, md: 6 }} minH="calc(100vh - 4rem)" bg={mainBg} borderRadius="lg" boxShadow="sm">
+          <HStack justify="space-between" mb={6}>
+            <Heading size="lg">Wiki</Heading>
+            <Button leftIcon={<FiPlus />} colorScheme="blue" onClick={newPageModal.onOpen}>
+              New Page
+            </Button>
+          </HStack>
+
+          {loading && <Center py={16}><Spinner /></Center>}
+          {error && <Text color="red.500">{error}</Text>}
+          {!loading && !error && pages.length === 0 && (
+            <Center py={16}>
+              <VStack spacing={3}>
+                <Icon as={FiBook} boxSize={10} color="gray.400" />
+                <Text color="gray.500">No pages yet. Create one to get started.</Text>
+              </VStack>
+            </Center>
+          )}
+
+          <SimpleGrid columns={{ base: 1, sm: 2, md: 3, lg: 4 }} spacing={6}>
+            {pages.map(page => (
+              <Card
+                key={page.page_id}
+                bg={cardBg}
+                cursor="pointer"
+                _hover={{ boxShadow: 'md', transform: 'translateY(-2px)' }}
+                transition="all 0.15s ease"
+                onClick={() => navigate(`/wiki/${page.page_id}`)}
               >
-                {wikiSections.map((section, index) => (
-                  <Card
-                    key={index}
-                    bg={cardBg}
-                    borderRadius="lg"
-                    boxShadow="md"
-                  >
-                    <CardHeader>
-                      <Flex justifyContent="space-between" alignItems="center">
-                        <Flex alignItems="center" gap={3}>
-                          <Icon
-                            as={section.icon}
-                            boxSize={6}
-                            color={section.color}
-                          />
-                          <Heading size="md">{section.title}</Heading>
-                        </Flex>
-                        <Menu>
-                          <MenuButton
-                            as={IconButton}
-                            icon={<FiMoreVertical />}
-                            variant="ghost"
-                            size="sm"
-                          />
-                          <MenuList>
-                            <MenuItem icon={<FiEdit2 />}>Edit Section</MenuItem>
-                            <MenuItem icon={<FiTrash2 />}>Delete Section</MenuItem>
-                          </MenuList>
-                        </Menu>
-                      </Flex>
-                    </CardHeader>
-                    <CardBody>
-                      <Text color={textColor} mb={4}>
-                        {section.description}
-                      </Text>
-                      <Flex alignItems="center" gap={4}>
-                        <Badge colorScheme="blue">
-                          {section.articleCount} articles
-                        </Badge>
-                        <Text fontSize="sm" color="gray.500">
-                          Updated {section.lastUpdated}
-                        </Text>
-                      </Flex>
-                    </CardBody>
-                    <CardFooter>
-                      <Flex
-                        justifyContent="space-between"
-                        alignItems="center"
-                        width="full"
-                      >
-                        <AvatarGroup size="sm" max={3}>
-                          {[...Array(section.contributors)].map((_, i) => (
-                            <Avatar
-                              key={i}
-                              name={`Contributor ${i + 1}`}
-                              src={`https://bit.ly/${i + 1}`}
-                            />
-                          ))}
-                        </AvatarGroup>
-                        <Button
-                          variant="ghost"
-                          colorScheme="blue"
-                          size="sm"
-                        >
-                          View All Articles
-                        </Button>
-                      </Flex>
-                    </CardFooter>
-                  </Card>
-                ))}
-              </Grid>
-            </Stack>
-          </Box>
+                <CardBody>
+                  <HStack>
+                    <Icon as={FiBook} color="blue.500" />
+                    <Heading size="sm" noOfLines={1}>{page.title}</Heading>
+                  </HStack>
+                </CardBody>
+              </Card>
+            ))}
+          </SimpleGrid>
         </Box>
       </Box>
-    </>
+      <NewPageModal isOpen={newPageModal.isOpen} onClose={newPageModal.onClose} />
+    </Box>
   );
-} 
+}

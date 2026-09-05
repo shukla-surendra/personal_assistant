@@ -50,8 +50,8 @@ def custom_openapi(app: FastAPI):
         ## Rate Limiting
         
         API requests are rate limited to prevent abuse. The current limits are:
-        - 100 requests per minute for authenticated users
-        - 20 requests per minute for unauthenticated users
+        - 300 requests per minute for authenticated users
+        - 60 requests per minute for unauthenticated users
         
         ## Pagination
         

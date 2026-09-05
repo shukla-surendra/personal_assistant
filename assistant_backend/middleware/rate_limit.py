@@ -11,8 +11,8 @@ class RateLimitMiddleware:
     def __init__(self, app):
         self.app = app
         self.redis_client = redis.from_url(settings.REDIS_URL)
-        self.authenticated_limit = 100  # requests per minute
-        self.unauthenticated_limit = 20  # requests per minute
+        self.authenticated_limit = 300  # requests per minute
+        self.unauthenticated_limit = 60  # requests per minute
         self.window = 60  # 1 minute window
 
     async def __call__(self, scope, receive, send):

@@ -61,7 +61,7 @@ function NewBoardModal({ isOpen, onClose }) {
 }
 
 export default function BoardsPage() {
-  const menu_open = useDisclosure();
+  const [isMenuCollapsed, setIsMenuCollapsed] = useState(false);
   const newBoardModal = useDisclosure();
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -76,9 +76,9 @@ export default function BoardsPage() {
 
   return (
     <Box minH="100vh" bg={pageBg}>
-      <Navbar />
-      <Box ml={{ base: 0, md: 60 }} transition=".3s ease" p={{ base: 4, md: 6, lg: 8 }}>
-        <Header menu_open={menu_open} />
+      <Navbar isCollapsed={isMenuCollapsed} />
+      <Box ml={{ base: 0, md: isMenuCollapsed ? '60px' : '250px' }} transition="all 0.3s ease">
+        <Header onMenuToggle={() => setIsMenuCollapsed(!isMenuCollapsed)} />
         <Box as="main" p={{ base: 4, md: 6 }} minH="calc(100vh - 4rem)" bg={mainBg} borderRadius="lg" boxShadow="sm">
           <HStack justify="space-between" mb={6}>
             <Heading size="lg">Boards</Heading>

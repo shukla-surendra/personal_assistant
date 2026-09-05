@@ -11,7 +11,9 @@ import CalendarPage from "./pages/dashboard/CalendarPage";
 import TimeBlockPage from "./pages/dashboard/TimeBlockPage";
 import ReportsPage from "./pages/dashboard/ReportsPage";
 import WikiPage from "./pages/dashboard/WikiPage";
+import WikiDetailPage from "./pages/dashboard/WikiDetailPage";
 import DatabasePage from "./pages/dashboard/DatabasePage";
+import DatabaseDetailPage from "./pages/dashboard/DatabaseDetailPage";
 import MembersPage from "./pages/dashboard/MembersPage";
 import NotificationsPage from "./pages/dashboard/NotificationsPage";
 import CRMPage from "./pages/dashboard/CRMPage";
@@ -68,7 +70,9 @@ function App() {
           <Route path="/timeblock" element={<TimeBlockPage/>}/>
           <Route path="/reports" element={<ReportsPage/>}/>
           <Route path="/wiki" element={<WikiPage/>}/>
+          <Route path="/wiki/:pageId" element={<WikiDetailPage/>}/>
           <Route path="/database" element={<DatabasePage/>}/>
+          <Route path="/database/:databaseId" element={<DatabaseDetailPage/>}/>
           <Route path="/crm" element={<CRMPage/>}/>
           <Route path="/chat" element={<ChatPage/>}/>
           <Route path="/reminders" element={<RemindersPage/>}/>

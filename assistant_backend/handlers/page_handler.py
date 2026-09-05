@@ -1,10 +1,9 @@
-from typing import Optional
 from uuid import UUID
 from adapters.orm.models.pg_models import Page, Block
 from adapters.orm.models.database import SessionLocal
 from commands.page_cmd import PageCommand, PageUpdateCommand, PageDeleteCommand, BlockCommand, BlockUpdateCommand, BlockDeleteCommand
 from sqlalchemy.exc import SQLAlchemyError
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 import logging
 
 logger = logging.getLogger(__name__)
@@ -18,13 +17,7 @@ class PageHandler:
             page = Page(
                 workspace_id=UUID(command.workspace_id),
                 title=command.title,
-                content=command.content,
-                parent_id=UUID(command.parent_id) if command.parent_id else None,
-                icon=command.icon,
-                cover=command.cover,
-                properties=command.properties,
-                is_template=command.is_template,
-                is_public=command.is_public
+                properties=command.properties
             )
             self.db.add(page)
             self.db.commit()
@@ -35,39 +28,45 @@ class PageHandler:
             logger.error(f"Error creating page: {str(e)}")
             raise HTTPException(status_code=500, detail="Failed to create page")
 
+    def get_page(self, page_id: str) -> Page:
+        try:
+            page = self.db.query(Page).filter(
+                Page.page_id == UUID(page_id),
+                Page.is_deleted == False
+            ).first()
+            if not page:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Page not found")
+            return page
+        except HTTPException:
+            raise
+        except SQLAlchemyError as e:
+            logger.error(f"Error getting page: {str(e)}")
+            raise HTTPException(status_code=500, detail="Failed to get page")
+
     def list_pages(self, workspace_id: str) -> list[Page]:
         try:
-            return self.db.query(Page).filter(Page.workspace_id == UUID(workspace_id)).all()
+            return self.db.query(Page).filter(
+                Page.workspace_id == UUID(workspace_id),
+                Page.is_deleted == False
+            ).all()
         except SQLAlchemyError as e:
             logger.error(f"Error listing pages: {str(e)}")
             raise HTTPException(status_code=500, detail="Failed to list pages")
 
     def update_page(self, command: PageUpdateCommand) -> Page:
         try:
-            page = self.db.query(Page).filter(Page.page_id == UUID(command.page_id)).first()
-            if not page:
-                raise HTTPException(status_code=404, detail="Page not found")
+            page = self.get_page(command.page_id)
 
             if command.title is not None:
                 page.title = command.title
-            if command.content is not None:
-                page.content = command.content
-            if command.parent_id is not None:
-                page.parent_id = UUID(command.parent_id)
-            if command.icon is not None:
-                page.icon = command.icon
-            if command.cover is not None:
-                page.cover = command.cover
             if command.properties is not None:
                 page.properties = command.properties
-            if command.is_template is not None:
-                page.is_template = command.is_template
-            if command.is_public is not None:
-                page.is_public = command.is_public
 
             self.db.commit()
             self.db.refresh(page)
             return page
+        except HTTPException:
+            raise
         except SQLAlchemyError as e:
             self.db.rollback()
             logger.error(f"Error updating page: {str(e)}")
@@ -77,14 +76,18 @@ class PageHandler:
         try:
             page = self.db.query(Page).filter(
                 Page.page_id == UUID(command.page_id),
-                Page.workspace_id == UUID(command.workspace_id)
+                Page.workspace_id == UUID(command.workspace_id),
+                Page.is_deleted == False
             ).first()
             if not page:
-                raise HTTPException(status_code=404, detail="Page not found")
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Page not found")
 
-            self.db.delete(page)
+            # Soft delete -- same pattern Task/Board use.
+            page.is_deleted = True
             self.db.commit()
             return True
+        except HTTPException:
+            raise
         except SQLAlchemyError as e:
             self.db.rollback()
             logger.error(f"Error deleting page: {str(e)}")
@@ -96,7 +99,6 @@ class PageHandler:
                 page_id=UUID(command.page_id),
                 type=command.type,
                 content=command.content,
-                parent_id=UUID(command.parent_id) if command.parent_id else None,
                 properties=command.properties,
                 order=command.order
             )
@@ -111,16 +113,17 @@ class PageHandler:
 
     def update_block(self, command: BlockUpdateCommand) -> Block:
         try:
-            block = self.db.query(Block).filter(Block.block_id == UUID(command.block_id)).first()
+            block = self.db.query(Block).filter(
+                Block.block_id == UUID(command.block_id),
+                Block.is_deleted == False
+            ).first()
             if not block:
-                raise HTTPException(status_code=404, detail="Block not found")
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Block not found")
 
             if command.type is not None:
                 block.type = command.type
             if command.content is not None:
                 block.content = command.content
-            if command.parent_id is not None:
-                block.parent_id = UUID(command.parent_id)
             if command.properties is not None:
                 block.properties = command.properties
             if command.order is not None:
@@ -129,6 +132,8 @@ class PageHandler:
             self.db.commit()
             self.db.refresh(block)
             return block
+        except HTTPException:
+            raise
         except SQLAlchemyError as e:
             self.db.rollback()
             logger.error(f"Error updating block: {str(e)}")
@@ -138,18 +143,31 @@ class PageHandler:
         try:
             block = self.db.query(Block).filter(
                 Block.block_id == UUID(command.block_id),
-                Block.page_id == UUID(command.page_id)
+                Block.page_id == UUID(command.page_id),
+                Block.is_deleted == False
             ).first()
             if not block:
-                raise HTTPException(status_code=404, detail="Block not found")
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Block not found")
 
-            self.db.delete(block)
+            block.is_deleted = True
             self.db.commit()
             return True
+        except HTTPException:
+            raise
         except SQLAlchemyError as e:
             self.db.rollback()
             logger.error(f"Error deleting block: {str(e)}")
             raise HTTPException(status_code=500, detail="Failed to delete block")
 
+    def list_blocks(self, page_id: str) -> list[Block]:
+        try:
+            return self.db.query(Block).filter(
+                Block.page_id == UUID(page_id),
+                Block.is_deleted == False
+            ).order_by(Block.order.asc().nulls_last(), Block.created_at.asc()).all()
+        except SQLAlchemyError as e:
+            logger.error(f"Error listing blocks: {str(e)}")
+            raise HTTPException(status_code=500, detail="Failed to list blocks")
+
     def __del__(self):
-        self.db.close() 
+        self.db.close()

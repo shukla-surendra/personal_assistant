@@ -280,6 +280,7 @@ class Block(Base):
     type = Column(String, nullable=False)
     content = Column(JSONB, nullable=True)
     properties = Column(JSONB, nullable=True)
+    order = Column(Integer, nullable=True)
     is_deleted = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC))
     updated_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC), onupdate=datetime.datetime.now(datetime.UTC))

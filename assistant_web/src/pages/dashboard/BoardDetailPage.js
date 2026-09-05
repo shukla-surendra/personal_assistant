@@ -111,7 +111,7 @@ export default function BoardDetailPage() {
   const { boardId } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
-  const menu_open = useDisclosure();
+  const [isMenuCollapsed, setIsMenuCollapsed] = useState(false);
   const newCardDisclosure = useDisclosure();
   const editTaskDisclosure = useDisclosure();
 
@@ -255,9 +255,9 @@ export default function BoardDetailPage() {
   if (loading) {
     return (
       <Box minH="100vh" bg={pageBg}>
-        <Navbar />
-        <Box ml={{ base: 0, md: 60 }} p={{ base: 4, md: 6, lg: 8 }}>
-          <Header menu_open={menu_open} />
+        <Navbar isCollapsed={isMenuCollapsed} />
+        <Box ml={{ base: 0, md: isMenuCollapsed ? '60px' : '250px' }}>
+          <Header onMenuToggle={() => setIsMenuCollapsed(!isMenuCollapsed)} />
           <Center py={20}><Spinner /></Center>
         </Box>
       </Box>
@@ -267,9 +267,9 @@ export default function BoardDetailPage() {
   if (error || !board) {
     return (
       <Box minH="100vh" bg={pageBg}>
-        <Navbar />
-        <Box ml={{ base: 0, md: 60 }} p={{ base: 4, md: 6, lg: 8 }}>
-          <Header menu_open={menu_open} />
+        <Navbar isCollapsed={isMenuCollapsed} />
+        <Box ml={{ base: 0, md: isMenuCollapsed ? '60px' : '250px' }}>
+          <Header onMenuToggle={() => setIsMenuCollapsed(!isMenuCollapsed)} />
           <Center py={20}><Text color="red.500">{error || "Board not found"}</Text></Center>
         </Box>
       </Box>
@@ -278,9 +278,9 @@ export default function BoardDetailPage() {
 
   return (
     <Box minH="100vh" bg={pageBg}>
-      <Navbar />
-      <Box ml={{ base: 0, md: 60 }} transition=".3s ease" p={{ base: 4, md: 6, lg: 8 }}>
-        <Header menu_open={menu_open} />
+      <Navbar isCollapsed={isMenuCollapsed} />
+      <Box ml={{ base: 0, md: isMenuCollapsed ? '60px' : '250px' }} transition="all 0.3s ease">
+        <Header onMenuToggle={() => setIsMenuCollapsed(!isMenuCollapsed)} />
         <Box as="main" p={{ base: 4, md: 6 }} minH="calc(100vh - 4rem)" bg={mainBg} borderRadius="lg" boxShadow="sm">
           <HStack mb={6}>
             <IconButton icon={<FiArrowLeft />} variant="ghost" size="sm" aria-label="Back to boards" onClick={() => navigate('/boards')} />

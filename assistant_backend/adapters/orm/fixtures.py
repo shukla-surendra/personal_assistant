@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from passlib.hash import pbkdf2_sha256
 from sqlalchemy.orm import Session
 from .models.pg_models import (
-    User, UserSettings, Task, Workspace, Board, BoardItem,
+    User, UserSettings, Task, Workspace, Board,
     Reminder, Notification, Comment, Tag, Page, Block, Database,
     DatabaseEntry, Template, Activity, Integration,
     Contact, Deal, ContactActivity, DealActivity, Chat, ChatMessage,
@@ -47,35 +47,29 @@ def _seed_workspace_content(db: Session, workspace: Workspace, owner: User, team
 
     now = datetime.now(timezone.utc)
 
-    # ---- Board + BoardItems ----------------------------------------------
+    # ---- Boards -------------------------------------------------------------
+    # Two boards, each with its own explicit "columns" so the Kanban view
+    # (BoardDetailPage.js) has real column configuration to read, not just
+    # the client-side default. Cards themselves are plain Tasks with
+    # board_id set (see below) -- BoardItem is a dead, unused model (no
+    # frontend ever calls it; removed from here for the same reason).
     board = Board(
         board_id=uuid.uuid4(),
         workspace_id=workspace.workspace_id,
         name="Sprint Board",
         description="Kanban board for this workspace",
+        properties={"columns": ["todo", "in_progress", "review", "done"]},
         views={"default": "kanban"},
     )
-    db.add(board)
-    db.commit()
-
-    board_items = [
-        BoardItem(
-            item_id=uuid.uuid4(),
-            board_id=board.board_id,
-            title="Design onboarding flow",
-            description="Board-level item, independent of the tasks list",
-            order=1,
-            assignee_id=teammate.user_id,
-        ),
-        BoardItem(
-            item_id=uuid.uuid4(),
-            board_id=board.board_id,
-            title="Ship v1 API",
-            order=2,
-            assignee_id=owner.user_id,
-        ),
-    ]
-    db.add_all(board_items)
+    content_board = Board(
+        board_id=uuid.uuid4(),
+        workspace_id=workspace.workspace_id,
+        name="Content Calendar",
+        description="Launch content, tracked from draft to published",
+        properties={"columns": ["todo", "in_progress", "review", "done"]},
+        views={"default": "kanban"},
+    )
+    db.add_all([board, content_board])
     db.commit()
 
     # ---- Tags --------------------------------------------------------------
@@ -119,11 +113,14 @@ def _seed_workspace_content(db: Session, workspace: Workspace, owner: User, team
     # assignment doesn't gate visibility, only creatorship does.
     task_defaults = dict(watchers=[], labels=[], meta_data={}, settings={})
     tasks = [
+        # ---- Sprint Board cards -- spread across all 4 default columns so
+        # the Kanban view (BoardDetailPage.js) isn't lopsided on first look.
         Task(
             **task_defaults,
             task_id=uuid.uuid4(),
             workspace_id=workspace.workspace_id,
             board_id=board.board_id,
+            order=0,
             user_id=owner.user_id,
             assignee_id=teammate.user_id,
             reporter_id=owner.user_id,
@@ -139,6 +136,20 @@ def _seed_workspace_content(db: Session, workspace: Workspace, owner: User, team
             task_id=uuid.uuid4(),
             workspace_id=workspace.workspace_id,
             board_id=board.board_id,
+            order=1,
+            user_id=owner.user_id,
+            title="Fix flaky CI test on auth middleware",
+            priority=TaskPriority.MEDIUM.value,
+            task_type=TaskType.BUG.value,
+            status=TaskStatus.IN_PROGRESS.value,
+            due_on=now + timedelta(days=3),
+        ),
+        Task(
+            **task_defaults,
+            task_id=uuid.uuid4(),
+            workspace_id=workspace.workspace_id,
+            board_id=board.board_id,
+            order=0,
             user_id=owner.user_id,
             assignee_id=teammate.user_id,
             reporter_id=owner.user_id,
@@ -153,6 +164,102 @@ def _seed_workspace_content(db: Session, workspace: Workspace, owner: User, team
             task_id=uuid.uuid4(),
             workspace_id=workspace.workspace_id,
             board_id=board.board_id,
+            order=1,
+            user_id=owner.user_id,
+            title="Add dark mode toggle to settings",
+            priority=TaskPriority.LOW.value,
+            task_type=TaskType.FEATURE.value,
+            status=TaskStatus.TODO.value,
+            due_on=now + timedelta(days=10),
+        ),
+        Task(
+            **task_defaults,
+            task_id=uuid.uuid4(),
+            workspace_id=workspace.workspace_id,
+            board_id=board.board_id,
+            order=0,
+            user_id=owner.user_id,
+            assignee_id=teammate.user_id,
+            title="Design review: onboarding flow",
+            priority=TaskPriority.MEDIUM.value,
+            task_type=TaskType.TASK.value,
+            status=TaskStatus.REVIEW.value,
+            due_on=now + timedelta(days=1),
+        ),
+        Task(
+            **task_defaults,
+            task_id=uuid.uuid4(),
+            workspace_id=workspace.workspace_id,
+            board_id=board.board_id,
+            order=0,
+            user_id=owner.user_id,
+            title="Upgrade dependency versions",
+            priority=TaskPriority.LOW.value,
+            task_type=TaskType.TASK.value,
+            status=TaskStatus.DONE.value,
+            completed=True,
+            due_on=now - timedelta(days=2),
+        ),
+        # ---- Content Calendar cards ---------------------------------------
+        Task(
+            **task_defaults,
+            task_id=uuid.uuid4(),
+            workspace_id=workspace.workspace_id,
+            board_id=content_board.board_id,
+            order=0,
+            user_id=owner.user_id,
+            title="Write blog post: why we rebuilt the CRM",
+            priority=TaskPriority.MEDIUM.value,
+            task_type=TaskType.TASK.value,
+            status=TaskStatus.TODO.value,
+            due_on=now + timedelta(days=5),
+        ),
+        Task(
+            **task_defaults,
+            task_id=uuid.uuid4(),
+            workspace_id=workspace.workspace_id,
+            board_id=content_board.board_id,
+            order=0,
+            user_id=owner.user_id,
+            assignee_id=teammate.user_id,
+            title="Record product demo video",
+            priority=TaskPriority.HIGH.value,
+            task_type=TaskType.TASK.value,
+            status=TaskStatus.IN_PROGRESS.value,
+            due_on=now + timedelta(days=4),
+        ),
+        Task(
+            **task_defaults,
+            task_id=uuid.uuid4(),
+            workspace_id=workspace.workspace_id,
+            board_id=content_board.board_id,
+            order=0,
+            user_id=owner.user_id,
+            title="Review launch announcement copy",
+            priority=TaskPriority.MEDIUM.value,
+            task_type=TaskType.TASK.value,
+            status=TaskStatus.REVIEW.value,
+            due_on=now + timedelta(days=2),
+        ),
+        Task(
+            **task_defaults,
+            task_id=uuid.uuid4(),
+            workspace_id=workspace.workspace_id,
+            board_id=content_board.board_id,
+            order=0,
+            user_id=owner.user_id,
+            title="Publish changelog for v1.2",
+            priority=TaskPriority.LOW.value,
+            task_type=TaskType.TASK.value,
+            status=TaskStatus.DONE.value,
+            completed=True,
+            due_on=now - timedelta(days=3),
+        ),
+        Task(
+            **task_defaults,
+            task_id=uuid.uuid4(),
+            workspace_id=workspace.workspace_id,
+            board_id=None,
             user_id=owner.user_id,
             title="Quarterly planning",
             priority=TaskPriority.LOW.value,
@@ -323,7 +430,7 @@ def _seed_workspace_content(db: Session, workspace: Workspace, owner: User, team
 
     db.execute(task_tags.insert().values(task_id=tasks[0].task_id, tag_id=tags[0].id))
     db.execute(task_tags.insert().values(task_id=tasks[0].task_id, tag_id=tags[1].id))
-    db.execute(task_tags.insert().values(task_id=tasks[1].task_id, tag_id=tags[2].id))
+    db.execute(task_tags.insert().values(task_id=tasks[2].task_id, tag_id=tags[2].id))  # tasks[2] = "Write onboarding docs"
     db.commit()
 
     # ---- Comments ------------------------------------------------------------
@@ -346,16 +453,50 @@ def _seed_workspace_content(db: Session, workspace: Workspace, owner: User, team
     db.add_all(comments)
     db.commit()
 
-    # ---- Reminders -----------------------------------------------------------
+    # ---- Reminders -------------------------------------------------------------
+    # user_id=owner on all of these, deliberately -- same reason every Task
+    # above uses owner.user_id: list_reminders() filters strictly on
+    # Reminder.user_id == the logged-in caller, and teammate never logs in
+    # anywhere (create_demo_account() only ever mints a token for owner).
+    # This fixture originally assigned the first reminder to teammate,
+    # which meant a demo login showed zero reminders despite the row
+    # existing in the DB -- same class of bug already documented above for
+    # Tasks, just not caught here until now.
     reminders = [
         Reminder(
             reminder_id=uuid.uuid4(),
             workspace_id=workspace.workspace_id,
-            user_id=teammate.user_id,
+            user_id=owner.user_id,
             title="Follow up on CRM fix",
             description="Check the Activities tab is stable after deploy",
             due_date=now + timedelta(days=1),
             repeat=None,
+        ),
+        Reminder(
+            reminder_id=uuid.uuid4(),
+            workspace_id=workspace.workspace_id,
+            user_id=owner.user_id,
+            title="Renew SSL certificate",
+            due_date=now + timedelta(hours=6),
+            repeat=None,
+        ),
+        Reminder(
+            reminder_id=uuid.uuid4(),
+            workspace_id=workspace.workspace_id,
+            user_id=owner.user_id,
+            title="Weekly team sync",
+            description="Recurring standup, every Monday morning",
+            due_date=now + timedelta(days=3),
+            repeat="weekly",
+        ),
+        Reminder(
+            reminder_id=uuid.uuid4(),
+            workspace_id=workspace.workspace_id,
+            user_id=owner.user_id,
+            title="Submit expense report",
+            due_date=now - timedelta(days=1),
+            repeat=None,
+            is_completed=True,
         ),
     ]
     db.add_all(reminders)
@@ -388,24 +529,74 @@ def _seed_workspace_content(db: Session, workspace: Workspace, owner: User, team
     db.add_all(notifications)
     db.commit()
 
-    # ---- Pages + Blocks (the docs/wiki feature) -----------------------------
+    # ---- Pages + Blocks (the Wiki feature, WikiDetailPage.js's block
+    # editor) -- two pages, deliberately using all 7 block types between
+    # them so a fresh demo shows the editor's range, not just paragraphs.
     page = Page(
         page_id=uuid.uuid4(),
         workspace_id=workspace.workspace_id,
         title="Team Handbook",
-        content={"summary": "How this team works"},
+        properties={},
     )
-    db.add(page)
+    roadmap_page = Page(
+        page_id=uuid.uuid4(),
+        workspace_id=workspace.workspace_id,
+        title="Product Roadmap",
+        properties={},
+    )
+    db.add_all([page, roadmap_page])
     db.commit()
 
     blocks = [
-        Block(block_id=uuid.uuid4(), page_id=page.page_id, type="heading", content={"text": "Welcome"}),
-        Block(block_id=uuid.uuid4(), page_id=page.page_id, type="paragraph", content={"text": "This page is a fixture example of the Pages/Blocks feature."}),
+        Block(block_id=uuid.uuid4(), page_id=page.page_id, order=0, type="heading",
+              content={"text": "Welcome", "level": 1}),
+        Block(block_id=uuid.uuid4(), page_id=page.page_id, order=1, type="paragraph",
+              content={"text": "This page is how this team works -- conventions, tools, and expectations."}),
+        Block(block_id=uuid.uuid4(), page_id=page.page_id, order=2, type="heading",
+              content={"text": "Working agreements", "level": 2}),
+        Block(block_id=uuid.uuid4(), page_id=page.page_id, order=3, type="bullet_list_item",
+              content={"text": "Standup async in #team-updates by 10am"}),
+        Block(block_id=uuid.uuid4(), page_id=page.page_id, order=4, type="bullet_list_item",
+              content={"text": "PRs need one approval before merging"}),
+        Block(block_id=uuid.uuid4(), page_id=page.page_id, order=5, type="divider", content={}),
+        Block(block_id=uuid.uuid4(), page_id=page.page_id, order=6, type="heading",
+              content={"text": "Onboarding checklist", "level": 2}),
+        Block(block_id=uuid.uuid4(), page_id=page.page_id, order=7, type="todo",
+              content={"text": "Get access to the shared workspace", "checked": True}),
+        Block(block_id=uuid.uuid4(), page_id=page.page_id, order=8, type="todo",
+              content={"text": "Read the CRM activities design doc", "checked": False}),
+        Block(block_id=uuid.uuid4(), page_id=page.page_id, order=9, type="code",
+              content={"text": "docker compose up -d\nmake load FIXTURE=ecommerce"}),
     ]
-    db.add_all(blocks)
+    roadmap_blocks = [
+        Block(block_id=uuid.uuid4(), page_id=roadmap_page.page_id, order=0, type="heading",
+              content={"text": "Product Roadmap", "level": 1}),
+        Block(block_id=uuid.uuid4(), page_id=roadmap_page.page_id, order=1, type="paragraph",
+              content={"text": "What's shipped, in progress, and next -- kept here instead of scattered across chat threads."}),
+        Block(block_id=uuid.uuid4(), page_id=roadmap_page.page_id, order=2, type="heading",
+              content={"text": "Now", "level": 2}),
+        Block(block_id=uuid.uuid4(), page_id=roadmap_page.page_id, order=3, type="bullet_list_item",
+              content={"text": "CRM activities routing fix"}),
+        Block(block_id=uuid.uuid4(), page_id=roadmap_page.page_id, order=4, type="bullet_list_item",
+              content={"text": "Dark mode"}),
+        Block(block_id=uuid.uuid4(), page_id=roadmap_page.page_id, order=5, type="divider", content={}),
+        Block(block_id=uuid.uuid4(), page_id=roadmap_page.page_id, order=6, type="heading",
+              content={"text": "Next", "level": 2}),
+        Block(block_id=uuid.uuid4(), page_id=roadmap_page.page_id, order=7, type="todo",
+              content={"text": "Reminders", "checked": False}),
+        Block(block_id=uuid.uuid4(), page_id=roadmap_page.page_id, order=8, type="todo",
+              content={"text": "Real-time collaboration on wiki pages", "checked": False}),
+        Block(block_id=uuid.uuid4(), page_id=roadmap_page.page_id, order=9, type="image",
+              content={"url": "https://placehold.co/600x300?text=Roadmap+Snapshot", "caption": "Placeholder -- swap for a real screenshot"}),
+    ]
+    db.add_all(blocks + roadmap_blocks)
     db.commit()
 
     # ---- Database + DatabaseEntries (the Notion-style table feature) -------
+    # Fixed columns per database, set at creation (properties["columns"]) --
+    # DatabaseDetailPage.js renders these as real table headers; each entry's
+    # `title` is the row's first-column value, `content` holds the rest
+    # keyed by column name.
     database = Database(
         database_id=uuid.uuid4(),
         workspace_id=workspace.workspace_id,
@@ -413,14 +604,26 @@ def _seed_workspace_content(db: Session, workspace: Workspace, owner: User, team
         description="Tracked vendors database",
         properties={"columns": ["name", "status"]},
     )
-    db.add(database)
+    directory_database = Database(
+        database_id=uuid.uuid4(),
+        workspace_id=workspace.workspace_id,
+        title="Team Directory",
+        description="Who's who, for quick reference",
+        properties={"columns": ["name", "role", "timezone"]},
+    )
+    db.add_all([database, directory_database])
     db.commit()
 
     database_entries = [
         DatabaseEntry(entry_id=uuid.uuid4(), database_id=database.database_id, title="Acme Cloud", content={"status": "active"}),
         DatabaseEntry(entry_id=uuid.uuid4(), database_id=database.database_id, title="Beta Hosting", content={"status": "trial"}),
+        DatabaseEntry(entry_id=uuid.uuid4(), database_id=database.database_id, title="Northwind Traders", content={"status": "active"}),
     ]
-    db.add_all(database_entries)
+    directory_entries = [
+        DatabaseEntry(entry_id=uuid.uuid4(), database_id=directory_database.database_id, title="Demo User", content={"role": "Owner", "timezone": "UTC"}),
+        DatabaseEntry(entry_id=uuid.uuid4(), database_id=directory_database.database_id, title="Sam Teammate", content={"role": "Member", "timezone": "UTC+1"}),
+    ]
+    db.add_all(database_entries + directory_entries)
     db.commit()
 
     # ---- Templates --------------------------------------------------------
@@ -605,7 +808,7 @@ def _seed_workspace_content(db: Session, workspace: Workspace, owner: User, team
 
     return {
         "board": board,
-        "board_items": board_items,
+        "content_board": content_board,
         "tags": tags,
         "tasks": tasks,
         "comments": comments,
@@ -613,8 +816,12 @@ def _seed_workspace_content(db: Session, workspace: Workspace, owner: User, team
         "notifications": notifications,
         "page": page,
         "blocks": blocks,
+        "roadmap_page": roadmap_page,
+        "roadmap_blocks": roadmap_blocks,
         "database": database,
         "database_entries": database_entries,
+        "directory_database": directory_database,
+        "directory_entries": directory_entries,
         "templates": templates,
         "activities": activities,
         "integrations": integrations,
