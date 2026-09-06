@@ -1,0 +1,27 @@
+server {
+    listen 80;
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Reverse-proxies the backend instead of the frontend JS bundle calling an
+    # absolute host/IP -- same setup as ../assistant_web/nginx.conf.template.
+    # BACKEND_HOST (and BACKEND_PORT) are substituted at container start
+    # (nginx's built-in envsubst-on-templates mechanism).
+    location /api/ {
+        proxy_pass http://${BACKEND_HOST}:${BACKEND_PORT}/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Next's static export emits one real .html file per page (login.html,
+    # dashboard.html, boards/detail.html, ...) rather than CRA's single
+    # index.html + client-side-routes-everything model, so this tries the
+    # exact file first, then with .html appended, then as a directory index --
+    # falling back to /index.html only as a last resort.
+    location / {
+        try_files $uri $uri.html $uri/index.html /index.html;
+    }
+}
