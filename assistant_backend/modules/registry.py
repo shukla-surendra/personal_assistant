@@ -2,11 +2,16 @@
 
 Two kinds of entries live here:
 
-1. Fresh modules built as self-contained packages (see modules/inventory/
-   for the template: its own models/commands/dto/handlers/controller/
-   manifest). Adding one of these means creating that package, then
-   adding one import + one line to ALL_MODULES below -- nothing else in
-   the app needs to know it exists ahead of time.
+1. Fresh modules built as self-contained packages under modules/ (see
+   modules/inventory/ for the template: its own models/commands/dto/
+   handlers/controller/manifest.py exposing a `MANIFEST`). These are
+   auto-discovered at import time by _discover_packaged_modules() below --
+   dropping a new modules/<key>/ package into place is enough to register
+   it. Nothing else in the app (not this file, not main.py, not the
+   frontend nav) needs to be told it exists ahead of time; main.py
+   includes every router in ALL_MODULES, and the frontend reads the same
+   manifests back through GET /workspaces/{id}/modules.
+   See MODULES.md for the full guide.
 
 2. Pre-existing features (CRM, Wiki, Database, Chat, Reports, Reminders,
    Notifications, Templates) that were always-on before this registry
@@ -14,12 +19,14 @@ Two kinds of entries live here:
    already lived (controllers/, handlers/, commands/, dto/), only their
    routes gained a require_module_enabled(key, default_enabled=True) gate
    (see e.g. controllers/crm_controller.py). They're declared as
-   manifests directly below instead of getting their own modules/<key>/
-   package, since there's no new code to house.
-
-Either way, main.py includes every router in ALL_MODULES's list, and the
-frontend reads the same manifests back through GET /workspaces/{id}/modules.
+   manifests directly below (ADOPTED_MODULES) instead of getting their
+   own modules/<key>/ package, since there's no new code to house -- this
+   list is a one-time migration record, not an ongoing extension point.
 """
+import importlib
+import logging
+import pkgutil
+
 from controllers.crm_controller import crm_router
 from controllers.page_controller import page_router
 from controllers.database_controller import database_router
@@ -29,10 +36,15 @@ from controllers.reminder_controller import reminder_router
 from controllers.notification_controller import notification_router
 from controllers.template_controller import template_router
 from .manifest import ModuleManifest
-from .inventory.manifest import MANIFEST as INVENTORY_MODULE
 
-ALL_MODULES = [
-    INVENTORY_MODULE,
+logger = logging.getLogger(__name__)
+
+# Files in modules/ that are registry infrastructure, not modules
+# themselves -- iter_modules would otherwise try (and fail) to treat them
+# as packages to discover.
+_RESERVED_NAMES = {"access", "manifest", "registry"}
+
+ADOPTED_MODULES = [
     ModuleManifest(key="crm", name="CRM", description="Contacts, deals, and activity tracking.", icon="users", router=crm_router, default_enabled=True),
     ModuleManifest(key="wiki", name="Wiki", description="Nested pages and documents.", icon="book", router=page_router, default_enabled=True),
     ModuleManifest(key="database", name="Database", description="Structured tables with custom columns.", icon="database", router=database_router, default_enabled=True),
@@ -43,6 +55,39 @@ ALL_MODULES = [
     ModuleManifest(key="templates", name="Templates", description="Reusable page/task templates.", icon="layout", router=template_router, default_enabled=True),
 ]
 
+
+def _packaged_module_names():
+    """Every subpackage of modules/ that isn't registry infrastructure --
+    a candidate to check for a manifest.py, not yet confirmed to have one."""
+    import modules as _modules_pkg
+    return [
+        name for _, name, is_pkg in pkgutil.iter_modules(_modules_pkg.__path__)
+        if is_pkg and name not in _RESERVED_NAMES
+    ]
+
+
+def _discover_packaged_modules():
+    """Import each candidate package's manifest.py and collect its
+    MANIFEST. A module that fails to import (typo, missing MANIFEST,
+    broken dependency) is skipped with a logged warning rather than
+    crashing the whole app -- one broken module shouldn't take every
+    other module (or the app itself) down with it."""
+    discovered = []
+    for name in _packaged_module_names():
+        try:
+            manifest_module = importlib.import_module(f"modules.{name}.manifest")
+            manifest = manifest_module.MANIFEST
+        except Exception:
+            logger.exception(f"Skipping module '{name}': failed to load modules/{name}/manifest.py")
+            continue
+        if not isinstance(manifest, ModuleManifest):
+            logger.error(f"Skipping module '{name}': manifest.MANIFEST is not a ModuleManifest")
+            continue
+        discovered.append(manifest)
+    return discovered
+
+
+ALL_MODULES = ADOPTED_MODULES + _discover_packaged_modules()
 MODULES_BY_KEY = {m.key: m for m in ALL_MODULES}
 
 
@@ -51,11 +96,17 @@ def get_manifest(key: str):
 
 
 def import_all_module_models():
-    """Import every *newly-built* module's models submodule so its tables
-    register on Base.metadata -- needed by
+    """Import every auto-discovered module's models submodule (if it has
+    one) so its tables register on Base.metadata -- needed by
     adapters.orm.models.database.init_db()'s create_all() (the test
     suite's schema reset), since a model class that's never imported
     anywhere is invisible to SQLAlchemy. Adopted pre-existing features
-    don't need an entry here -- their models already live in pg_models.py
-    and init_db() already imports that module directly."""
-    from .inventory import models  # noqa: F401
+    don't need this -- their models already live in pg_models.py and
+    init_db() already imports that module directly."""
+    for name in _packaged_module_names():
+        try:
+            importlib.import_module(f"modules.{name}.models")
+        except ModuleNotFoundError:
+            pass  # This module has no models.py -- not every module needs its own tables.
+        except Exception:
+            logger.exception(f"Skipping model import for module '{name}'")

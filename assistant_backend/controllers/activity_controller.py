@@ -24,9 +24,10 @@ async def create_activity(command: ActivityCommand, workspace_id: str, user: dic
 @router.put("/{activity_id}", response_model=ActivityDto)
 async def update_activity(activity_id: str, command: ActivityUpdateCommand, workspace_id: str, user: dict = Depends(get_auth_details)):
     handler = ActivityHandler()
+    # ActivityUpdateCommand has no workspace_id/user_id fields (and
+    # update_activity doesn't use them) -- assigning them here raised
+    # "ActivityUpdateCommand object has no field ..." on every call.
     command.activity_id = activity_id
-    command.workspace_id = workspace_id
-    command.user_id = user.get("user_id")
     try:
         activity = handler.update_activity(command)
         return ActivityDtoMapper.map_to_activity_dto(activity)
@@ -46,7 +47,7 @@ async def delete_activity(activity_id: str, workspace_id: str, user: dict = Depe
 async def get_activity(activity_id: str, workspace_id: str, user: dict = Depends(get_auth_details)):
     handler = ActivityHandler()
     try:
-        activity = handler.get_activity(activity_id, workspace_id, user.get("user_id"))
+        activity = handler.get_activity(activity_id, workspace_id)
         return ActivityDtoMapper.map_to_activity_dto(activity)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -55,7 +56,11 @@ async def get_activity(activity_id: str, workspace_id: str, user: dict = Depends
 async def list_activities(workspace_id: str, user: dict = Depends(get_auth_details)):
     handler = ActivityHandler()
     try:
-        activities = handler.list_activities(workspace_id, user.get("user_id"))
+        # list_activities's 2nd positional param is entity_id, not a user
+        # filter -- passing the caller's user_id there was silently
+        # filtering every activity out (no row's entity_id ever matches a
+        # user_id), so this endpoint always returned an empty list.
+        activities = handler.list_activities(workspace_id)
         return [ActivityDtoMapper.map_to_activity_dto(a) for a in activities]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

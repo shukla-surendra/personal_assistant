@@ -23,8 +23,8 @@ import {
 import { FaCog, FaPowerOff, FaUser } from 'react-icons/fa';
 import { MdExitToApp } from 'react-icons/md';
 import { HiChevronUpDown } from 'react-icons/hi2';
-import UserSettings from '../modals/UserSettings';
-import UserProfile from '../modals/UserProfile';
+import { useNavigate } from 'react-router-dom';
+import QuickProfilePopover from '../modals/QuickProfilePopover';
 import { selectWorkspace, fetchWorkspaces } from '../../../slices/workspaces';
 
 import Auth from "../../../utils/auth";
@@ -39,8 +39,8 @@ function WorkspaceSelector() {
   const disclosures = useDisclosure();
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const profileDisclosures = useDisclosure();
-  const settingsDisclosures = useDisclosure();
 
   const initFetch = useCallback(() => {
     setLoading(true);
@@ -64,12 +64,8 @@ function WorkspaceSelector() {
     Auth.logout()
   }
 
-  const openUserProfile = () => {
+  const openQuickProfile = () => {
     profileDisclosures.onOpen();
-  };
-
-  const openUserSettings = () => {
-    settingsDisclosures.onOpen();
   };
 
   const handleWorkspaceSelect = (workspace) => {
@@ -82,8 +78,7 @@ function WorkspaceSelector() {
 
   return (
     <>
-      <UserProfile disclosures={profileDisclosures} user={user} />
-      <UserSettings disclosures={settingsDisclosures} user={user} />
+      <QuickProfilePopover disclosures={profileDisclosures} user={user} />
       <Box p="2" fontSize="14px">
         <Center>
           <Flex align="center" minW={0}>
@@ -147,13 +142,13 @@ function WorkspaceSelector() {
                   </VStack>
                   <Box borderTop="1px solid" borderColor="gray.200" mt="1" pt="1">
                     <HStack align="center" justify="space-between">
-                      <HStack spacing="1" cursor="pointer" onClick={openUserProfile}>
+                      <HStack spacing="1" cursor="pointer" onClick={openQuickProfile}>
                         <FaUser />
-                        <Text>Profile</Text>
+                        <Text>Quick Profile</Text>
                       </HStack>
                     </HStack>
                     <HStack align="center" justify="space-between" mt="1">
-                      <HStack spacing="1" cursor="pointer" onClick={openUserSettings}>
+                      <HStack spacing="1" cursor="pointer" onClick={() => navigate('/settings')}>
                         <FaCog />
                         <Text>Settings</Text>
                       </HStack>

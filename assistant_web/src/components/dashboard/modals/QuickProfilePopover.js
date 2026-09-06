@@ -11,9 +11,12 @@ import {
   Button,
   FormLabel,
   HStack,
+  Text,
   Divider,
   Spinner,
   Center,
+  Switch,
+  useColorMode,
   useToast,
 } from "@chakra-ui/react";
 import { useDispatch } from "react-redux";
@@ -24,7 +27,12 @@ function fullName(user) {
   return `${user?.first_name || ""} ${user?.last_name || ""}`.trim();
 }
 
-export default function UserProfile(props) {
+// The fast, lightweight popup for "I just want to change my name/photo/
+// theme without leaving this page" -- anything heavier (workspace rename,
+// delete account, notification/module preferences) lives on the full
+// Settings page (/settings) instead, reached via the "Settings" menu item
+// next to this one.
+export default function QuickProfilePopover(props) {
   // Handle both direct props and disclosures prop
   const isOpen = props.isOpen || props.disclosures?.isOpen;
   const onClose = props.onClose || props.disclosures?.onClose;
@@ -32,6 +40,7 @@ export default function UserProfile(props) {
 
   const dispatch = useDispatch();
   const toast = useToast();
+  const { colorMode, toggleColorMode } = useColorMode();
   const [name, setName] = useState(fullName(user));
   const [isSaving, setIsSaving] = useState(false);
 
@@ -67,7 +76,7 @@ export default function UserProfile(props) {
       <ModalOverlay />
       <ModalContent>
         <ModalHeader fontWeight={600} fontSize={20}>
-          Profile
+          Quick Profile
         </ModalHeader>
         <ModalCloseButton />
         <ModalBody>
@@ -93,6 +102,11 @@ export default function UserProfile(props) {
                   placeholder="Email"
                 />
               </VStack>
+              <Divider />
+              <HStack w="100%" justify="space-between">
+                <Text fontSize="sm">Dark Mode</Text>
+                <Switch isChecked={colorMode === "dark"} onChange={toggleColorMode} />
+              </HStack>
               <Divider />
               <HStack w="100%" justify="flex-end">
                 <Button colorScheme="blue" size="sm" onClick={handleSave} isLoading={isSaving}>

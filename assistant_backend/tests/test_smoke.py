@@ -5,11 +5,6 @@ that type yet? This is the fast "is anything obviously broken" signal --
 depth (real CRUD, real assertions) belongs in test_core_flow.py instead.
 
 Endpoints deliberately left out, with why:
-  - /api/v1/workspaces/{id}/settings/  -- GET / assumes a UserSettings row
-    already exists for the caller; a fresh signup may not have one yet.
-    Needs its own investigation (does signup create one, or does GET need
-    a get-or-create fallback?), not a blind smoke check that would just
-    report a status with no context.
   - /timeblocks -- timeblock_controller.py's GET/PUT/DELETE routes are
     missing the /api/v1/workspaces/{workspace_id} prefix that POST has, so
     workspace_id is silently a required *query* param instead of a path
@@ -31,6 +26,8 @@ LIST_ENDPOINTS = [
     "pages",
     "reminders",
     "templates",
+    "settings",
+    "boards",
 ]
 
 

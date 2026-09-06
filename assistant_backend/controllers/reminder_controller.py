@@ -22,6 +22,8 @@ async def create_reminder(command: ReminderCommand, workspace_id: str, user: dic
     try:
         reminder = handler.create_reminder(command)
         return ReminderDtoMapper.map_to_reminder_dto(reminder)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -34,6 +36,8 @@ async def update_reminder(reminder_id: str, command: ReminderUpdateCommand, work
     try:
         reminder = handler.update_reminder(command)
         return ReminderDtoMapper.map_to_reminder_dto(reminder)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -43,6 +47,8 @@ async def delete_reminder(reminder_id: str, workspace_id: str, user: dict = Depe
     try:
         command = ReminderDeleteCommand(reminder_id=reminder_id, workspace_id=workspace_id, user_id=user.get("user_id"))
         handler.delete_reminder(command)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -52,6 +58,8 @@ async def get_reminder(reminder_id: str, workspace_id: str, user: dict = Depends
     try:
         reminder = handler.get_reminder(reminder_id, workspace_id, user.get("user_id"))
         return ReminderDtoMapper.map_to_reminder_dto(reminder)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

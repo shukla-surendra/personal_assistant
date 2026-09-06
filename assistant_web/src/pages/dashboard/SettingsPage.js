@@ -23,15 +23,22 @@ import {
   TabPanel,
   useToast,
   Spinner,
+  Divider,
+  Tooltip,
 } from '@chakra-ui/react';
-import { FiArrowLeft, FiMoon, FiSun, FiBell, FiUser, FiGlobe, FiGrid, FiBox } from 'react-icons/fi';
+import { FiArrowLeft, FiMoon, FiSun, FiBell, FiUser, FiGlobe, FiGrid, FiBox, FiBriefcase } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { retrieveSettings, updateSettings } from '../../slices/settings';
 import { updateProfile } from '../../slices/auth';
+import { updateWorkspace } from '../../slices/workspaces';
 import Navbar from '../../components/dashboard/Navbar';
 import Header from '../../components/dashboard/Header';
 import ModuleService from '../../services/ModuleService';
+import UserService from '../../services/userservice';
+import AvatarUpload from '../../components/dashboard/modals/AvatarUpload';
+import ConfigService from '../../utils/config';
+import Auth from '../../utils/auth';
 
 const MODULE_ICONS = { box: FiBox };
 
@@ -66,6 +73,55 @@ const SettingsPage = () => {
   const [modules, setModules] = useState([]);
   const [modulesLoading, setModulesLoading] = useState(true);
   const [togglingKey, setTogglingKey] = useState(null);
+
+  // Workspace + Danger Zone -- moved here from the retired UserSettings
+  // popup, which duplicated a chunk of this page. The popup (Header's
+  // "Quick Profile") now only handles the fast stuff: avatar/name/theme.
+  let workspace = null;
+  try { workspace = ConfigService.getDefaultWorkspace(); } catch (e) { /* none selected */ }
+  const isWorkspaceOwner = !!(workspace && user && String(workspace.owner_id) === String(user.user_id));
+  const [workspaceName, setWorkspaceName] = useState(workspace?.name || '');
+  const [isSavingWorkspace, setIsSavingWorkspace] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+
+  useEffect(() => {
+    setWorkspaceName(workspace?.name || '');
+  }, [workspace?.workspace_id]);
+
+  const handleSaveWorkspace = () => {
+    if (!workspaceName.trim()) {
+      toast({ title: "Workspace name can't be empty", status: 'warning', duration: 2500, isClosable: true });
+      return;
+    }
+    setIsSavingWorkspace(true);
+    dispatch(updateWorkspace({ id: workspace.workspace_id, name: workspaceName.trim() }))
+      .unwrap()
+      .then((updated) => {
+        ConfigService.setDefaultWorkspace({ ...workspace, name: updated.name });
+        toast({ title: 'Workspace renamed', status: 'success', duration: 2500, isClosable: true });
+      })
+      .catch(err => toast({ title: "Couldn't rename workspace", description: err.message, status: 'error', duration: 3500, isClosable: true }))
+      .finally(() => setIsSavingWorkspace(false));
+  };
+
+  const handleDeleteAccount = () => {
+    setIsDeletingAccount(true);
+    UserService.remove(user.user_id)
+      .then(() => {
+        toast({ title: 'Account deleted', status: 'info', duration: 2000, isClosable: true });
+        Auth.logout();
+      })
+      .catch(err => {
+        toast({
+          title: "Couldn't delete account",
+          description: err.response?.data?.detail || 'Please try again',
+          status: 'error', duration: 3500, isClosable: true,
+        });
+        setIsDeletingAccount(false);
+        setConfirmingDelete(false);
+      });
+  };
 
   useEffect(() => {
     dispatch(retrieveSettings());
@@ -223,6 +279,12 @@ const SettingsPage = () => {
             </Tab>
             <Tab>
               <HStack spacing={2}>
+                <FiBriefcase />
+                <Text>Workspace</Text>
+              </HStack>
+            </Tab>
+            <Tab>
+              <HStack spacing={2}>
                 <FiGrid />
                 <Text>Modules</Text>
               </HStack>
@@ -236,6 +298,10 @@ const SettingsPage = () => {
                 <Box p={6} bg={bgColor} borderRadius="lg" borderWidth="1px" borderColor={borderColor}>
                   <VStack spacing={4} align="stretch">
                     <Heading size="md">Profile Information</Heading>
+                    <HStack>
+                      <AvatarUpload user={user} size="lg" />
+                      <Text fontSize="sm" color="gray.500">Click the camera icon to change your photo.</Text>
+                    </HStack>
                     <HStack spacing={4} align="flex-start">
                       <FormControl>
                         <FormLabel>First Name</FormLabel>
@@ -266,6 +332,35 @@ const SettingsPage = () => {
                         onChange={(e) => handleProfileChange('bio', e.target.value)}
                       />
                     </FormControl>
+                  </VStack>
+                </Box>
+
+                <Box p={6} bg={bgColor} borderRadius="lg" borderWidth="1px" borderColor="red.300">
+                  <VStack spacing={4} align="stretch">
+                    <Heading size="md" color="red.500">Danger Zone</Heading>
+                    <HStack justify="space-between">
+                      <Text fontSize="sm">Change your password</Text>
+                      <Tooltip label="Password changes aren't supported yet">
+                        <Button size="sm" isDisabled>Change Password</Button>
+                      </Tooltip>
+                    </HStack>
+                    <Divider />
+                    <HStack justify="space-between">
+                      <Text fontSize="sm">Permanently delete your account and all its data</Text>
+                      {!confirmingDelete ? (
+                        <Button colorScheme="red" variant="outline" size="sm" onClick={() => setConfirmingDelete(true)}>
+                          Delete Account
+                        </Button>
+                      ) : (
+                        <HStack>
+                          <Text color="red.500" fontSize="sm">This can't be undone.</Text>
+                          <Button colorScheme="red" size="sm" onClick={handleDeleteAccount} isLoading={isDeletingAccount}>
+                            Confirm Delete
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => setConfirmingDelete(false)}>Cancel</Button>
+                        </HStack>
+                      )}
+                    </HStack>
                   </VStack>
                 </Box>
               </VStack>
@@ -342,6 +437,45 @@ const SettingsPage = () => {
                         <option value="GMT">GMT</option>
                       </Select>
                     </FormControl>
+                  </VStack>
+                </Box>
+              </VStack>
+            </TabPanel>
+
+            {/* Workspace -- moved here from the retired UserSettings popup. */}
+            <TabPanel>
+              <VStack spacing={6} align="stretch">
+                <Box p={6} bg={bgColor} borderRadius="lg" borderWidth="1px" borderColor={borderColor}>
+                  <VStack spacing={4} align="stretch">
+                    <Heading size="md">Workspace</Heading>
+                    {!workspace ? (
+                      <Text color="gray.500">No workspace selected.</Text>
+                    ) : (
+                      <FormControl>
+                        <FormLabel>Workspace Name</FormLabel>
+                        <HStack>
+                          <Input
+                            value={workspaceName}
+                            onChange={(e) => setWorkspaceName(e.target.value)}
+                            isReadOnly={!isWorkspaceOwner}
+                          />
+                          {isWorkspaceOwner && (
+                            <Button colorScheme="blue" size="sm" onClick={handleSaveWorkspace} isLoading={isSavingWorkspace}>
+                              Save
+                            </Button>
+                          )}
+                        </HStack>
+                        {!isWorkspaceOwner && (
+                          <Text fontSize="sm" color="gray.500" mt={1}>
+                            Only the workspace owner can rename this workspace.
+                          </Text>
+                        )}
+                      </FormControl>
+                    )}
+                    <Divider />
+                    <Text fontSize="sm" color="gray.500">
+                      Manage members from the <Text as="a" href="/members" color="blue.500" textDecoration="underline">Members</Text> page.
+                    </Text>
                   </VStack>
                 </Box>
               </VStack>

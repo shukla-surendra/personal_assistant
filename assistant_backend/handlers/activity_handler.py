@@ -68,9 +68,12 @@ class ActivityHandler:
             logger.error(f"Error deleting activity: {str(e)}")
             raise HTTPException(status_code=500, detail="Failed to delete activity")
 
-    def get_activity(self, activity_id: str) -> Activity:
+    def get_activity(self, activity_id: str, workspace_id: str) -> Activity:
         try:
-            activity = self.db.query(Activity).filter(Activity.activity_id == UUID(activity_id)).first()
+            activity = self.db.query(Activity).filter(
+                Activity.activity_id == UUID(activity_id),
+                Activity.workspace_id == UUID(workspace_id)
+            ).first()
             if not activity:
                 raise HTTPException(status_code=404, detail="Activity not found")
             return activity

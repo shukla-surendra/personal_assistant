@@ -27,15 +27,13 @@ import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../../slices/auth';
 import auth from '../../utils/auth';
-import UserSettings from './modals/UserSettings';
-import UserProfile from './modals/UserProfile';
+import QuickProfilePopover from './modals/QuickProfilePopover';
 import UnifiedCreateButton from './UnifiedCreateButton';
 import NewTaskDrawer from './drawers/NewTaskDrawer';
 import NewNoteDrawer from './drawers/NewNoteDrawer';
 
 const Header = ({ onMenuToggle }) => {
-    const { isOpen: isProfileOpen, onOpen: onProfileOpen, onClose: onProfileClose } = useDisclosure();
-    const { isOpen: isSettingsOpen, onOpen: onSettingsOpen, onClose: onSettingsClose } = useDisclosure();
+    const { isOpen: isQuickProfileOpen, onOpen: onQuickProfileOpen, onClose: onQuickProfileClose } = useDisclosure();
     const { isOpen: isNotificationsOpen, onOpen: onNotificationsOpen, onClose: onNotificationsClose } = useDisclosure();
     const { isOpen: isNewTaskOpen, onOpen: onNewTaskOpen, onClose: onNewTaskClose } = useDisclosure();
     const { isOpen: isNewNoteOpen, onOpen: onNewNoteOpen, onClose: onNewNoteClose } = useDisclosure();
@@ -123,10 +121,10 @@ const Header = ({ onMenuToggle }) => {
                             </Text>
                         </MenuButton>
                         <MenuList>
-                            <MenuItem icon={<FiUser />} onClick={onProfileOpen}>
-                                Profile
+                            <MenuItem icon={<FiUser />} onClick={onQuickProfileOpen}>
+                                Quick Profile
                             </MenuItem>
-                            <MenuItem icon={<FiSettings />} onClick={onSettingsOpen}>
+                            <MenuItem icon={<FiSettings />} onClick={() => navigate('/settings')}>
                                 Settings
                             </MenuItem>
                             <MenuDivider />
@@ -139,8 +137,7 @@ const Header = ({ onMenuToggle }) => {
             </Flex>
 
             {/* Modals and Drawers */}
-            <UserProfile isOpen={isProfileOpen} onClose={onProfileClose} user={user} />
-            <UserSettings isOpen={isSettingsOpen} onClose={onSettingsClose} user={user} />
+            <QuickProfilePopover isOpen={isQuickProfileOpen} onClose={onQuickProfileClose} user={user} />
             <NewTaskDrawer 
                 currentTask={{}} 
                 disclosures={{ 
