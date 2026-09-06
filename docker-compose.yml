@@ -58,7 +58,7 @@ services:
       - DB_USER=postgres
       - DB_PASSWORD=postgres
       - REDIS_URL=redis://redis:6379/0
-      - ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://10.1.196.56:3000,http://localhost:3001,http://127.0.0.1:3001
+      - ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://10.1.196.56:3000
       # Azurite's fixed, publicly-documented well-known dev account/key --
       # not a real secret, same one every Azurite install ships with.
       - AZURE_STORAGE_CONNECTION_STRING=DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;QueueEndpoint=http://azurite:10001/devstoreaccount1;
@@ -82,24 +82,13 @@ services:
     networks:
       - app-network
 
+  # Next.js (Pages Router, static export) -- replaced the old Create React
+  # App frontend. That app's source is kept at ../archive/assistant_web for
+  # reference during the cutover period; it's no longer built here.
   frontend:
-    build: ./assistant_web
-    ports:
-      - "3000:80"
-    depends_on:
-      - backend
-    networks:
-      - app-network
-
-  # In-progress Next.js migration of assistant_web (CRA -> Next, Pages
-  # Router, static export) -- runs alongside the CRA frontend above on a
-  # different host port until the migration is fully verified and the
-  # cutover (updating this port mapping / decommissioning `frontend`
-  # above) is a deliberate decision, not implied by this file's presence.
-  frontend-next:
     build: ./assistant_web_next
     ports:
-      - "3001:80"
+      - "3000:80"
     depends_on:
       - backend
     networks:

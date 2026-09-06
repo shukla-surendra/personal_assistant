@@ -18,6 +18,7 @@ import notificationsReducer from './slices/notifications';
 import epicsReducer from './slices/epics';
 import sprintsReducer from './slices/sprints';
 import workspaceActivityReducer from './slices/workspaceActivity';
+import hrReducer from './slices/hr';
 
 const store = configureStore({
   reducer: {
@@ -39,7 +40,8 @@ const store = configureStore({
     notifications: notificationsReducer,
     epics: epicsReducer,
     sprints: sprintsReducer,
-    workspaceActivity: workspaceActivityReducer
+    workspaceActivity: workspaceActivityReducer,
+    hr: hrReducer
   },
   devTools: true,
   middleware: (getDefaultMiddleware) =>

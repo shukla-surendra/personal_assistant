@@ -64,8 +64,8 @@ import ModuleService from "../../services/ModuleService";
 // Plug-and-play modules -- a module only shows up here once it's both
 // registered on the backend AND has a known frontend route. Adding a new
 // module's nav entry means adding one line to each of these two maps.
-const MODULE_ICONS = { box: FiBox };
-const MODULE_ROUTES = { inventory: "/inventory" };
+const MODULE_ICONS = { box: FiBox, users: FiUsers };
+const MODULE_ROUTES = { inventory: "/inventory", hr: "/hr" };
 
 const Navbar = ({ isCollapsed, onToggle }) => {
   const router = useRouter();
