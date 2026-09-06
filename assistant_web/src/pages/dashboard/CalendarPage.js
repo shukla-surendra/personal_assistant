@@ -171,7 +171,7 @@ export default function CalendarPage() {
           minH="100vh"
         >
           <Header onMenuToggle={() => setIsMenuCollapsed(!isMenuCollapsed)} />
-          <Box p={{ base: 4, md: 6, lg: 8 }}>
+          <Box p={{ base: 3, md: 4, lg: 5 }}>
             <VStack spacing={8} align="stretch">
               <Flex
                 justifyContent="space-between"

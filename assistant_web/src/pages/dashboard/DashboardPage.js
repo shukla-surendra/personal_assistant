@@ -326,7 +326,7 @@ export default function DashboardResponsive() {
           minH="100vh"
         >
           <Header onMenuToggle={() => setIsMenuCollapsed(!isMenuCollapsed)} />
-          <Box p="4">
+          <Box p="3">
             <VStack spacing={8} align="stretch">
               {/* Quick Actions */}
               <Flex justify="space-between" align="center">

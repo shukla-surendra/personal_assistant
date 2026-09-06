@@ -11,7 +11,7 @@ class NotificationDto(BaseModel):
     type: str
     entity_id: Optional[str] = None
     entity_type: Optional[str] = None
-    read: bool = False
+    is_read: bool = False
     properties: Optional[Dict[str, Any]] = None
 
 class NotificationDtoMapper:
@@ -26,6 +26,6 @@ class NotificationDtoMapper:
             type=notification.type,
             entity_id=str(notification.entity_id) if notification.entity_id else None,
             entity_type=notification.entity_type,
-            read=notification.read,
+            is_read=notification.is_read,
             properties=notification.properties
-        ) 
+        )

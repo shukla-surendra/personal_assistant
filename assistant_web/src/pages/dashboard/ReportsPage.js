@@ -196,7 +196,7 @@ export default function ReportsPage() {
         <Navbar isCollapsed={isMenuCollapsed} />
         <Box ml={{ base: 0, md: isMenuCollapsed ? '60px' : '250px' }} transition="all 0.3s ease">
           <Header onMenuToggle={() => setIsMenuCollapsed(!isMenuCollapsed)} />
-          <Box as="main" p={{ base: 4, md: 6 }} minH="calc(100vh - 4rem)" bg={mainBg} borderRadius="lg" boxShadow="sm">
+          <Box as="main" p={{ base: 3, md: 4 }} minH="calc(100vh - 4rem)" bg={mainBg} borderRadius="lg" boxShadow="sm">
             <Stack spacing={6}>
               <Flex justifyContent="space-between" alignItems="center" mb={6}>
                 <Heading size="lg">Reports & Analytics</Heading>

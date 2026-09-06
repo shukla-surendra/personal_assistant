@@ -308,7 +308,7 @@ export default function WikiDetailPage() {
       <Navbar isCollapsed={isMenuCollapsed} />
       <Box ml={{ base: 0, md: isMenuCollapsed ? '60px' : '250px' }} transition="all 0.3s ease">
         <Header onMenuToggle={() => setIsMenuCollapsed(!isMenuCollapsed)} />
-        <Box as="main" p={{ base: 4, md: 6 }} minH="calc(100vh - 4rem)" bg={mainBg} borderRadius="lg" boxShadow="sm">
+        <Box as="main" p={{ base: 3, md: 4 }} minH="calc(100vh - 4rem)" bg={mainBg} borderRadius="lg" boxShadow="sm">
           <Box maxW="720px" mx="auto">
             <IconButton icon={<FiArrowLeft />} variant="ghost" size="sm" aria-label="Back to wiki" onClick={() => navigate('/wiki')} mb={4} />
 

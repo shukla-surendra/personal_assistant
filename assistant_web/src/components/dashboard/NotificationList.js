@@ -1,98 +1,86 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   Box,
   Text,
   VStack,
   HStack,
-  Avatar,
   Badge,
   Button,
   useColorModeValue,
+  Spinner,
+  Center,
 } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchNotifications, markNotificationRead } from "../../slices/notifications";
 
-const notifications = [
-  {
-    id: 1,
-    title: "Task Assigned",
-    description: "You have been assigned to 'Design Homepage'.",
-    time: "2 min ago",
-    type: "task",
-    read: false,
-  },
-  {
-    id: 2,
-    title: "Meeting Reminder",
-    description: "Team meeting at 3:00 PM.",
-    time: "1 hr ago",
-    type: "meeting",
-    read: true,
-  },
-  // ...add more as needed
-];
+const getTypeColor = (type) => {
+  switch (type) {
+    case 'task_assigned':
+      return 'blue';
+    case 'comment_added':
+      return 'yellow';
+    case 'meeting':
+      return 'purple';
+    case 'deadline':
+      return 'red';
+    default:
+      return 'gray';
+  }
+};
 
 export default function NotificationList() {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { notifications, loading } = useSelector((state) => state.notifications);
   const bgColor = useColorModeValue("white", "gray.800");
-  const borderColor = useColorModeValue("gray.200", "gray.700");
 
-  const getTypeColor = (type) => {
-    switch (type) {
-      case 'task':
-        return 'blue';
-      case 'meeting':
-        return 'purple';
-      case 'document':
-        return 'teal';
-      case 'comment':
-        return 'yellow';
-      case 'deadline':
-        return 'red';
-      default:
-        return 'gray';
-    }
-  };
+  useEffect(() => {
+    dispatch(fetchNotifications());
+  }, [dispatch]);
+
+  const recent = notifications.slice(0, 5);
 
   return (
     <Box w="340px" maxH="400px" overflowY="auto" p={3}>
-      <VStack align="stretch" spacing={3}>
-        {notifications.length === 0 && (
+      <VStack align="stretch" spacing={2}>
+        {loading && <Center py={4}><Spinner size="sm" /></Center>}
+        {!loading && recent.length === 0 && (
           <Text color="gray.500" textAlign="center">
             No notifications
           </Text>
         )}
-        {notifications.map((n) => (
+        {recent.map((n) => (
           <Box
-            key={n.id}
+            key={n.notification_id}
             p={3}
             borderRadius="md"
-            bg={n.read ? "gray.100" : "blue.50"}
+            bg={n.is_read ? "gray.100" : "blue.50"}
             boxShadow="sm"
+            cursor="pointer"
             _hover={{ bg: "blue.100" }}
+            onClick={() => {
+              if (!n.is_read) dispatch(markNotificationRead(n.notification_id));
+            }}
           >
             <HStack justify="space-between">
-              <Text fontWeight="bold">{n.title}</Text>
-              <Badge colorScheme={n.read ? "gray" : "blue"}>{n.time}</Badge>
+              <Text fontWeight="bold" fontSize="sm">{n.title}</Text>
+              {!n.is_read && <Badge colorScheme="blue">New</Badge>}
             </HStack>
             <Text fontSize="sm" color="gray.700" mt={1}>
-              {n.description}
+              {n.message}
             </Text>
             <HStack mt={2} spacing={2}>
-              <Badge colorScheme={getTypeColor(n.type)}>
-                {n.type}
-              </Badge>
-              {!n.read && (
-                <Badge colorScheme="blue">New</Badge>
-              )}
+              <Badge colorScheme={getTypeColor(n.type)}>{n.type}</Badge>
             </HStack>
           </Box>
         ))}
       </VStack>
-      <Button 
-        mt={4} 
-        w="100%" 
-        size="sm" 
-        colorScheme="blue" 
+      <Button
+        mt={4}
+        w="100%"
+        size="sm"
+        colorScheme="blue"
         variant="outline"
         onClick={() => navigate('/notifications')}
       >

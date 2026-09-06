@@ -85,7 +85,7 @@ import {
           <Box ml={{ base: 0, md: 60 }} transition=".3s ease">
           <Header menu_open={menu_open}></Header>
   
-            <Box as="main" p={4} minH="25rem" bg={useColorModeValue('auto', 'gray.800')}>
+            <Box as="main" p={3} minH="25rem" bg={useColorModeValue('auto', 'gray.800')}>
               {/* board view code */}
               <Flex direction={'column'} justifyContent="center">
                 

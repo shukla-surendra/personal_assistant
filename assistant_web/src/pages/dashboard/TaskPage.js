@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   Box,
-  Container,
   VStack,
   HStack,
   Text,
@@ -84,6 +83,8 @@ import { retrieveTasks } from '../../slices/tasks';
 import EditTaskDrawer from '../../components/dashboard/drawers/EditTaskDrawer';
 import DeleteTaskNoteModal from '../../components/dashboard/modals/DeleteTaskNoteModal';
 import TaskViewModal from '../../components/dashboard/modals/TaskViewModal';
+import Navbar from '../../components/dashboard/Navbar';
+import Header from '../../components/dashboard/Header';
 
 const TaskPage = () => {
   const { task_id } = useParams();
@@ -97,6 +98,7 @@ const TaskPage = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [editMode, setEditMode] = useState(false);
   const [editedTask, setEditedTask] = useState(null);
+  const [isMenuCollapsed, setIsMenuCollapsed] = useState(false);
   const toast = useToast();
   const { colorMode } = useColorMode();
   
@@ -304,8 +306,12 @@ const TaskPage = () => {
         <meta name="description" content={task.description?.substring(0, 160)} />
       </Helmet>
 
-      <Container maxW="container.xl" py={8}>
-        <Box bg={bg} p={8} borderRadius="lg" boxShadow="md">
+      <Box minH="100vh">
+        <Navbar isCollapsed={isMenuCollapsed} />
+        <Box ml={{ base: 0, md: isMenuCollapsed ? '60px' : '250px' }} transition="all 0.3s ease">
+          <Header onMenuToggle={() => setIsMenuCollapsed(!isMenuCollapsed)} />
+          <Box as="main" p={{ base: 3, md: 4 }} minH="calc(100vh - 4rem)">
+        <Box bg={bg} p={6} borderRadius="lg" boxShadow="md">
           <Flex justify="space-between" align="center" mb={6}>
             <VStack align="start" spacing={2}>
               <HStack spacing={4}>
@@ -618,7 +624,9 @@ const TaskPage = () => {
             </TabPanels>
           </Tabs>
         </Box>
-      </Container>
+          </Box>
+        </Box>
+      </Box>
 
       {/* Modals and Drawers */}
       <EditTaskDrawer

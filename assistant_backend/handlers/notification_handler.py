@@ -17,6 +17,7 @@ class NotificationHandler:
         try:
             notification = Notification(
                 workspace_id=UUID(command.workspace_id),
+                user_id=UUID(command.user_id),
                 title=command.title,
                 message=command.message,
                 type=command.type,
@@ -33,16 +34,31 @@ class NotificationHandler:
             logger.error(f"Error creating notification: {str(e)}")
             raise HTTPException(status_code=500, detail="Failed to create notification")
 
+    def get_notification(self, notification_id: str) -> Notification:
+        notification = self.db.query(Notification).filter(
+            Notification.notification_id == UUID(notification_id)
+        ).first()
+        if not notification:
+            raise HTTPException(status_code=404, detail="Notification not found")
+        return notification
+
     def list_notifications(
-        self, workspace_id: str, entity_id: Optional[str] = None, entity_type: Optional[str] = None
+        self, workspace_id: str, user_id: str, entity_id: Optional[str] = None, entity_type: Optional[str] = None
     ) -> list[Notification]:
         try:
-            query = self.db.query(Notification).filter(Notification.workspace_id == UUID(workspace_id))
+            # Scoped to the caller, not the whole workspace -- user_id is
+            # NOT NULL on this model (each notification belongs to one
+            # recipient), so without this filter every user in a workspace
+            # would see everyone else's notifications too.
+            query = self.db.query(Notification).filter(
+                Notification.workspace_id == UUID(workspace_id),
+                Notification.user_id == UUID(user_id),
+            )
             if entity_id is not None:
                 query = query.filter(Notification.entity_id == UUID(entity_id))
             if entity_type is not None:
                 query = query.filter(Notification.entity_type == entity_type)
-            return query.all()
+            return query.order_by(Notification.created_at.desc()).all()
         except SQLAlchemyError as e:
             logger.error(f"Error listing notifications: {str(e)}")
             raise HTTPException(status_code=500, detail="Failed to list notifications")
@@ -59,6 +75,8 @@ class NotificationHandler:
                 notification.message = command.message
             if command.type is not None:
                 notification.type = command.type
+            if command.is_read is not None:
+                notification.is_read = command.is_read
             if command.properties is not None:
                 notification.properties = command.properties
 
@@ -88,4 +106,4 @@ class NotificationHandler:
             raise HTTPException(status_code=500, detail="Failed to delete notification")
 
     def __del__(self):
-        self.db.close() 
+        self.db.close()

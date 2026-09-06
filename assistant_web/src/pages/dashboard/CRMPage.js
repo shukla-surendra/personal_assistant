@@ -143,7 +143,7 @@ const CRMPage = () => {
                     minH="100vh"
                 >
                     <Header onMenuToggle={() => setIsMenuCollapsed(!isMenuCollapsed)} />
-                    <Box p={4}>
+                    <Box p={3}>
                         <VStack spacing={4} align="center" justify="center" minH="50vh">
                             <Text fontSize="xl">Please select a workspace to view CRM data.</Text>
                             <Button colorScheme="blue" onClick={() => navigate('/workspaces')}>
@@ -167,7 +167,7 @@ const CRMPage = () => {
 
     if (hasError) {
         return (
-            <Box p={4}>
+            <Box p={3}>
                 <Alert status="error">
                     <AlertIcon />
                     <AlertTitle>Error loading CRM data</AlertTitle>

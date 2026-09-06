@@ -1,25 +1,26 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List, Optional
-from uuid import UUID
 from handlers.notification_handler import NotificationHandler
 from commands.notification_cmd import NotificationCommand, NotificationUpdateCommand, NotificationDeleteCommand
-from adapters.orm.models.pg_models import Notification
 from dto.notification_dto import NotificationDto
 from dto.notification_dto import NotificationDtoMapper
+from authorization.auth import get_auth_details
 
 router = APIRouter(prefix="/api/v1/workspaces/{workspace_id}/notifications", tags=["notifications"])
 
 @router.post("/", response_model=NotificationDto, status_code=status.HTTP_201_CREATED)
-async def create_notification(command: NotificationCommand):
+async def create_notification(workspace_id: str, command: NotificationCommand, user: dict = Depends(get_auth_details)):
     handler = NotificationHandler()
     try:
+        command.workspace_id = workspace_id
+        command.user_id = user.get("user_id")
         notification = handler.create_notification(command)
         return NotificationDtoMapper.map_to_notification_dto(notification)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.put("/{notification_id}", response_model=NotificationDto)
-async def update_notification(notification_id: str, command: NotificationUpdateCommand):
+async def update_notification(notification_id: str, workspace_id: str, command: NotificationUpdateCommand, user: dict = Depends(get_auth_details)):
     handler = NotificationHandler()
     try:
         command.notification_id = notification_id
@@ -31,7 +32,7 @@ async def update_notification(notification_id: str, command: NotificationUpdateC
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.delete("/{notification_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_notification(notification_id: str, workspace_id: str):
+async def delete_notification(notification_id: str, workspace_id: str, user: dict = Depends(get_auth_details)):
     handler = NotificationHandler()
     try:
         command = NotificationDeleteCommand(notification_id=notification_id, workspace_id=workspace_id)
@@ -42,7 +43,7 @@ async def delete_notification(notification_id: str, workspace_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/{notification_id}", response_model=NotificationDto)
-async def get_notification(notification_id: str):
+async def get_notification(notification_id: str, workspace_id: str, user: dict = Depends(get_auth_details)):
     handler = NotificationHandler()
     try:
         notification = handler.get_notification(notification_id)
@@ -53,12 +54,12 @@ async def get_notification(notification_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/", response_model=List[NotificationDto])
-async def list_notifications(workspace_id: str, entity_id: Optional[str] = None, entity_type: Optional[str] = None):
+async def list_notifications(workspace_id: str, entity_id: Optional[str] = None, entity_type: Optional[str] = None, user: dict = Depends(get_auth_details)):
     handler = NotificationHandler()
     try:
-        notifications = handler.list_notifications(workspace_id, entity_id, entity_type)
+        notifications = handler.list_notifications(workspace_id, user.get("user_id"), entity_id, entity_type)
         return [NotificationDtoMapper.map_to_notification_dto(notification) for notification in notifications]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-notification_router = router 
+notification_router = router

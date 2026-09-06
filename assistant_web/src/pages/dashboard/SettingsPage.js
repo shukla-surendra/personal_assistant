@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box,
-  Container,
   VStack,
   HStack,
   Heading,
@@ -29,11 +28,16 @@ import { FiArrowLeft, FiMoon, FiSun, FiBell, FiUser, FiGlobe } from 'react-icons
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { retrieveSettings, updateSettings } from '../../slices/settings';
+import Navbar from '../../components/dashboard/Navbar';
+import Header from '../../components/dashboard/Header';
 
 const SettingsPage = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const toast = useToast();
+  const [isMenuCollapsed, setIsMenuCollapsed] = useState(false);
+  const pageBg = useColorModeValue('gray.50', 'gray.900');
+  const mainBg = useColorModeValue('gray.50', 'gray.800');
   const { colorMode, toggleColorMode } = useColorMode();
   const { settings } = useSelector((state) => state.settings);
   const [localSettings, setLocalSettings] = useState({
@@ -91,17 +95,25 @@ const SettingsPage = () => {
 
   if (!settings) {
     return (
-      <Container maxW="container.xl" py={8}>
-        <Flex justify="center" align="center" h="50vh">
-          <Spinner size="xl" />
-        </Flex>
-      </Container>
+      <Box minH="100vh" bg={pageBg}>
+        <Navbar isCollapsed={isMenuCollapsed} />
+        <Box ml={{ base: 0, md: isMenuCollapsed ? '60px' : '250px' }}>
+          <Header onMenuToggle={() => setIsMenuCollapsed(!isMenuCollapsed)} />
+          <Flex justify="center" align="center" h="50vh">
+            <Spinner size="xl" />
+          </Flex>
+        </Box>
+      </Box>
     );
   }
 
   return (
-    <Container maxW="container.xl" py={8}>
-      <VStack spacing={6} align="stretch">
+    <Box minH="100vh" bg={pageBg}>
+      <Navbar isCollapsed={isMenuCollapsed} />
+      <Box ml={{ base: 0, md: isMenuCollapsed ? '60px' : '250px' }} transition="all 0.3s ease">
+        <Header onMenuToggle={() => setIsMenuCollapsed(!isMenuCollapsed)} />
+        <Box as="main" p={{ base: 3, md: 4 }} minH="calc(100vh - 4rem)" bg={mainBg} borderRadius="lg" boxShadow="sm">
+    <VStack spacing={6} align="stretch">
         {/* Header */}
         <Flex justify="space-between" align="center">
           <HStack spacing={4}>
@@ -255,8 +267,10 @@ const SettingsPage = () => {
             </TabPanel>
           </TabPanels>
         </Tabs>
-      </VStack>
-    </Container>
+          </VStack>
+        </Box>
+      </Box>
+    </Box>
   );
 };
 

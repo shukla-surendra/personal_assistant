@@ -118,7 +118,7 @@ export default function TimeBlockPage() {
         >
           <Header onMenuToggle={() => setIsMenuCollapsed(!isMenuCollapsed)} />
 
-          <Box p="4">
+          <Box p="3">
             <VStack spacing={4} align="stretch">
               {/* Header Section */}
               <Flex 

@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   Box,
-  Container,
   Heading,
   Text,
   VStack,
@@ -30,6 +29,8 @@ import EditNoteDrawer from '../../components/dashboard/drawers/EditNoteDrawer';
 import DeleteTaskNoteModal from '../../components/dashboard/modals/DeleteTaskNoteModal';
 import NoteViewModal from '../../components/dashboard/modals/NoteViewModal';
 import TipTapEditor from '../../components/editor/TipTapEditor';
+import Navbar from '../../components/dashboard/Navbar';
+import Header from '../../components/dashboard/Header';
 
 export default function NotePage() {
   const { id } = useParams();
@@ -38,6 +39,7 @@ export default function NotePage() {
   const [currentNote, setCurrentNote] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isMenuCollapsed, setIsMenuCollapsed] = useState(false);
   
   const edit_drawer = useDisclosure();
   const delete_modal = useDisclosure();
@@ -109,10 +111,14 @@ export default function NotePage() {
 
   if (!currentNote) {
     return (
-      <Box minH="100vh" bg={bgColor} p={4}>
-        <Container maxW="container.xl">
-          <Text>Loading...</Text>
-        </Container>
+      <Box minH="100vh" bg={bgColor}>
+        <Navbar isCollapsed={isMenuCollapsed} />
+        <Box ml={{ base: 0, md: isMenuCollapsed ? '60px' : '250px' }}>
+          <Header onMenuToggle={() => setIsMenuCollapsed(!isMenuCollapsed)} />
+          <Box as="main" p={{ base: 3, md: 4 }}>
+            <Text>Loading...</Text>
+          </Box>
+        </Box>
       </Box>
     );
   }
@@ -125,8 +131,11 @@ export default function NotePage() {
       </Helmet>
 
       <Box minH="100vh" bg={bgColor}>
-        <Container maxW="container.xl" py={8}>
-          <VStack spacing={6} align="stretch">
+        <Navbar isCollapsed={isMenuCollapsed} />
+        <Box ml={{ base: 0, md: isMenuCollapsed ? '60px' : '250px' }} transition="all 0.3s ease">
+          <Header onMenuToggle={() => setIsMenuCollapsed(!isMenuCollapsed)} />
+          <Box as="main" p={{ base: 3, md: 4 }} minH="calc(100vh - 4rem)">
+          <VStack spacing={4} align="stretch">
             {/* Header */}
             <Flex justify="space-between" align="center">
               <HStack spacing={4}>
@@ -202,7 +211,8 @@ export default function NotePage() {
               </CardBody>
             </Card>
           </VStack>
-        </Container>
+          </Box>
+        </Box>
       </Box>
 
       {/* Modals and Drawers */}

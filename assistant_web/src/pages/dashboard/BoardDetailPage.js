@@ -281,7 +281,7 @@ export default function BoardDetailPage() {
       <Navbar isCollapsed={isMenuCollapsed} />
       <Box ml={{ base: 0, md: isMenuCollapsed ? '60px' : '250px' }} transition="all 0.3s ease">
         <Header onMenuToggle={() => setIsMenuCollapsed(!isMenuCollapsed)} />
-        <Box as="main" p={{ base: 4, md: 6 }} minH="calc(100vh - 4rem)" bg={mainBg} borderRadius="lg" boxShadow="sm">
+        <Box as="main" p={{ base: 3, md: 4 }} minH="calc(100vh - 4rem)" bg={mainBg} borderRadius="lg" boxShadow="sm">
           <HStack mb={6}>
             <IconButton icon={<FiArrowLeft />} variant="ghost" size="sm" aria-label="Back to boards" onClick={() => navigate('/boards')} />
             <Icon as={BsKanban} color="teal.500" />

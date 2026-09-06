@@ -278,7 +278,7 @@ export default function NotesPage() {
           minH="100vh"
         >
           <Header onMenuToggle={() => setIsMenuCollapsed(!isMenuCollapsed)} />
-          <Box p="4">
+          <Box p="3">
             <Stack spacing={6}>
               <Flex
                 justifyContent="space-between"

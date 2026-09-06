@@ -132,11 +132,19 @@ const theme = extendTheme({
     '2xl': '96em',// 1536px
   },
   components: {
+    // Compact-density pass: Chakra's own default size for every one of
+    // these is "md". Dropping the default to "sm" app-wide is the single
+    // highest-leverage way to tighten density everywhere at once -- every
+    // page that never explicitly set a size (the vast majority) gets a
+    // smaller, tighter control for free, with zero per-page edits.
+    // Anywhere a page explicitly passed size="lg"/"md" itself is
+    // unaffected (an explicit prop always wins over a theme default).
     Button: {
       baseStyle: {
         fontWeight: 'semibold',
         borderRadius: 'md',
       },
+      defaultProps: { size: 'sm' },
       variants: {
         solid: {
           bg: 'brand.500',
@@ -154,6 +162,49 @@ const theme = extendTheme({
         },
       },
     },
+    IconButton: {
+      defaultProps: { size: 'sm' },
+    },
+    Input: {
+      baseStyle: {
+        field: {
+          borderRadius: 'md',
+        },
+      },
+      defaultProps: { size: 'sm' },
+    },
+    Select: {
+      defaultProps: { size: 'sm' },
+    },
+    Textarea: {
+      defaultProps: { size: 'sm' },
+    },
+    NumberInput: {
+      defaultProps: { size: 'sm' },
+    },
+    Switch: {
+      defaultProps: { size: 'sm' },
+    },
+    Checkbox: {
+      defaultProps: { size: 'sm' },
+    },
+    Radio: {
+      defaultProps: { size: 'sm' },
+    },
+    Badge: {
+      baseStyle: {
+        borderRadius: 'sm',
+      },
+    },
+    Tag: {
+      defaultProps: { size: 'sm' },
+    },
+    Avatar: {
+      defaultProps: { size: 'sm' },
+    },
+    Table: {
+      defaultProps: { size: 'sm' },
+    },
     Card: {
       baseStyle: {
         container: {
@@ -164,13 +215,13 @@ const theme = extendTheme({
             bg: 'gray.800',
           },
         },
-      },
-    },
-    Input: {
-      baseStyle: {
-        field: {
-          borderRadius: 'md',
-        },
+        // Chakra's own Card part-padding scales off "size" (md by
+        // default: 1.25rem/20px). Tightened directly rather than via
+        // defaultProps size="sm", since Card doesn't expose a "sm"
+        // variant with meaningfully different padding out of the box.
+        header: { padding: '0.75rem 1rem' },
+        body: { padding: '0.75rem 1rem' },
+        footer: { padding: '0.75rem 1rem' },
       },
     },
     Modal: {
@@ -182,7 +233,7 @@ const theme = extendTheme({
     },
     Text: {
       baseStyle: {
-        fontSize: 'md',
+        fontSize: 'sm',
         lineHeight: 'base',
       },
     },
@@ -191,31 +242,37 @@ const theme = extendTheme({
         fontWeight: 'bold',
         lineHeight: 'shorter',
       },
+      // The previous mapping inflated every size a full step past
+      // Chakra's own scale (e.g. "sm" resolved to 18-20px, normally a
+      // "md"-and-a-half) -- that fights density everywhere a page titles
+      // a section with Heading size="sm"/"md"/"lg", which is most of
+      // them. Tightened one step down across the board; page-level size=
+      // props don't need to change, only what each token now resolves to.
       sizes: {
         '2xl': {
-          fontSize: ['4xl', null, '5xl'],
-        },
-        xl: {
           fontSize: ['3xl', null, '4xl'],
         },
-        lg: {
+        xl: {
           fontSize: ['2xl', null, '3xl'],
         },
-        md: {
+        lg: {
           fontSize: ['xl', null, '2xl'],
         },
-        sm: {
+        md: {
           fontSize: ['lg', null, 'xl'],
         },
-        xs: {
+        sm: {
           fontSize: ['md', null, 'lg'],
+        },
+        xs: {
+          fontSize: 'sm',
         },
       },
     },
     Container: {
       baseStyle: {
         maxW: 'container.xl',
-        px: { base: 4, md: 6, lg: 8 },
+        px: { base: 3, md: 4, lg: 6 },
       },
     },
   },
@@ -225,7 +282,10 @@ const theme = extendTheme({
         bg: props.colorMode === 'dark' ? 'gray.900' : 'gray.50',
         color: props.colorMode === 'dark' ? 'white' : 'gray.800',
         fontFamily: 'body',
-        fontSize: 'md',
+        // 14px base, not 16px -- the same density lever Notion/Linear/
+        // GitHub all use. Headings stay visually distinct via the
+        // Heading component's own (still-larger) sizes above.
+        fontSize: 'sm',
         lineHeight: 'base',
       },
       'h1, h2, h3, h4, h5, h6': {
@@ -235,7 +295,7 @@ const theme = extendTheme({
       },
       p: {
         fontFamily: 'body',
-        fontSize: 'md',
+        fontSize: 'sm',
         lineHeight: 'base',
       },
     }),

@@ -316,7 +316,7 @@ const MembersPage = () => {
           minH="100vh"
         >
           <Header onMenuToggle={() => setIsMenuCollapsed(!isMenuCollapsed)} />
-          <Box p="4">
+          <Box p="3">
             <Stack spacing={6}>
               {/* Header Section */}
               <Flex

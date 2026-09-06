@@ -1,11 +1,10 @@
 from pydantic import BaseModel
 from typing import Optional
-from datetime import datetime
-from uuid import UUID
 
 
 class NotificationCommand(BaseModel):
-    workspace_id: str
+    workspace_id: Optional[str] = None  # Set from the URL path by the controller
+    user_id: Optional[str] = None  # Set from the auth token by the controller
     title: str
     message: str
     type: str  # info, warning, error, success
@@ -15,13 +14,14 @@ class NotificationCommand(BaseModel):
 
 
 class NotificationUpdateCommand(BaseModel):
-    notification_id: str
+    notification_id: Optional[str] = None  # Set from the URL path by the controller
     title: Optional[str] = None
     message: Optional[str] = None
     type: Optional[str] = None
+    is_read: Optional[bool] = None
     properties: Optional[dict] = None
 
 
 class NotificationDeleteCommand(BaseModel):
     notification_id: str
-    workspace_id: str 
+    workspace_id: str

@@ -15,6 +15,9 @@ import WikiDetailPage from "./pages/dashboard/WikiDetailPage";
 import DatabasePage from "./pages/dashboard/DatabasePage";
 import DatabaseDetailPage from "./pages/dashboard/DatabaseDetailPage";
 import MembersPage from "./pages/dashboard/MembersPage";
+// MemberPage (MUI-based, at /workspace-members) removed -- an orphaned
+// duplicate of this same MembersPage (Chakra-based, /members), not linked
+// from any nav, using a whole second UI library for zero benefit.
 import NotificationsPage from "./pages/dashboard/NotificationsPage";
 import CRMPage from "./pages/dashboard/CRMPage";
 import ChatPage from "./pages/dashboard/ChatPage";
@@ -39,7 +42,6 @@ import TaskDetailPage from './pages/dashboard/TaskDetailPage';
 import SearchTasksPage from './pages/dashboard/SearchTasksPage';
 import SearchNotebookPage from './pages/dashboard/SearchNotebookPage';
 import TaskPage from './pages/dashboard/TaskPage';
-import MemberPage from './pages/member/MemberPage';
 import NotePage from './pages/dashboard/NotePage';
 import SettingsPage from './pages/dashboard/SettingsPage';
 import SharedNoteView from './components/shared/SharedNoteView';
@@ -82,7 +84,6 @@ function App() {
           <Route path="/search-tasks" element={<SearchTasksPage />} />
           <Route path="/search-notebooks" element={<SearchNotebookPage />} />
           <Route path="/members" element={<MembersPage />} />
-          <Route path="/workspace-members" element={<MemberPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/page/:task_id" element={<TaskPage />} />
           <Route path="/note/:id" element={<NotePage />} />

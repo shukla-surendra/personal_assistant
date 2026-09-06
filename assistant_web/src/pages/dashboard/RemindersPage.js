@@ -116,7 +116,7 @@ export default function RemindersPage() {
       <Navbar isCollapsed={isMenuCollapsed} />
       <Box ml={{ base: 0, md: isMenuCollapsed ? '60px' : '250px' }} transition="all 0.3s ease">
         <Header onMenuToggle={() => setIsMenuCollapsed(!isMenuCollapsed)} />
-        <Box as="main" p={{ base: 4, md: 6 }} minH="calc(100vh - 4rem)" bg={mainBg} borderRadius="lg" boxShadow="sm">
+        <Box as="main" p={{ base: 3, md: 4 }} minH="calc(100vh - 4rem)" bg={mainBg} borderRadius="lg" boxShadow="sm">
           <HStack justify="space-between" mb={6}>
             <Heading size="lg">Reminders</Heading>
             <Button leftIcon={<FiPlus />} colorScheme="orange" onClick={newReminderModal.onOpen}>

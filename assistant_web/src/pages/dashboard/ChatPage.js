@@ -162,13 +162,12 @@ const ChatPage = () => {
     return (
         <Box minH="100vh" bg={bgColor}>
             <Navbar isCollapsed={isMenuCollapsed} onToggle={() => setIsMenuCollapsed(!isMenuCollapsed)} />
-            <Header onMenuToggle={() => setIsMenuCollapsed(!isMenuCollapsed)} />
             <Box
                 ml={isMenuCollapsed ? '60px' : '250px'}
-                pt="64px"
                 minH="100vh"
                 transition="all 0.3s ease"
             >
+                <Header onMenuToggle={() => setIsMenuCollapsed(!isMenuCollapsed)} />
                 <Flex h="calc(100vh - 64px)">
                     <Box
                         w="300px"
@@ -191,7 +190,7 @@ const ChatPage = () => {
                     <Box flex="1" display="flex" flexDirection="column" bg={contentBgColor}>
                         {currentChat ? (
                             <>
-                                <Box flex="1" overflowY="auto" p={4}>
+                                <Box flex="1" overflowY="auto" p={3}>
                                     {messages.map((message) => (
                                         <ChatMessage key={message.message_id} message={message} />
                                     ))}
