@@ -53,10 +53,10 @@ const About = () => {
                 bgClip="text"
                 fontWeight="extrabold"
               >
-                About Assistant.AI
+                About GridWork
               </Heading>
               <Text fontSize="xl" color={textColor} maxW="3xl">
-                Empowering individuals and teams with intelligent productivity solutions
+                One workspace for wherever work happens -- in the office, at home, or anywhere in between
               </Text>
             </VStack>
 
@@ -65,9 +65,10 @@ const About = () => {
               <VStack spacing={6} align="start">
                 <Heading size="lg" color={headingColor}>Our Mission</Heading>
                 <Text fontSize="lg" color={textColor}>
-                  At Assistant.AI, we're dedicated to revolutionizing productivity through artificial intelligence. 
-                  Our mission is to empower individuals and teams to achieve more by providing intelligent, 
-                  intuitive, and efficient tools that adapt to your workflow.
+                  At GridWork, we're dedicated to giving teams one workspace that follows them from
+                  the local office to fully remote, and everywhere in between. Our mission is to
+                  empower individuals and teams to achieve more by providing intelligent,
+                  intuitive, and efficient tools that adapt to your workflow, wherever you work from.
                 </Text>
                 <SimpleGrid columns={{ base: 1, md: 2 }} spacing={8} w="full">
                   <Feature

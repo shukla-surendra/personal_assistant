@@ -43,11 +43,9 @@ import {
   FiBarChart2,
   FiSun,
   FiMoon,
-  FiSearch,
   FiGrid,
   FiMenu,
   FiX,
-  FiPlus,
   FiList,
   FiBell,
   FiBox
@@ -58,7 +56,7 @@ import {
   MdOutlineAnalytics
 } from 'react-icons/md';
 
-import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
+import { Link as RouterLink, useLocation } from 'react-router-dom';
 import WorkspaceSelector from "./sections/WorkSpaceSelector";
 import ModuleService from "../../services/ModuleService";
 
@@ -70,7 +68,6 @@ const MODULE_ROUTES = { inventory: "/inventory" };
 
 const Navbar = ({ isCollapsed, onToggle }) => {
   const location = useLocation();
-  const navigate = useNavigate();
   const { colorMode, toggleColorMode } = useColorMode();
   const bgColor = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.700");
@@ -92,14 +89,6 @@ const Navbar = ({ isCollapsed, onToggle }) => {
   // above actually confirms they were switched off, so there's no flash
   // of missing nav items on every page load while it's in flight.
   const isFeatureVisible = (key) => moduleState[key] !== false;
-
-  const handleCreateTask = () => {
-    navigate('/tasks/new');
-  };
-
-  const handleCreateNote = () => {
-    navigate('/notes/new');
-  };
 
   return (
     <Box
@@ -132,7 +121,7 @@ const Navbar = ({ isCollapsed, onToggle }) => {
                 fontWeight="bold" 
                 color={useColorModeValue("gray.800", "white")}
               >
-                {isCollapsed ? "A" : "Assistant.AI"}
+                {isCollapsed ? "G" : "GridWork"}
               </Text>
             </Flex>
           </RouterLink>
@@ -335,72 +324,6 @@ const Navbar = ({ isCollapsed, onToggle }) => {
               </Box>
             </>
           )}
-
-          <Divider />
-
-          {/* Search */}
-          <Box p={2}>
-            {!isCollapsed && (
-              <Text
-                px={4}
-                py={2}
-                fontSize="xs"
-                fontWeight="bold"
-                color="gray.500"
-                textTransform="uppercase"
-              >
-                Search
-              </Text>
-            )}
-            <NavItem
-              icon={FiSearch}
-              to="/search-tasks"
-              isActive={location.pathname === '/search-tasks'}
-              isCollapsed={isCollapsed}
-            >
-              Search Tasks
-            </NavItem>
-            <NavItem
-              icon={FiSearch}
-              to="/search-notebooks"
-              isActive={location.pathname === '/search-notebooks'}
-              isCollapsed={isCollapsed}
-            >
-              Search Notebooks
-            </NavItem>
-          </Box>
-
-          <Divider />
-
-          {/* Create New */}
-          <Box p={2}>
-            {!isCollapsed && (
-              <Text
-                px={4}
-                py={2}
-                fontSize="xs"
-                fontWeight="bold"
-                color="gray.500"
-                textTransform="uppercase"
-              >
-                Create New
-              </Text>
-            )}
-            <NavItem
-              icon={FiPlus}
-              onClick={handleCreateTask}
-              isCollapsed={isCollapsed}
-            >
-              New Task
-            </NavItem>
-            <NavItem
-              icon={FiPlus}
-              onClick={handleCreateNote}
-              isCollapsed={isCollapsed}
-            >
-              New Note
-            </NavItem>
-          </Box>
 
           <Divider />
 

@@ -6,10 +6,10 @@ def custom_openapi(app: FastAPI):
         return app.openapi_schema
 
     openapi_schema = get_openapi(
-        title="Assistant API",
+        title="GridWork API",
         version="1.0.0",
         description="""
-        This is the backend API for the Assistant application. It provides endpoints for:
+        This is the backend API for GridWork. It provides endpoints for:
         
         - Task Management
         - Board Management

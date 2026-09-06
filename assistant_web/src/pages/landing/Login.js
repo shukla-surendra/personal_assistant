@@ -117,8 +117,8 @@ export default function Login() {
   return (
     <>
       <Helmet>
-        <title>Login - Assistant.AI</title>
-        <meta name="description" content="Login to your Assistant.AI account" />
+        <title>Login - GridWork</title>
+        <meta name="description" content="Login to your GridWork account" />
       </Helmet>
 
       <Flex minH="100vh" bg={useColorModeValue('gray.50', 'gray.900')}>
@@ -308,7 +308,7 @@ export default function Login() {
               maxW="400px"
               mb={8}
             />
-            <Heading size="xl" mb={4}>Assistant.AI</Heading>
+            <Heading size="xl" mb={4}>GridWork</Heading>
             <Text fontSize="lg" textAlign="center" maxW="md">
               Your all-in-one productivity platform for managing tasks, notes, and projects efficiently.
             </Text>

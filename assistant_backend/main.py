@@ -52,8 +52,8 @@ logger = logging.getLogger(__name__)
 try:
     # Create FastAPI app
     app = FastAPI(
-        title="Personal Assistant API",
-        description="A JARVIS-like personal assistant API",
+        title="GridWork API",
+        description="GridWork's workspace API -- tasks, boards, wiki, CRM, and pluggable modules",
         version="1.0.0",
         docs_url="/docs",
         redoc_url="/redoc",
