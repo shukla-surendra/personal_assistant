@@ -1,5 +1,31 @@
 import http from "../http-common";
 
+// Company APIs
+export const getCompanies = async (workspaceId) => {
+    const response = await http.get(`/api/v1/workspaces/${workspaceId}/crm/companies`);
+    return response.data;
+};
+
+export const createCompany = async (workspaceId, companyData) => {
+    const response = await http.post(`/api/v1/workspaces/${workspaceId}/crm/companies`, { ...companyData, workspace_id: workspaceId });
+    return response.data;
+};
+
+export const getCompanyContacts = async (workspaceId, companyId) => {
+    const response = await http.get(`/api/v1/workspaces/${workspaceId}/crm/companies/${companyId}/contacts`);
+    return response.data;
+};
+
+export const updateCompany = async (workspaceId, companyId, companyData) => {
+    const response = await http.put(`/api/v1/workspaces/${workspaceId}/crm/companies/${companyId}`, companyData);
+    return response.data;
+};
+
+export const deleteCompany = async (workspaceId, companyId) => {
+    const response = await http.delete(`/api/v1/workspaces/${workspaceId}/crm/companies/${companyId}`);
+    return response.data;
+};
+
 // Contact APIs
 export const getContacts = async (workspaceId) => {
     const response = await http.get(`/api/v1/workspaces/${workspaceId}/crm/contacts`);

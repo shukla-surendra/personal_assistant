@@ -4,6 +4,7 @@ from adapters.orm.models.pg_models import Activity
 from adapters.orm.models.database import SessionLocal
 from commands.activity_cmd import ActivityCommand, ActivityUpdateCommand, ActivityDeleteCommand
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import joinedload
 from fastapi import HTTPException
 import logging
 
@@ -81,16 +82,16 @@ class ActivityHandler:
             logger.error(f"Error getting activity: {str(e)}")
             raise HTTPException(status_code=500, detail="Failed to get activity")
 
-    def list_activities(self, workspace_id: str, entity_id: Optional[str] = None, entity_type: Optional[str] = None) -> List[Activity]:
+    def list_activities(self, workspace_id: str, entity_id: Optional[str] = None, entity_type: Optional[str] = None, limit: int = 50) -> List[Activity]:
         try:
-            query = self.db.query(Activity).filter(Activity.workspace_id == UUID(workspace_id))
-            
+            query = self.db.query(Activity).options(joinedload(Activity.user)).filter(Activity.workspace_id == UUID(workspace_id))
+
             if entity_id:
                 query = query.filter(Activity.entity_id == UUID(entity_id))
             if entity_type:
                 query = query.filter(Activity.entity_type == entity_type)
-            
-            return query.order_by(Activity.created_at.desc()).all()
+
+            return query.order_by(Activity.created_at.desc()).limit(limit).all()
         except SQLAlchemyError as e:
             logger.error(f"Error listing activities: {str(e)}")
             raise HTTPException(status_code=500, detail="Failed to list activities")

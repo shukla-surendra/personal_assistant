@@ -114,6 +114,11 @@ class Task(Base):
     # Kept to one level deep (a subtask's own parent_task_id must be null)
     # -- same constraint Jira enforces -- checked in the handler, not here.
     parent_task_id = Column(UUID(as_uuid=True), ForeignKey("tasks.task_id", ondelete="SET NULL"), nullable=True)
+    # Sequential per-board ticket number (1, 2, 3, ...), assigned atomically
+    # from the owning board's next_task_number counter at creation time.
+    # Combined with Board.key it renders as "ENG-42" (see TaskDtoMapper).
+    # Null when the task has no board -- boardless tasks/notes don't get a key.
+    task_number = Column(Integer, nullable=True)
     story_points = Column(Integer, nullable=True)
     watchers = Column(JSONB, nullable=True)
     labels = Column(JSONB, nullable=True)
@@ -218,6 +223,14 @@ class Board(Base):
     workspace_id = Column(UUID(as_uuid=True), ForeignKey("workspaces.workspace_id", ondelete="CASCADE"), nullable=False)
     name = Column(String, nullable=False)
     description = Column(String, nullable=True)
+    # Short uppercase prefix for this board's tickets (e.g. "ENG"), unique
+    # within the workspace -- combined with Task.task_number to render a
+    # Jira-style key like "ENG-42". Auto-generated from the board name at
+    # creation time; next_task_number is the atomic counter that hands out
+    # task_number values (incremented via a single UPDATE...RETURNING so
+    # concurrent task creates on the same board never collide).
+    key = Column(String, nullable=True)
+    next_task_number = Column(Integer, nullable=False, default=1, server_default="1")
     properties = Column(JSONB, nullable=True)
     views = Column(JSONB, nullable=True)
     is_deleted = Column(Boolean, default=False)
@@ -457,6 +470,31 @@ class Integration(Base):
 
     workspace = relationship("Workspace", back_populates="integrations")
 
+class Company(Base):
+    """An account/organization a Contact belongs to. Kept separate from
+    Contact.company (a free-text string, left in place for rows created
+    before this existed) so a company can be looked up, edited, and rolled
+    up to (all contacts + deals for one account) without depending on
+    exact string matches."""
+    __tablename__ = "companies"
+
+    company_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(UUID(as_uuid=True), ForeignKey("workspaces.workspace_id"), nullable=False)
+    name = Column(String, nullable=False)
+    industry = Column(String, nullable=True)
+    website = Column(String, nullable=True)
+    size = Column(String, nullable=True)  # e.g. "1-10", "11-50", "51-200"
+    phone = Column(String, nullable=True)
+    address = Column(JSONB, nullable=True)
+    description = Column(Text, nullable=True)
+    tags = Column(JSONB, nullable=True)
+    is_deleted = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC))
+    updated_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC), onupdate=datetime.datetime.now(datetime.UTC))
+
+    workspace = relationship("Workspace")
+    contacts = relationship("Contact", back_populates="company_ref")
+
 class Contact(Base):
     __tablename__ = "contacts"
 
@@ -467,6 +505,7 @@ class Contact(Base):
     email = Column(String, nullable=True)
     phone = Column(String, nullable=True)
     company = Column(String, nullable=True)
+    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.company_id", ondelete="SET NULL"), nullable=True)
     job_title = Column(String, nullable=True)
     address = Column(JSONB, nullable=True)
     social_media = Column(JSONB, nullable=True)
@@ -482,6 +521,7 @@ class Contact(Base):
     workspace = relationship("Workspace", back_populates="contacts")
     deals = relationship("Deal", back_populates="contact")
     activities = relationship("ContactActivity", back_populates="contact")
+    company_ref = relationship("Company", back_populates="contacts")
 
 class Deal(Base):
     __tablename__ = "deals"
@@ -493,6 +533,7 @@ class Deal(Base):
     value = Column(Integer, nullable=True)
     currency = Column(String, nullable=True, default="USD")
     stage = Column(String, nullable=False)
+    order = Column(Integer, nullable=True)  # position within its stage column on the pipeline board
     probability = Column(Integer, nullable=True)
     expected_close_date = Column(DateTime, nullable=True)
     description = Column(Text, nullable=True)

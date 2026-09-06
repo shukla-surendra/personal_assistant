@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Modal,
     ModalOverlay,
@@ -11,23 +11,27 @@ import {
     FormControl,
     FormLabel,
     Input,
+    Select,
     FormErrorMessage,
     Grid,
     GridItem,
     Textarea,
     useToast
 } from '@chakra-ui/react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { addContact } from '../../slices/crm/contactsSlice';
+import { fetchCompanies } from '../../slices/crm/companiesSlice';
 
 const CreateContactModal = ({ isOpen, onClose, workspaceId }) => {
     const dispatch = useDispatch();
+    const { companies } = useSelector((state) => state.companies);
     const [formData, setFormData] = useState({
         first_name: '',
         last_name: '',
         email: '',
         phone: '',
         company: '',
+        company_id: '',
         job_title: '',
         address: {},
         social_media: {},
@@ -41,6 +45,12 @@ const CreateContactModal = ({ isOpen, onClose, workspaceId }) => {
     const [errors, setErrors] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const toast = useToast();
+
+    useEffect(() => {
+        if (isOpen && workspaceId) {
+            dispatch(fetchCompanies(workspaceId));
+        }
+    }, [isOpen, workspaceId, dispatch]);
 
     const validateForm = () => {
         const newErrors = {};
@@ -59,7 +69,8 @@ const CreateContactModal = ({ isOpen, onClose, workspaceId }) => {
 
         try {
             setIsSubmitting(true);
-            await dispatch(addContact({ workspaceId, contactData: formData })).unwrap();
+            const payload = { ...formData, company_id: formData.company_id || null };
+            await dispatch(addContact({ workspaceId, contactData: payload })).unwrap();
             onClose();
             toast({
                 title: 'Contact created successfully',
@@ -143,7 +154,22 @@ const CreateContactModal = ({ isOpen, onClose, workspaceId }) => {
                             </GridItem>
                             <GridItem>
                                 <FormControl>
-                                    <FormLabel>Company</FormLabel>
+                                    <FormLabel>Linked Company</FormLabel>
+                                    <Select
+                                        name="company_id"
+                                        placeholder="None"
+                                        value={formData.company_id}
+                                        onChange={handleChange}
+                                    >
+                                        {(companies || []).map((c) => (
+                                            <option key={c.company_id} value={c.company_id}>{c.name}</option>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                            </GridItem>
+                            <GridItem>
+                                <FormControl>
+                                    <FormLabel>Company (free text)</FormLabel>
                                     <Input
                                         name="company"
                                         value={formData.company}

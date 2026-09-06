@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { retrieveTasks, retrieveNotes, updateTask } from "../../slices/tasks";
+import { fetchWorkspaceActivity } from "../../slices/workspaceActivity";
 import {
   Box,
   Flex,
@@ -35,12 +36,13 @@ import {
   MenuButton,
   MenuList,
   MenuItem,
+  Avatar,
 } from "@chakra-ui/react";
-import { 
-  FiSearch, 
-  FiFilter, 
-  FiCalendar, 
-  FiTag, 
+import {
+  FiSearch,
+  FiFilter,
+  FiCalendar,
+  FiTag,
   FiBook,
   FiFileText,
   FiDatabase,
@@ -52,24 +54,61 @@ import {
   FiTrash2,
   FiStar,
   FiChevronRight,
-  FiEye
+  FiEye,
+  FiMessageSquare,
+  FiBell,
+  FiSettings,
+  FiInbox,
+  FiAlertCircle,
+  FiCheckCircle,
+  FiActivity,
 } from 'react-icons/fi';
+import { BsKanban } from 'react-icons/bs';
 import Navbar from "../../components/dashboard/Navbar";
 import EditTaskDrawer from "../../components/dashboard/drawers/EditTaskDrawer";
 import EditNoteDrawer from "../../components/dashboard/drawers/EditNoteDrawer";
 import Header from "../../components/dashboard/Header";
 import { Helmet } from 'react-helmet';
-import { formatLocalDateTime } from "../../utils/locale";
+import { formatLocalDateTime, timeAgo } from "../../utils/locale";
 import { useNavigate } from "react-router-dom";
 import NewTaskDrawer from "../../components/dashboard/drawers/NewTaskDrawer";
 import NewNoteDrawer from "../../components/dashboard/drawers/NewNoteDrawer";
 import TaskViewModal from "../../components/dashboard/modals/TaskViewModal";
 import NoteViewModal from "../../components/dashboard/modals/NoteViewModal";
 import DeleteTaskNoteModal from "../../components/dashboard/modals/DeleteTaskNoteModal";
+import ConfigService from "../../utils/config";
+import auth from "../../utils/auth";
+import { labelForStatus, getStatusColor, PRIORITY_COLOR, labelForPriority } from "../../utils/taskStatus";
+
+const QUICK_LINKS = [
+  { label: 'Boards', icon: BsKanban, path: '/boards', description: 'Kanban boards, epics & sprints' },
+  { label: 'CRM', icon: FiUsers, path: '/crm', description: 'Contacts, companies & deals' },
+  { label: 'Wiki', icon: FiBook, path: '/wiki', description: 'Docs & knowledge base' },
+  { label: 'Database', icon: FiDatabase, path: '/database', description: 'Custom tables' },
+  { label: 'Reports', icon: FiBarChart2, path: '/reports', description: 'Analytics & insights' },
+  { label: 'Chat', icon: FiMessageSquare, path: '/chat', description: 'Team messaging' },
+  { label: 'Reminders', icon: FiBell, path: '/reminders', description: 'Time-based nudges' },
+  { label: 'Notifications', icon: FiInbox, path: '/notifications', description: 'Recent alerts' },
+  { label: 'Settings', icon: FiSettings, path: '/settings', description: 'Workspace settings' },
+];
+
+function activityLine(activity) {
+  const who = activity.user ? `${activity.user.first_name} ${activity.user.last_name}` : 'Someone';
+  const props = activity.properties || activity.details || {};
+  const label = props.ticket_key || props.name || props.title || '';
+  const verb = {
+    created: 'created',
+    updated: 'updated',
+    deleted: 'deleted',
+    commented: 'commented on',
+  }[activity.action] || activity.action;
+  return { who, verb, label, entityType: activity.entity_type };
+}
 
 export default function DashboardResponsive() {
   const dispatch = useDispatch();
   const { tasks, notes, loading, error } = useSelector((state) => state.tasks);
+  const { items: activityItems } = useSelector((state) => state.workspaceActivity);
   const { isOpen: isTaskEditOpen, onOpen: onTaskEditOpen, onClose: onTaskEditClose } = useDisclosure();
   const { isOpen: isNoteEditOpen, onOpen: onNoteEditOpen, onClose: onNoteEditClose } = useDisclosure();
   const { isOpen: isNewTaskOpen, onOpen: onNewTaskOpen, onClose: onNewTaskClose } = useDisclosure();
@@ -79,10 +118,43 @@ export default function DashboardResponsive() {
   const navigate = useNavigate();
   const delete_modal = useDisclosure();
 
+  const currentUserId = auth.getProfile()?.user_id;
+  let workspaceId = null;
+  try {
+    workspaceId = ConfigService.getDefaultWorkspace()?.workspace_id;
+  } catch (e) {
+    workspaceId = null;
+  }
+
   useEffect(() => {
     dispatch(retrieveTasks());
     dispatch(retrieveNotes());
+    if (workspaceId) {
+      dispatch(fetchWorkspaceActivity(workspaceId));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch]);
+
+  const stats = useMemo(() => {
+    const now = new Date();
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const openTasks = (tasks || []).filter(t => !t.completed);
+    const overdueTasks = openTasks.filter(t => t.due_on && new Date(t.due_on) < now);
+    const completedThisWeek = (tasks || []).filter(t => t.completed && t.updated_at && new Date(t.updated_at) >= weekAgo);
+    return {
+      open: openTasks.length,
+      overdue: overdueTasks.length,
+      completedThisWeek: completedThisWeek.length,
+    };
+  }, [tasks]);
+
+  const myTaskIds = useMemo(() => new Set((tasks || []).map(t => t.task_id)), [tasks]);
+
+  const othersOnMyTasks = useMemo(() => {
+    return (activityItems || []).filter(a =>
+      a.entity_type === 'task' && myTaskIds.has(a.entity_id) && a.user_id !== currentUserId
+    );
+  }, [activityItems, myTaskIds, currentUserId]);
 
   const handleUpdateItem = (task) => {
     setSelectedTask(task);
@@ -118,12 +190,6 @@ export default function DashboardResponsive() {
     onNoteEditOpen();
   };
 
-  const priorityColorMapping = {
-    'High': 'red',
-    'Medium': 'yellow',
-    'Low': 'green',
-  };
-
   const bgColor = useColorModeValue('gray.50', 'gray.900');
   const cardBg = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
@@ -137,7 +203,12 @@ export default function DashboardResponsive() {
         <Card key={task.task_id} bg={cardBg} borderWidth="1px" borderColor={borderColor}>
           <CardHeader>
             <Flex justify="space-between" align="center">
-              <Heading size="sm">{task.title}</Heading>
+              <VStack align="start" spacing={0}>
+                {task.ticket_key && (
+                  <Text fontSize="2xs" fontWeight="bold" color="gray.500">{task.ticket_key}</Text>
+                )}
+                <Heading size="sm">{task.title}</Heading>
+              </VStack>
               <HStack spacing={1}>
                 <IconButton
                   aria-label="View Task"
@@ -167,21 +238,12 @@ export default function DashboardResponsive() {
           </CardHeader>
           <CardBody>
             <Stack divider={<StackDivider />} spacing="4">
-              {/* <Box>
-                <Box 
-                  className="ProseMirror"
-                  fontSize="sm" 
-                  color={textColor} 
-                  noOfLines={3}
-                  dangerouslySetInnerHTML={{ __html: task.description || "No description provided." }}
-                />
-              </Box> */}
               <Flex wrap="wrap" gap={2}>
-                <Badge colorScheme={priorityColorMapping[task.priority] || 'gray'}>
-                  {task.priority || 'No Priority'}
+                <Badge colorScheme={PRIORITY_COLOR[task.priority] || 'gray'}>
+                  {labelForPriority(task.priority)}
                 </Badge>
-                <Badge colorScheme="blue">
-                  {task.status || 'No Status'}
+                <Badge colorScheme={getStatusColor(task.status)}>
+                  {labelForStatus(task.status)}
                 </Badge>
               </Flex>
             </Stack>
@@ -351,6 +413,70 @@ export default function DashboardResponsive() {
                 </HStack>
               </Flex>
 
+              {/* Stats */}
+              <SimpleGrid columns={{ base: 1, sm: 3 }} spacing={4}>
+                <Card bg={cardBg} borderWidth="1px" borderColor={borderColor}>
+                  <CardBody>
+                    <HStack justify="space-between">
+                      <VStack align="start" spacing={0}>
+                        <Text fontSize="sm" color="gray.500">Open Tasks</Text>
+                        <Heading size="lg">{stats.open}</Heading>
+                      </VStack>
+                      <Icon as={FiInbox} boxSize={6} color="blue.400" />
+                    </HStack>
+                  </CardBody>
+                </Card>
+                <Card bg={cardBg} borderWidth="1px" borderColor={borderColor}>
+                  <CardBody>
+                    <HStack justify="space-between">
+                      <VStack align="start" spacing={0}>
+                        <Text fontSize="sm" color="gray.500">Overdue</Text>
+                        <Heading size="lg" color={stats.overdue > 0 ? "red.500" : undefined}>{stats.overdue}</Heading>
+                      </VStack>
+                      <Icon as={FiAlertCircle} boxSize={6} color="red.400" />
+                    </HStack>
+                  </CardBody>
+                </Card>
+                <Card bg={cardBg} borderWidth="1px" borderColor={borderColor}>
+                  <CardBody>
+                    <HStack justify="space-between">
+                      <VStack align="start" spacing={0}>
+                        <Text fontSize="sm" color="gray.500">Completed This Week</Text>
+                        <Heading size="lg" color="green.500">{stats.completedThisWeek}</Heading>
+                      </VStack>
+                      <Icon as={FiCheckCircle} boxSize={6} color="green.400" />
+                    </HStack>
+                  </CardBody>
+                </Card>
+              </SimpleGrid>
+
+              {/* Quick Links */}
+              <Box>
+                <Text fontSize="xl" fontWeight="bold" mb={4}>Quick Links</Text>
+                <SimpleGrid columns={{ base: 2, sm: 3, md: 4, lg: 5 }} spacing={4}>
+                  {QUICK_LINKS.map((link) => (
+                    <Card
+                      key={link.path}
+                      bg={cardBg}
+                      borderWidth="1px"
+                      borderColor={borderColor}
+                      cursor="pointer"
+                      _hover={{ boxShadow: 'md', transform: 'translateY(-2px)' }}
+                      transition="all 0.15s ease"
+                      onClick={() => navigate(link.path)}
+                    >
+                      <CardBody>
+                        <VStack align="start" spacing={2}>
+                          <Icon as={link.icon} boxSize={5} color="blue.500" />
+                          <Text fontWeight="semibold" fontSize="sm">{link.label}</Text>
+                          <Text fontSize="xs" color="gray.500" noOfLines={2}>{link.description}</Text>
+                        </VStack>
+                      </CardBody>
+                    </Card>
+                  ))}
+                </SimpleGrid>
+              </Box>
+
               {/* Tasks Section */}
               <Box>
                 <Flex justify="space-between" align="center" mb={4}>
@@ -394,6 +520,69 @@ export default function DashboardResponsive() {
                   ))}
                 </Grid>
               </Box>
+
+              {/* Activity */}
+              <Grid templateColumns={{ base: '1fr', lg: '1fr 1fr' }} gap={6}>
+                <Box>
+                  <Text fontSize="xl" fontWeight="bold" mb={4}>Recent Activity</Text>
+                  <Card bg={cardBg} borderWidth="1px" borderColor={borderColor}>
+                    <CardBody>
+                      {activityItems && activityItems.length > 0 ? (
+                        <Stack divider={<StackDivider />} spacing={3}>
+                          {activityItems.slice(0, 10).map((activity) => {
+                            const { who, verb, label, entityType } = activityLine(activity);
+                            return (
+                              <HStack key={activity.activity_id} justify="space-between" align="start">
+                                <HStack align="start" spacing={3}>
+                                  <Avatar size="xs" name={who} mt={0.5} />
+                                  <Text fontSize="sm">
+                                    <Text as="span" fontWeight="semibold">{who}</Text>
+                                    {` ${verb} ${entityType}`}
+                                    {label && <Text as="span" fontWeight="semibold"> {label}</Text>}
+                                  </Text>
+                                </HStack>
+                                <Text fontSize="xs" color="gray.500" whiteSpace="nowrap">{timeAgo(activity.created_at)}</Text>
+                              </HStack>
+                            );
+                          })}
+                        </Stack>
+                      ) : (
+                        <Text color="gray.500" fontSize="sm">No activity yet in this workspace.</Text>
+                      )}
+                    </CardBody>
+                  </Card>
+                </Box>
+
+                <Box>
+                  <Text fontSize="xl" fontWeight="bold" mb={4}>Activity On Your Tasks</Text>
+                  <Card bg={cardBg} borderWidth="1px" borderColor={borderColor}>
+                    <CardBody>
+                      {othersOnMyTasks.length > 0 ? (
+                        <Stack divider={<StackDivider />} spacing={3}>
+                          {othersOnMyTasks.slice(0, 10).map((activity) => {
+                            const { who, verb, label } = activityLine(activity);
+                            return (
+                              <HStack key={activity.activity_id} justify="space-between" align="start">
+                                <HStack align="start" spacing={3}>
+                                  <Icon as={FiActivity} color="purple.400" mt={1} />
+                                  <Text fontSize="sm">
+                                    <Text as="span" fontWeight="semibold">{who}</Text>
+                                    {` ${verb} `}
+                                    {label && <Text as="span" fontWeight="semibold">{label}</Text>}
+                                  </Text>
+                                </HStack>
+                                <Text fontSize="xs" color="gray.500" whiteSpace="nowrap">{timeAgo(activity.created_at)}</Text>
+                              </HStack>
+                            );
+                          })}
+                        </Stack>
+                      ) : (
+                        <Text color="gray.500" fontSize="sm">No one else has touched your tasks recently.</Text>
+                      )}
+                    </CardBody>
+                  </Card>
+                </Box>
+              </Grid>
             </VStack>
           </Box>
         </Box>

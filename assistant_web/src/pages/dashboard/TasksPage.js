@@ -7,9 +7,7 @@ import {
   useColorModeValue,
   Box,
   Flex,
-  Grid,
   Stack,
-  GridItem,
   Text,
   useDisclosure,
   Tbody,
@@ -22,19 +20,9 @@ import {
   HStack,
   Badge,
   IconButton,
-  Card,
-  CardHeader,
-  CardBody,
-  CardFooter,
-  Menu,
-  MenuButton,
-  MenuList,
-  MenuItem,
-  StackDivider,
   Heading,
   Button
 } from '@chakra-ui/react';
-import { Link } from 'react-router-dom';
 // Here we have used react-icons package for the icons
 import { StatusIndicator } from '../../components/dashboard/StatusIndicator'
 import React, { useState, useEffect, useCallback } from "react";
@@ -55,7 +43,83 @@ import TaskViewModal from "../../components/dashboard/modals/TaskViewModal";
 import UnifiedEditButton from "../../components/dashboard/UnifiedEditButton";
 import UnifiedCreateButton from "../../components/dashboard/UnifiedCreateButton";
 import { ChevronRightIcon } from '@chakra-ui/icons';
-import { FiEye, FiMoreVertical, FiEdit2, FiTrash2, FiExternalLink, FiPlus } from 'react-icons/fi';
+import { FiEye, FiTrash2, FiExternalLink, FiPlus } from 'react-icons/fi';
+import {
+  DndContext, DragOverlay, closestCorners, PointerSensor, useSensor, useSensors, useDroppable,
+} from '@dnd-kit/core';
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { TASK_STATUSES, labelForStatus, getStatusColor, PRIORITY_COLOR } from '../../utils/taskStatus';
+
+function KanbanTaskCard({ task, onClick }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.task_id });
+  const cardBg = useColorModeValue('white', 'gray.700');
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  };
+
+  return (
+    <Box
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      bg={cardBg}
+      p={3}
+      mb={2}
+      borderRadius="md"
+      boxShadow="sm"
+      cursor="grab"
+      onClick={() => onClick(task)}
+      _hover={{ boxShadow: 'md' }}
+    >
+      {task.ticket_key && (
+        <Text fontSize="2xs" fontWeight="bold" color="gray.500" mb={1}>{task.ticket_key}</Text>
+      )}
+      <Text fontSize="sm" fontWeight="medium" mb={2} noOfLines={3}>{task.title}</Text>
+      <HStack spacing={2} flexWrap="wrap">
+        <Badge colorScheme={PRIORITY_COLOR[task.priority] || 'gray'} fontSize="2xs">{task.priority || 'none'}</Badge>
+        {task.due_on && (
+          <Text fontSize="2xs" color="gray.500">{new Date(task.due_on).toLocaleDateString()}</Text>
+        )}
+      </HStack>
+    </Box>
+  );
+}
+
+function KanbanStatusColumn({ status, tasks, onCardClick }) {
+  const { setNodeRef, isOver } = useDroppable({ id: status });
+  const columnBg = useColorModeValue('gray.100', 'gray.900');
+
+  return (
+    <Box
+      ref={setNodeRef}
+      bg={isOver ? 'teal.50' : columnBg}
+      borderRadius="lg"
+      p={3}
+      minW="280px"
+      maxW="280px"
+      flexShrink={0}
+      transition="background 0.15s ease"
+    >
+      <HStack justify="space-between" mb={3}>
+        <HStack>
+          <Text fontWeight="bold" fontSize="sm">{labelForStatus(status)}</Text>
+          <Badge borderRadius="full" colorScheme={getStatusColor(status)}>{tasks.length}</Badge>
+        </HStack>
+      </HStack>
+      <SortableContext items={tasks.map(t => t.task_id)} strategy={verticalListSortingStrategy}>
+        <Box minH="40px">
+          {tasks.map(task => (
+            <KanbanTaskCard key={task.task_id} task={task} onClick={onCardClick} />
+          ))}
+        </Box>
+      </SortableContext>
+    </Box>
+  );
+}
 
 export default function TasksPage() {
   const [isMenuCollapsed, setIsMenuCollapsed] = useState(false);
@@ -97,12 +161,6 @@ export default function TasksPage() {
     view_task_modal.onOpen();
   };
 
-  const priorityColorMapping = {
-    'High': 'red',
-    'Medium': 'yellow',
-    'Low': 'green',
-  };
-
   const bgColor = useColorModeValue('gray.50', 'gray.900');
   const cardBg = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
@@ -129,85 +187,85 @@ export default function TasksPage() {
     }
   }, [new_task_drawer.isOpen]);
 
-  const TaskCard = React.memo(({ task }) => {
-    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [tasksByStatus, setTasksByStatus] = useState({});
+  const [activeTask, setActiveTask] = useState(null);
 
-    return (
-      <>
-        <Card key={task.task_id} bg={cardBg} borderWidth="1px" borderColor={borderColor}>
-          <CardHeader>
-            <Flex justify="space-between" align="center">
-              <Heading size="sm">
-                <Link 
-                  to={`/page/${task.task_id}`} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  style={{ 
-                    color: textColor,
-                    textDecoration: 'none',
-                    '&:hover': {
-                      textDecoration: 'underline'
-                    }
-                  }}
-                >
-                  {task.title}
-                </Link>
-              </Heading>
-              <HStack spacing={1}>
-                <IconButton
-                  aria-label="View Task"
-                  icon={<FiEye />}
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setIsViewModalOpen(true)}
-                />
-                <Menu>
-                  <MenuButton
-                    as={IconButton}
-                    icon={<FiMoreVertical />}
-                    variant="ghost"
-                    size="sm"
-                  />
-                  <MenuList>
-                    <MenuItem icon={<FiEdit2 />} onClick={() => handleUpdateItem(task)}>
-                      Edit
-                    </MenuItem>
-                    <MenuItem icon={<FiTrash2 />} onClick={() => handleDeleteItem(task)}>
-                      Delete
-                    </MenuItem>
-                  </MenuList>
-                </Menu>
-              </HStack>
-            </Flex>
-          </CardHeader>
-          <CardBody>
-            <Stack divider={<StackDivider />} spacing="4">
-              <Flex wrap="wrap" gap={2}>
-                <Badge colorScheme={priorityColorMapping[task.priority] || 'gray'}>
-                  {task.priority || 'No Priority'}
-                </Badge>
-                <Badge colorScheme="blue">
-                  {task.status || 'No Status'}
-                </Badge>
-              </Flex>
-            </Stack>
-          </CardBody>
-          <CardFooter>
-            <Text fontSize="xs" color="gray.500">
-              Updated: {formatLocalDateTime(task.updated_at)}
-            </Text>
-          </CardFooter>
-        </Card>
-        <TaskViewModal 
-          isOpen={isViewModalOpen} 
-          onClose={() => setIsViewModalOpen(false)} 
-          task={task}
-          onEdit={handleUpdateItem}
-        />
-      </>
-    );
-  });
+  const groupTasksByStatus = useCallback((list) => {
+    const grouped = Object.fromEntries(TASK_STATUSES.map(s => [s, []]));
+    for (const task of list) {
+      const status = TASK_STATUSES.includes(task.status) ? task.status : 'todo';
+      (grouped[status] || (grouped[status] = [])).push(task);
+    }
+    return grouped;
+  }, []);
+
+  useEffect(() => {
+    setTasksByStatus(groupTasksByStatus(tasks || []));
+  }, [tasks, groupTasksByStatus]);
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  const findStatusContainer = (id) => {
+    if (id in tasksByStatus) return id;
+    return Object.keys(tasksByStatus).find(s => tasksByStatus[s].some(t => t.task_id === id));
+  };
+
+  const handleDragStart = (event) => {
+    const task = Object.values(tasksByStatus).flat().find(t => t.task_id === event.active.id);
+    setActiveTask(task);
+  };
+
+  const handleDragOver = (event) => {
+    const { active, over } = event;
+    if (!over) return;
+    const activeContainer = findStatusContainer(active.id);
+    const overContainer = findStatusContainer(over.id);
+    if (!activeContainer || !overContainer || activeContainer === overContainer) return;
+
+    setTasksByStatus(prev => {
+      const activeItems = prev[activeContainer];
+      const overItems = prev[overContainer];
+      const activeIndex = activeItems.findIndex(t => t.task_id === active.id);
+      const overIndex = overItems.findIndex(t => t.task_id === over.id);
+      const movedTask = { ...activeItems[activeIndex], status: overContainer };
+      const newOverIndex = overIndex >= 0 ? overIndex : overItems.length;
+      return {
+        ...prev,
+        [activeContainer]: activeItems.filter(t => t.task_id !== active.id),
+        [overContainer]: [
+          ...overItems.slice(0, newOverIndex),
+          movedTask,
+          ...overItems.slice(newOverIndex),
+        ],
+      };
+    });
+  };
+
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+    setActiveTask(null);
+    if (!over) return;
+
+    const activeContainer = findStatusContainer(active.id);
+    const overContainer = findStatusContainer(over.id);
+    if (!activeContainer || !overContainer) return;
+
+    if (activeContainer === overContainer && active.id !== over.id) {
+      setTasksByStatus(prev => {
+        const items = prev[activeContainer];
+        const oldIndex = items.findIndex(t => t.task_id === active.id);
+        const newIndex = items.findIndex(t => t.task_id === over.id);
+        return { ...prev, [activeContainer]: arrayMove(items, oldIndex, newIndex) };
+      });
+      return;
+    }
+
+    // Dropped in a different status column -- persist the status change;
+    // on failure, re-sync from the server so the board doesn't drift.
+    dispatch(updateTask({ task_id: active.id, data: { status: overContainer } }))
+      .unwrap()
+      .catch(() => initFetch());
+  };
 
   return (
     <>
@@ -251,7 +309,7 @@ export default function TasksPage() {
                 </Button>
               </Flex>
 
-              <Tabs variant="enclosed" colorScheme="blue">
+              <Tabs variant="enclosed" colorScheme="blue" defaultIndex={0}>
                 <TabList>
                   <Tab>Board View</Tab>
                   <Tab>Table View</Tab>
@@ -259,40 +317,31 @@ export default function TasksPage() {
 
                 <TabPanels>
                   <TabPanel p={0} mt={4}>
-                    <Grid templateColumns="repeat(3, 1fr)" gap={6}>
-                      <GridItem>
-                        <Box bg={useColorModeValue('gray.50', 'gray.700')} p={4} borderRadius="md">
-                          <Text fontSize="lg" fontWeight="semibold" mb={4}>To Do</Text>
-                          <VStack spacing={4} align="stretch">
-                            {tasks.filter(task => task.status === 'todo').map((task, index) => (
-                              <TaskCard key={index} task={task} />
-                            ))}
-                          </VStack>
-                        </Box>
-                      </GridItem>
-
-                      <GridItem>
-                        <Box bg={useColorModeValue('gray.50', 'gray.700')} p={4} borderRadius="md">
-                          <Text fontSize="lg" fontWeight="semibold" mb={4}>In Progress</Text>
-                          <VStack spacing={4} align="stretch">
-                            {tasks.filter(task => task.status === 'in_progress').map((task, index) => (
-                              <TaskCard key={index} task={task} />
-                            ))}
-                          </VStack>
-                        </Box>
-                      </GridItem>
-
-                      <GridItem>
-                        <Box bg={useColorModeValue('gray.50', 'gray.700')} p={4} borderRadius="md">
-                          <Text fontSize="lg" fontWeight="semibold" mb={4}>Done</Text>
-                          <VStack spacing={4} align="stretch">
-                            {tasks.filter(task => task.status === 'done').map((task, index) => (
-                              <TaskCard key={index} task={task} />
-                            ))}
-                          </VStack>
-                        </Box>
-                      </GridItem>
-                    </Grid>
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCorners}
+                      onDragStart={handleDragStart}
+                      onDragOver={handleDragOver}
+                      onDragEnd={handleDragEnd}
+                    >
+                      <Flex gap={4} overflowX="auto" pb={4} align="flex-start">
+                        {TASK_STATUSES.map(status => (
+                          <KanbanStatusColumn
+                            key={status}
+                            status={status}
+                            tasks={tasksByStatus[status] || []}
+                            onCardClick={handleViewItem}
+                          />
+                        ))}
+                      </Flex>
+                      <DragOverlay>
+                        {activeTask ? (
+                          <Box bg="white" p={3} borderRadius="md" boxShadow="lg" maxW="250px">
+                            <Text fontSize="sm" fontWeight="medium">{activeTask.title}</Text>
+                          </Box>
+                        ) : null}
+                      </DragOverlay>
+                    </DndContext>
                   </TabPanel>
 
                   <TabPanel p={0} mt={4}>
@@ -311,13 +360,14 @@ export default function TasksPage() {
                           {tasks.map((task, index) => (
                             <Tr key={index}>
                               <Td>
-                                <Text 
-                                  fontWeight="medium" 
-                                  cursor="pointer"
-                                  onClick={() => handleUpdateItem(task)}
-                                >
-                                  {task.title}
-                                </Text>
+                                <HStack spacing={2} cursor="pointer" onClick={() => handleUpdateItem(task)}>
+                                  {task.ticket_key && (
+                                    <Text fontSize="xs" fontWeight="bold" color="gray.500">{task.ticket_key}</Text>
+                                  )}
+                                  <Text fontWeight="medium">
+                                    {task.title}
+                                  </Text>
+                                </HStack>
                               </Td>
                               <Td>{formatLocalDateTime(task.due_on)}</Td>
                               <Td>{formatLocalDateTime(task.created_at)}</Td>

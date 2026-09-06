@@ -1,5 +1,6 @@
+import re
 from uuid import UUID
-from adapters.orm.models.pg_models import Board
+from adapters.orm.models.pg_models import Board, Activity
 from adapters.orm.models.database import SessionLocal
 from commands.board_cmd import BoardCommand, BoardUpdateCommand, BoardDeleteCommand
 from sqlalchemy.exc import SQLAlchemyError
@@ -17,17 +18,62 @@ class BoardHandler:
     def __init__(self):
         self.db = SessionLocal()
 
+    def _generate_key(self, name: str, workspace_id) -> str:
+        """Jira-style short prefix: initials of each word (up to 4), or the
+        first 4 letters of a single-word name. Uniquified per workspace by
+        appending a numeric suffix on collision."""
+        words = re.findall(r"[A-Za-z0-9]+", name or "")
+        if len(words) > 1:
+            base = "".join(w[0] for w in words[:4]).upper()
+        elif words:
+            base = words[0][:4].upper()
+        else:
+            base = "BRD"
+
+        existing = {
+            row[0] for row in self.db.query(Board.key).filter(
+                Board.workspace_id == workspace_id, Board.key.isnot(None)
+            ).all()
+        }
+        key = base
+        suffix = 2
+        while key in existing:
+            key = f"{base}{suffix}"
+            suffix += 1
+        return key
+
+    def _log_activity(self, workspace_id, user_id, action, entity_type, entity_id, properties=None):
+        try:
+            self.db.add(Activity(
+                workspace_id=workspace_id,
+                user_id=user_id,
+                action=action,
+                entity_type=entity_type,
+                entity_id=entity_id,
+                properties=properties or {},
+            ))
+        except Exception:
+            logger.warning("Failed to log activity", exc_info=True)
+
     def create_board(self, command: BoardCommand) -> Board:
         try:
             properties = command.properties or {}
             properties.setdefault("columns", DEFAULT_BOARD_COLUMNS)
+            workspace_id = UUID(command.workspace_id)
             board = Board(
-                workspace_id=UUID(command.workspace_id),
+                workspace_id=workspace_id,
                 name=command.name,
                 description=command.description,
-                properties=properties
+                properties=properties,
+                key=self._generate_key(command.name, workspace_id),
             )
             self.db.add(board)
+            self.db.flush()
+            if command.user_id:
+                self._log_activity(
+                    workspace_id, UUID(command.user_id), "created", "board", board.board_id,
+                    {"name": board.name, "key": board.key},
+                )
             self.db.commit()
             self.db.refresh(board)
             return board
@@ -96,6 +142,11 @@ class BoardHandler:
             # real DELETE), so a board's tasks (Task.board_id, ON DELETE
             # SET NULL) aren't affected and the board can be recovered.
             board.is_deleted = True
+            if command.user_id:
+                self._log_activity(
+                    board.workspace_id, UUID(command.user_id), "deleted", "board", board.board_id,
+                    {"name": board.name, "key": board.key},
+                )
             self.db.commit()
             return True
         except HTTPException:

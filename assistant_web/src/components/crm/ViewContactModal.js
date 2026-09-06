@@ -63,11 +63,17 @@ const ViewContactModal = ({ isOpen, onClose, contact }) => {
                         <Divider />
 
                         {/* Company Information */}
-                        {(contact.company || contact.job_title) && (
+                        {(contact.company_ref?.name || contact.company || contact.job_title) && (
                             <Box>
                                 <Text fontWeight="bold" mb={2}>Company Information</Text>
                                 <VStack spacing={2} align="stretch">
-                                    {contact.company && (
+                                    {contact.company_ref?.name && (
+                                        <HStack>
+                                            <Icon as={InfoIcon} />
+                                            <Text>{contact.company_ref.name}</Text>
+                                        </HStack>
+                                    )}
+                                    {!contact.company_ref?.name && contact.company && (
                                         <HStack>
                                             <Icon as={InfoIcon} />
                                             <Text>{contact.company}</Text>

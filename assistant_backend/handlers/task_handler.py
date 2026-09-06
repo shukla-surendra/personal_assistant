@@ -2,10 +2,11 @@ from datetime import datetime
 from commands.task_cmd import TaskCommand, TaskDeleteCommand, TaskUpdateCommand
 from fastapi import HTTPException, status
 from constants import TaskType, TaskStatus
-from adapters.orm.models.pg_models import Task
+from adapters.orm.models.pg_models import Task, Board, Activity
 from dto.task_dto import TaskDtoMapper
 from config import logger
 from adapters.orm.models.database import get_db
+from sqlalchemy import text
 import traceback
 import re
 import uuid
@@ -15,6 +16,41 @@ class TaskHandler:
     def __init__(self):
         self.db = next(get_db())
         logger.info("TaskHandler initialized")
+
+    def _assign_task_number(self, task: Task) -> None:
+        """Atomically hand out the next ticket number from the task's board
+        via a single UPDATE...RETURNING -- safe under concurrent creates on
+        the same board since the row lock serializes the increments."""
+        result = self.db.execute(
+            text("UPDATE boards SET next_task_number = next_task_number + 1 WHERE board_id = :bid RETURNING next_task_number"),
+            {"bid": str(task.board_id)},
+        )
+        new_next = result.scalar()
+        if new_next is not None:
+            task.task_number = new_next - 1
+
+    def _ticket_key(self, task: Task):
+        if not task.board_id or not task.task_number:
+            return None
+        board = self.db.query(Board.key).filter(Board.board_id == task.board_id).first()
+        if not board or not board[0]:
+            return None
+        return f"{board[0]}-{task.task_number}"
+
+    def _log_activity(self, workspace_id, user_id, action, entity_type, entity_id, properties=None):
+        if not user_id:
+            return
+        try:
+            self.db.add(Activity(
+                workspace_id=workspace_id,
+                user_id=user_id,
+                action=action,
+                entity_type=entity_type,
+                entity_id=entity_id,
+                properties=properties or {},
+            ))
+        except Exception:
+            logger.warning("Failed to log activity", exc_info=True)
 
     def _generate_slug(self, title: str) -> str:
         """Generate a URL-friendly slug from the title"""
@@ -109,6 +145,16 @@ class TaskHandler:
 
             logger.debug(f"Created task object: {task}")
             self.db.add(task)
+            self.db.flush()
+            if task.board_id:
+                self._assign_task_number(task)
+            # Notes/quick-notes aren't ticketed work items -- skip them so
+            # the activity feed stays about actual tasks, not every scratch note.
+            if task.task_type not in (TaskType.NOTE.value, TaskType.QUICK_NOTE.value):
+                self._log_activity(
+                    task.workspace_id, task_cmd.user_id, "created", "task", task.task_id,
+                    {"title": task.title, "ticket_key": self._ticket_key(task)},
+                )
             self.db.commit()
             logger.info(f"Successfully created task with ID: {task.task_id}")
             return TaskDtoMapper.map_to_task_dto_mapper(task)
@@ -145,6 +191,11 @@ class TaskHandler:
             # Same rule Jira enforces: deleting a parent takes its
             # subtasks with it (one level deep, so no further recursion).
             self.db.query(Task).filter(Task.parent_task_id == task.task_id).update({"is_deleted": True})
+            if task.task_type not in (TaskType.NOTE.value, TaskType.QUICK_NOTE.value):
+                self._log_activity(
+                    task.workspace_id, task_cmd.user_id, "deleted", "task", task.task_id,
+                    {"title": task.title, "ticket_key": self._ticket_key(task)},
+                )
             self.db.commit()
             logger.info(f"Successfully deleted task: {task_cmd.task_id}")
             return {"message": "Task deleted successfully"}
@@ -176,6 +227,11 @@ class TaskHandler:
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="Task not found"
                 )
+
+            had_no_board = task.board_id is None
+            old_status = task.status
+            old_assignee_id = task.assignee_id
+            old_completed = task.completed
 
             # Update fields if provided
             if task_cmd.title is not None:
@@ -227,6 +283,25 @@ class TaskHandler:
                 task.settings = task_cmd.settings
             if task_cmd.public_access is not None:
                 task.public_access = task_cmd.public_access
+
+            # A card moved onto a board for the first time (e.g. dragged out
+            # of the boardless backlog) still needs a ticket number -- it
+            # never got one at creation since it had no board then.
+            if had_no_board and task.board_id:
+                self._assign_task_number(task)
+
+            changes = {}
+            if task_cmd.status is not None and old_status != task.status:
+                changes["status"] = {"from": old_status, "to": task.status}
+            if task_cmd.assignee_id is not None and str(old_assignee_id) != str(task.assignee_id):
+                changes["assignee_id"] = {"from": str(old_assignee_id) if old_assignee_id else None, "to": str(task.assignee_id) if task.assignee_id else None}
+            if task_cmd.completed is not None and old_completed != task.completed:
+                changes["completed"] = {"from": old_completed, "to": task.completed}
+            if changes and task.task_type not in (TaskType.NOTE.value, TaskType.QUICK_NOTE.value):
+                self._log_activity(
+                    task.workspace_id, task_cmd.user_id, "updated", "task", task.task_id,
+                    {"title": task.title, "ticket_key": self._ticket_key(task), "changes": changes},
+                )
 
             self.db.commit()
             logger.info(f"Successfully updated task: {task_cmd.task_id}")

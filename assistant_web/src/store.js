@@ -6,6 +6,7 @@ import authReducer from './slices/auth';
 import settingsReducer from './slices/settings';
 import contactsReducer from './slices/crm/contactsSlice';
 import dealsReducer from './slices/crm/dealsSlice';
+import companiesReducer from './slices/crm/companiesSlice';
 import activitiesReducer from './slices/crm/activitiesSlice';
 import chatReducer from './slices/chatSlice';
 import boardsReducer from './slices/boards';
@@ -16,6 +17,7 @@ import reportsReducer from './slices/reports';
 import notificationsReducer from './slices/notifications';
 import epicsReducer from './slices/epics';
 import sprintsReducer from './slices/sprints';
+import workspaceActivityReducer from './slices/workspaceActivity';
 
 const store = configureStore({
   reducer: {
@@ -26,6 +28,7 @@ const store = configureStore({
     settings: settingsReducer,
     contacts: contactsReducer,
     deals: dealsReducer,
+    companies: companiesReducer,
     activities: activitiesReducer,
     chat: chatReducer,
     boards: boardsReducer,
@@ -35,7 +38,8 @@ const store = configureStore({
     reports: reportsReducer,
     notifications: notificationsReducer,
     epics: epicsReducer,
-    sprints: sprintsReducer
+    sprints: sprintsReducer,
+    workspaceActivity: workspaceActivityReducer
   },
   devTools: true,
   middleware: (getDefaultMiddleware) =>

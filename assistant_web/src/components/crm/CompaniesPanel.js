@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import {
     Box,
@@ -9,8 +9,6 @@ import {
     Tr,
     Th,
     Td,
-    Badge,
-    IconButton,
     useDisclosure,
     Input,
     InputGroup,
@@ -25,20 +23,26 @@ import {
     Text
 } from '@chakra-ui/react';
 import { SearchIcon, AddIcon, ChevronDownIcon } from '@chakra-ui/icons';
-import { removeContact } from '../../slices/crm/contactsSlice';
-import CreateContactModal from './CreateContactModal';
-import EditContactModal from './EditContactModal';
-import ViewContactModal from './ViewContactModal';
+import { fetchCompanies, removeCompany } from '../../slices/crm/companiesSlice';
+import CreateCompanyModal from './CreateCompanyModal';
+import EditCompanyModal from './EditCompanyModal';
+import ViewCompanyModal from './ViewCompanyModal';
 
-const ContactsPanel = () => {
+const CompaniesPanel = () => {
     const dispatch = useDispatch();
     const toast = useToast();
-    const { contacts, loading } = useSelector((state) => state.contacts);
+    const { companies } = useSelector((state) => state.companies);
     const { selectedWorkspace } = useSelector((state) => state.workspaces || {});
     const workspaceId = selectedWorkspace?.workspace_id;
     const [searchQuery, setSearchQuery] = useState('');
-    const [selectedContact, setSelectedContact] = useState(null);
+    const [selectedCompany, setSelectedCompany] = useState(null);
     const [viewMode, setViewMode] = useState('list'); // 'list' or 'grid'
+
+    useEffect(() => {
+        if (workspaceId) {
+            dispatch(fetchCompanies(workspaceId));
+        }
+    }, [dispatch, workspaceId]);
 
     const {
         isOpen: isCreateOpen,
@@ -58,11 +62,11 @@ const ContactsPanel = () => {
         onClose: onViewClose
     } = useDisclosure();
 
-    const handleDelete = async (contactId) => {
+    const handleDelete = async (companyId) => {
         try {
-            await dispatch(removeContact({ workspaceId, contactId })).unwrap();
+            await dispatch(removeCompany({ workspaceId, companyId })).unwrap();
             toast({
-                title: 'Contact deleted',
+                title: 'Company deleted',
                 status: 'success',
                 duration: 3000,
                 isClosable: true,
@@ -70,7 +74,7 @@ const ContactsPanel = () => {
         } catch (error) {
             toast({
                 title: 'Error',
-                description: 'Failed to delete contact',
+                description: 'Failed to delete company',
                 status: 'error',
                 duration: 5000,
                 isClosable: true,
@@ -78,24 +82,22 @@ const ContactsPanel = () => {
         }
     };
 
-    const handleEdit = (contact) => {
-        setSelectedContact(contact);
+    const handleEdit = (company) => {
+        setSelectedCompany(company);
         onEditOpen();
     };
 
-    const handleView = (contact) => {
-        setSelectedContact(contact);
+    const handleView = (company) => {
+        setSelectedCompany(company);
         onViewOpen();
     };
 
-    const filteredContacts = contacts.filter((contact) => {
+    const filteredCompanies = (companies || []).filter((company) => {
         const searchLower = searchQuery.toLowerCase();
         return (
-            contact.first_name?.toLowerCase().includes(searchLower) ||
-            contact.last_name?.toLowerCase().includes(searchLower) ||
-            contact.email?.toLowerCase().includes(searchLower) ||
-            contact.company?.toLowerCase().includes(searchLower) ||
-            contact.company_ref?.name?.toLowerCase().includes(searchLower)
+            company.name?.toLowerCase().includes(searchLower) ||
+            company.industry?.toLowerCase().includes(searchLower) ||
+            company.website?.toLowerCase().includes(searchLower)
         );
     });
 
@@ -107,7 +109,7 @@ const ContactsPanel = () => {
                         <SearchIcon color="gray.300" />
                     </InputLeftElement>
                     <Input
-                        placeholder="Search contacts..."
+                        placeholder="Search companies..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                     />
@@ -127,7 +129,7 @@ const ContactsPanel = () => {
                     colorScheme="blue"
                     onClick={onCreateOpen}
                 >
-                    New Contact
+                    New Company
                 </Button>
             </Flex>
 
@@ -136,44 +138,42 @@ const ContactsPanel = () => {
                     <Thead>
                         <Tr>
                             <Th>Name</Th>
-                            <Th>Email</Th>
+                            <Th>Industry</Th>
+                            <Th>Website</Th>
+                            <Th>Size</Th>
                             <Th>Phone</Th>
-                            <Th>Company</Th>
-                            <Th>Job Title</Th>
                             <Th>Actions</Th>
                         </Tr>
                     </Thead>
                     <Tbody>
-                        {filteredContacts.map((contact) => (
-                            <Tr key={contact.contact_id}>
+                        {filteredCompanies.map((company) => (
+                            <Tr key={company.company_id}>
                                 <Td>
-                                    <Text fontWeight="medium">
-                                        {contact.first_name} {contact.last_name}
-                                    </Text>
+                                    <Text fontWeight="medium">{company.name}</Text>
                                 </Td>
-                                <Td>{contact.email}</Td>
-                                <Td>{contact.phone}</Td>
-                                <Td>{contact.company}</Td>
-                                <Td>{contact.job_title}</Td>
+                                <Td>{company.industry}</Td>
+                                <Td>{company.website}</Td>
+                                <Td>{company.size}</Td>
+                                <Td>{company.phone}</Td>
                                 <Td>
                                     <Button
                                         size="sm"
                                         mr={2}
-                                        onClick={() => handleView(contact)}
+                                        onClick={() => handleView(company)}
                                     >
                                         View
                                     </Button>
                                     <Button
                                         size="sm"
                                         mr={2}
-                                        onClick={() => handleEdit(contact)}
+                                        onClick={() => handleEdit(company)}
                                     >
                                         Edit
                                     </Button>
                                     <Button
                                         size="sm"
                                         colorScheme="red"
-                                        onClick={() => handleDelete(contact.contact_id)}
+                                        onClick={() => handleDelete(company.company_id)}
                                     >
                                         Delete
                                     </Button>
@@ -188,38 +188,38 @@ const ContactsPanel = () => {
                     gridTemplateColumns="repeat(auto-fill, minmax(300px, 1fr))"
                     gap={4}
                 >
-                    {filteredContacts.map((contact) => (
+                    {filteredCompanies.map((company) => (
                         <Box
-                            key={contact.contact_id}
+                            key={company.company_id}
                             p={4}
                             borderWidth="1px"
                             borderRadius="lg"
                             boxShadow="sm"
                         >
                             <Text fontSize="lg" fontWeight="bold" mb={2}>
-                                {contact.first_name} {contact.last_name}
+                                {company.name}
                             </Text>
-                            <Text mb={1}>{contact.email}</Text>
-                            <Text mb={1}>{contact.phone}</Text>
-                            <Text mb={1}>{contact.company}</Text>
-                            <Text mb={3}>{contact.job_title}</Text>
+                            <Text mb={1}>{company.industry}</Text>
+                            <Text mb={1}>{company.website}</Text>
+                            <Text mb={1}>{company.size}</Text>
+                            <Text mb={3}>{company.phone}</Text>
                             <Flex gap={2}>
                                 <Button
                                     size="sm"
-                                    onClick={() => handleView(contact)}
+                                    onClick={() => handleView(company)}
                                 >
                                     View
                                 </Button>
                                 <Button
                                     size="sm"
-                                    onClick={() => handleEdit(contact)}
+                                    onClick={() => handleEdit(company)}
                                 >
                                     Edit
                                 </Button>
                                 <Button
                                     size="sm"
                                     colorScheme="red"
-                                    onClick={() => handleDelete(contact.contact_id)}
+                                    onClick={() => handleDelete(company.company_id)}
                                 >
                                     Delete
                                 </Button>
@@ -229,24 +229,25 @@ const ContactsPanel = () => {
                 </Box>
             )}
 
-            <CreateContactModal
+            <CreateCompanyModal
                 isOpen={isCreateOpen}
                 onClose={onCreateClose}
                 workspaceId={workspaceId}
             />
 
-            {selectedContact && (
+            {selectedCompany && (
                 <>
-                    <EditContactModal
+                    <EditCompanyModal
                         isOpen={isEditOpen}
                         onClose={onEditClose}
-                        contact={selectedContact}
+                        company={selectedCompany}
                         workspaceId={workspaceId}
                     />
-                    <ViewContactModal
+                    <ViewCompanyModal
                         isOpen={isViewOpen}
                         onClose={onViewClose}
-                        contact={selectedContact}
+                        company={selectedCompany}
+                        workspaceId={workspaceId}
                     />
                 </>
             )}
@@ -254,4 +255,4 @@ const ContactsPanel = () => {
     );
 };
 
-export default ContactsPanel; 
+export default CompaniesPanel;

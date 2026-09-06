@@ -95,6 +95,7 @@ try:
             Template,
             Activity,
             Integration,
+            Company,
             Contact,
             Deal,
             ContactActivity,

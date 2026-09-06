@@ -4,8 +4,9 @@ from typing import List
 from uuid import UUID
 import logging
 
-from adapters.orm.models.pg_models import Contact, Deal, ContactActivity, DealActivity
+from adapters.orm.models.pg_models import Company, Contact, Deal, ContactActivity, DealActivity
 from commands.crm_cmd import (
+    CompanyCreate, CompanyUpdate,
     ContactCreate, ContactUpdate, DealCreate, DealUpdate,
     ContactActivityCreate, DealActivityCreate,
     ContactActivityUpdate, DealActivityUpdate
@@ -18,6 +19,68 @@ class CRMHandler:
     def __init__(self):
         self.db = SessionLocal()
 
+    # Company methods
+    def create_company(self, company: CompanyCreate) -> Company:
+        try:
+            db_company = Company(**company.model_dump())
+            self.db.add(db_company)
+            self.db.commit()
+            self.db.refresh(db_company)
+            return db_company
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"Error creating company: {str(e)}")
+            raise HTTPException(status_code=500, detail="Failed to create company")
+
+    def get_company(self, company_id: UUID) -> Company:
+        company = self.db.query(Company).filter(
+            Company.company_id == company_id,
+            Company.is_deleted == False
+        ).first()
+        if not company:
+            raise HTTPException(status_code=404, detail="Company not found")
+        return company
+
+    def get_workspace_companies(self, workspace_id: UUID) -> List[Company]:
+        return self.db.query(Company).filter(
+            Company.workspace_id == workspace_id,
+            Company.is_deleted == False
+        ).order_by(Company.name.asc()).all()
+
+    def get_company_contacts(self, company_id: UUID) -> List[Contact]:
+        return self.db.query(Contact).options(joinedload(Contact.company_ref)).filter(
+            Contact.company_id == company_id,
+            Contact.is_deleted == False
+        ).all()
+
+    def update_company(self, company_id: UUID, company: CompanyUpdate) -> Company:
+        db_company = self.get_company(company_id)
+        try:
+            for key, value in company.model_dump(exclude_unset=True).items():
+                setattr(db_company, key, value)
+            self.db.commit()
+            self.db.refresh(db_company)
+            return db_company
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"Error updating company: {str(e)}")
+            raise HTTPException(status_code=500, detail="Failed to update company")
+
+    def delete_company(self, company_id: UUID) -> bool:
+        db_company = self.get_company(company_id)
+        try:
+            db_company.is_deleted = True
+            # Unlink rather than cascade-delete -- a company going away
+            # shouldn't take its contacts with it, same reasoning as
+            # epic/task unlinking elsewhere in this app.
+            self.db.query(Contact).filter(Contact.company_id == company_id).update({"company_id": None})
+            self.db.commit()
+            return True
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"Error deleting company: {str(e)}")
+            raise HTTPException(status_code=500, detail="Failed to delete company")
+
     # Contact methods
     def create_contact(self, contact: ContactCreate) -> Contact:
         try:
@@ -25,6 +88,7 @@ class CRMHandler:
             self.db.add(db_contact)
             self.db.commit()
             self.db.refresh(db_contact)
+            _ = db_contact.company_ref  # force lazy load while self.db is still open (see create_deal for why)
             return db_contact
         except Exception as e:
             self.db.rollback()
@@ -32,7 +96,7 @@ class CRMHandler:
             raise HTTPException(status_code=500, detail="Failed to create contact")
 
     def get_contact(self, contact_id: UUID) -> Contact:
-        contact = self.db.query(Contact).filter(
+        contact = self.db.query(Contact).options(joinedload(Contact.company_ref)).filter(
             Contact.contact_id == contact_id,
             Contact.is_deleted == False
         ).first()
@@ -41,7 +105,7 @@ class CRMHandler:
         return contact
 
     def get_workspace_contacts(self, workspace_id: UUID) -> List[Contact]:
-        return self.db.query(Contact).filter(
+        return self.db.query(Contact).options(joinedload(Contact.company_ref)).filter(
             Contact.workspace_id == workspace_id,
             Contact.is_deleted == False
         ).all()
@@ -53,6 +117,7 @@ class CRMHandler:
                 setattr(db_contact, key, value)
             self.db.commit()
             self.db.refresh(db_contact)
+            _ = db_contact.company_ref  # re-resolve in case company_id just changed
             return db_contact
         except Exception as e:
             self.db.rollback()

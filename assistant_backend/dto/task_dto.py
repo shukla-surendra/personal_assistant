@@ -53,6 +53,8 @@ class TaskDto(BaseModel):
     reporter_id: Optional[str]
     epic_id: Optional[str] = None
     sprint_id: Optional[str] = None
+    task_number: Optional[int] = None
+    ticket_key: Optional[str] = None
     story_points: Optional[int] = None
     watchers: list
     labels: list
@@ -142,6 +144,8 @@ class TaskDtoMapper:
             reporter_id=str(task.reporter_id) if task.reporter_id else None,
             epic_id=str(task.epic_id) if task.epic_id else None,
             sprint_id=str(task.sprint_id) if task.sprint_id else None,
+            task_number=task.task_number,
+            ticket_key=f"{task.board.key}-{task.task_number}" if task.board_id and task.task_number and task.board and task.board.key else None,
             story_points=task.story_points,
             watchers=task.watchers,
             labels=task.labels,

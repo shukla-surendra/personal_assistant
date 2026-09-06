@@ -53,14 +53,19 @@ async def get_activity(activity_id: str, workspace_id: str, user: dict = Depends
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/", response_model=List[ActivityDto])
-async def list_activities(workspace_id: str, user: dict = Depends(get_auth_details)):
+async def list_activities(
+    workspace_id: str,
+    entity_type: Optional[str] = None,
+    limit: int = 50,
+    user: dict = Depends(get_auth_details),
+):
     handler = ActivityHandler()
     try:
         # list_activities's 2nd positional param is entity_id, not a user
         # filter -- passing the caller's user_id there was silently
         # filtering every activity out (no row's entity_id ever matches a
         # user_id), so this endpoint always returned an empty list.
-        activities = handler.list_activities(workspace_id)
+        activities = handler.list_activities(workspace_id, entity_type=entity_type, limit=limit)
         return [ActivityDtoMapper.map_to_activity_dto(a) for a in activities]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -11,23 +11,27 @@ import {
     FormControl,
     FormLabel,
     Input,
+    Select,
     FormErrorMessage,
     Grid,
     GridItem,
     Textarea,
     useToast
 } from '@chakra-ui/react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { editContact } from '../../slices/crm/contactsSlice';
+import { fetchCompanies } from '../../slices/crm/companiesSlice';
 
 const EditContactModal = ({ isOpen, onClose, contact, workspaceId }) => {
     const dispatch = useDispatch();
+    const { companies } = useSelector((state) => state.companies);
     const [formData, setFormData] = useState({
         first_name: '',
         last_name: '',
         email: '',
         phone: '',
         company: '',
+        company_id: '',
         job_title: '',
         address: {},
         social_media: {},
@@ -43,6 +47,12 @@ const EditContactModal = ({ isOpen, onClose, contact, workspaceId }) => {
     const toast = useToast();
 
     useEffect(() => {
+        if (isOpen && workspaceId) {
+            dispatch(fetchCompanies(workspaceId));
+        }
+    }, [isOpen, workspaceId, dispatch]);
+
+    useEffect(() => {
         if (contact) {
             setFormData({
                 first_name: contact.first_name || '',
@@ -50,6 +60,7 @@ const EditContactModal = ({ isOpen, onClose, contact, workspaceId }) => {
                 email: contact.email || '',
                 phone: contact.phone || '',
                 company: contact.company || '',
+                company_id: contact.company_id || '',
                 job_title: contact.job_title || '',
                 address: contact.address || {},
                 social_media: contact.social_media || {},
@@ -79,7 +90,8 @@ const EditContactModal = ({ isOpen, onClose, contact, workspaceId }) => {
 
         try {
             setIsSubmitting(true);
-            await dispatch(editContact({ workspaceId, contactId: contact.contact_id, contactData: formData })).unwrap();
+            const payload = { ...formData, company_id: formData.company_id || null };
+            await dispatch(editContact({ workspaceId, contactId: contact.contact_id, contactData: payload })).unwrap();
             onClose();
             toast({
                 title: 'Contact updated successfully',
@@ -163,7 +175,22 @@ const EditContactModal = ({ isOpen, onClose, contact, workspaceId }) => {
                             </GridItem>
                             <GridItem>
                                 <FormControl>
-                                    <FormLabel>Company</FormLabel>
+                                    <FormLabel>Linked Company</FormLabel>
+                                    <Select
+                                        name="company_id"
+                                        placeholder="None"
+                                        value={formData.company_id}
+                                        onChange={handleChange}
+                                    >
+                                        {(companies || []).map((c) => (
+                                            <option key={c.company_id} value={c.company_id}>{c.name}</option>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                            </GridItem>
+                            <GridItem>
+                                <FormControl>
+                                    <FormLabel>Company (free text)</FormLabel>
                                     <Input
                                         name="company"
                                         value={formData.company}

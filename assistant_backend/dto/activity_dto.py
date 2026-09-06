@@ -11,6 +11,8 @@ class ActivityDto(BaseModel):
     entity_type: str
     details: Optional[Dict[str, Any]] = None
     properties: Optional[Dict[str, Any]] = None
+    created_at: Optional[str] = None
+    user: Optional[Dict[str, Any]] = None
 
 class ActivityDtoMapper:
     @staticmethod
@@ -23,5 +25,11 @@ class ActivityDtoMapper:
             entity_id=str(activity.entity_id),
             entity_type=activity.entity_type,
             details=activity.details,
-            properties=activity.properties
+            properties=activity.properties,
+            created_at=activity.created_at.isoformat() if activity.created_at else None,
+            user={
+                'user_id': str(activity.user.user_id),
+                'first_name': activity.user.first_name,
+                'last_name': activity.user.last_name,
+            } if activity.user else None,
         ) 

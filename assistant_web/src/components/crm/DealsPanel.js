@@ -29,6 +29,8 @@ import { removeDeal } from '../../slices/crm/dealsSlice';
 import CreateDealModal from './CreateDealModal';
 import EditDealModal from './EditDealModal';
 import ViewDealModal from './ViewDealModal';
+import DealsPipeline from './DealsPipeline';
+import { getStageColor } from './dealStages';
 
 const getStatusColor = (status) => {
     switch (status.toLowerCase()) {
@@ -43,19 +45,6 @@ const getStatusColor = (status) => {
     }
 };
 
-const getStageColor = (stage) => {
-    switch (stage.toLowerCase()) {
-        case 'proposal':
-            return 'purple';
-        case 'negotiation':
-            return 'orange';
-        case 'closed':
-            return 'green';
-        default:
-            return 'gray';
-    }
-};
-
 const DealsPanel = () => {
     const dispatch = useDispatch();
     const toast = useToast();
@@ -64,7 +53,7 @@ const DealsPanel = () => {
     const workspaceId = selectedWorkspace?.workspace_id;
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedDeal, setSelectedDeal] = useState(null);
-    const [viewMode, setViewMode] = useState('list'); // 'list' or 'grid'
+    const [viewMode, setViewMode] = useState('pipeline'); // 'pipeline', 'list', or 'grid'
 
     const {
         isOpen: isCreateOpen,
@@ -148,9 +137,10 @@ const DealsPanel = () => {
                 <Spacer />
                 <Menu>
                     <MenuButton as={Button} rightIcon={<ChevronDownIcon />}>
-                        View: {viewMode === 'list' ? 'List' : 'Grid'}
+                        View: {viewMode === 'pipeline' ? 'Pipeline' : viewMode === 'list' ? 'List' : 'Grid'}
                     </MenuButton>
                     <MenuList>
+                        <MenuItem onClick={() => setViewMode('pipeline')}>Pipeline View</MenuItem>
                         <MenuItem onClick={() => setViewMode('list')}>List View</MenuItem>
                         <MenuItem onClick={() => setViewMode('grid')}>Grid View</MenuItem>
                     </MenuList>
@@ -164,7 +154,9 @@ const DealsPanel = () => {
                 </Button>
             </Flex>
 
-            {viewMode === 'list' ? (
+            {viewMode === 'pipeline' ? (
+                <DealsPipeline deals={filteredDeals} workspaceId={workspaceId} onCardClick={handleView} />
+            ) : viewMode === 'list' ? (
                 <Table variant="simple">
                     <Thead>
                         <Tr>

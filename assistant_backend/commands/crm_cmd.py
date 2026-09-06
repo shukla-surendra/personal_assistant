@@ -3,12 +3,47 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime
 from uuid import UUID
 
+class CompanyBase(BaseModel):
+    name: str
+    industry: Optional[str] = None
+    website: Optional[str] = None
+    size: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[Dict[str, Any]] = None
+    description: Optional[str] = None
+    tags: Optional[List[str]] = None
+
+class CompanyCreate(CompanyBase):
+    workspace_id: UUID
+
+class CompanyUpdate(BaseModel):
+    # All optional (unlike CompanyBase) so a partial update -- e.g. just
+    # changing the industry -- doesn't 422 for missing the other fields.
+    name: Optional[str] = None
+    industry: Optional[str] = None
+    website: Optional[str] = None
+    size: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[Dict[str, Any]] = None
+    description: Optional[str] = None
+    tags: Optional[List[str]] = None
+
+class CompanyResponse(CompanyBase):
+    company_id: UUID
+    workspace_id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
 class ContactBase(BaseModel):
     first_name: str
     last_name: str
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
     company: Optional[str] = None
+    company_id: Optional[UUID] = None
     job_title: Optional[str] = None
     address: Optional[Dict[str, Any]] = None
     social_media: Optional[Dict[str, str]] = None
@@ -21,12 +56,29 @@ class ContactBase(BaseModel):
 class ContactCreate(ContactBase):
     workspace_id: UUID
 
-class ContactUpdate(ContactBase):
-    pass
+class ContactUpdate(BaseModel):
+    # All optional (unlike ContactBase, which requires first_name/last_name)
+    # so a partial update -- e.g. just linking a company_id -- doesn't 422
+    # for missing the name fields.
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    company: Optional[str] = None
+    company_id: Optional[UUID] = None
+    job_title: Optional[str] = None
+    address: Optional[Dict[str, Any]] = None
+    social_media: Optional[Dict[str, str]] = None
+    tags: Optional[List[str]] = None
+    status: Optional[str] = None
+    source: Optional[str] = None
+    notes: Optional[str] = None
+    properties: Optional[Dict[str, Any]] = None
 
 class ContactResponse(ContactBase):
     contact_id: UUID
     workspace_id: UUID
+    company_ref: Optional[CompanyResponse] = None
     created_at: datetime
     updated_at: datetime
 
@@ -38,6 +90,7 @@ class DealBase(BaseModel):
     value: Optional[int] = None
     currency: str = "USD"
     stage: str
+    order: Optional[int] = None
     probability: Optional[int] = None
     expected_close_date: Optional[datetime] = None
     description: Optional[str] = None
@@ -49,8 +102,21 @@ class DealCreate(DealBase):
     workspace_id: UUID
     contact_id: UUID
 
-class DealUpdate(DealBase):
-    pass
+class DealUpdate(BaseModel):
+    # All optional (unlike DealBase, which requires title/stage) so a
+    # drag-and-drop pipeline move can PUT just {"stage": ..., "order": ...}
+    # without resending the whole deal.
+    title: Optional[str] = None
+    value: Optional[int] = None
+    currency: Optional[str] = None
+    stage: Optional[str] = None
+    order: Optional[int] = None
+    probability: Optional[int] = None
+    expected_close_date: Optional[datetime] = None
+    description: Optional[str] = None
+    tags: Optional[List[str]] = None
+    status: Optional[str] = None
+    properties: Optional[Dict[str, Any]] = None
 
 class DealResponse(DealBase):
     deal_id: UUID
@@ -77,8 +143,14 @@ class ContactActivityCreate(ContactActivityBase):
     contact_id: UUID
     user_id: UUID
 
-class ContactActivityUpdate(ContactActivityBase):
-    pass
+class ContactActivityUpdate(BaseModel):
+    type: Optional[str] = None
+    title: Optional[str] = None
+    description: Optional[str] = None
+    scheduled_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    status: Optional[str] = None
+    properties: Optional[Dict[str, Any]] = None
 
 class ContactActivityResponse(ContactActivityBase):
     activity_id: UUID
@@ -104,8 +176,13 @@ class DealActivityCreate(DealActivityBase):
     deal_id: UUID
     user_id: UUID
 
-class DealActivityUpdate(DealActivityBase):
-    pass
+class DealActivityUpdate(BaseModel):
+    type: Optional[str] = None
+    title: Optional[str] = None
+    description: Optional[str] = None
+    old_stage: Optional[str] = None
+    new_stage: Optional[str] = None
+    properties: Optional[Dict[str, Any]] = None
 
 class DealActivityResponse(DealActivityBase):
     activity_id: UUID
@@ -116,4 +193,4 @@ class DealActivityResponse(DealActivityBase):
     updated_at: datetime
 
     class Config:
-        from_attributes = True 
+        from_attributes = True

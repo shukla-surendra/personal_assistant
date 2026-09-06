@@ -5,6 +5,7 @@ from uuid import UUID
 from modules.access import require_module_enabled
 from handlers.crm_handler import CRMHandler
 from commands.crm_cmd import (
+    CompanyCreate, CompanyUpdate, CompanyResponse,
     ContactCreate, ContactUpdate, ContactResponse,
     DealCreate, DealUpdate, DealResponse,
     ContactActivityCreate, ContactActivityUpdate, ContactActivityResponse,
@@ -16,6 +17,37 @@ router = APIRouter(prefix="/api/v1/workspaces/{workspace_id}/crm", tags=["crm"])
 # Already a live, always-on feature before the module registry existed --
 # default_enabled=True so no existing workspace loses it silently.
 gate = require_module_enabled("crm", default_enabled=True)
+
+# Company routes
+@router.post("/companies", response_model=CompanyResponse)
+def create_company(workspace_id: str, company: CompanyCreate, user: dict = Depends(gate)):
+    handler = CRMHandler()
+    return handler.create_company(company)
+
+@router.get("/companies", response_model=List[CompanyResponse])
+def get_workspace_companies(workspace_id: str, user: dict = Depends(gate)):
+    handler = CRMHandler()
+    return handler.get_workspace_companies(workspace_id)
+
+@router.get("/companies/{company_id}", response_model=CompanyResponse)
+def get_company(workspace_id: str, company_id: UUID, user: dict = Depends(gate)):
+    handler = CRMHandler()
+    return handler.get_company(company_id)
+
+@router.get("/companies/{company_id}/contacts", response_model=List[ContactResponse])
+def get_company_contacts(workspace_id: str, company_id: UUID, user: dict = Depends(gate)):
+    handler = CRMHandler()
+    return handler.get_company_contacts(company_id)
+
+@router.put("/companies/{company_id}", response_model=CompanyResponse)
+def update_company(workspace_id: str, company_id: UUID, company: CompanyUpdate, user: dict = Depends(gate)):
+    handler = CRMHandler()
+    return handler.update_company(company_id, company)
+
+@router.delete("/companies/{company_id}")
+def delete_company(workspace_id: str, company_id: UUID, user: dict = Depends(gate)):
+    handler = CRMHandler()
+    return handler.delete_company(company_id)
 
 # Contact routes
 @router.post("/contacts", response_model=ContactResponse)

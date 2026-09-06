@@ -4,6 +4,7 @@ from typing import Optional
 
 class BoardCommand(BaseModel):
     workspace_id: Optional[str] = None  # Set from the URL path by the controller
+    user_id: Optional[str] = None  # Set from the auth token by the controller
     name: str
     description: Optional[str] = None
     properties: Optional[dict] = None
@@ -19,3 +20,4 @@ class BoardUpdateCommand(BaseModel):
 class BoardDeleteCommand(BaseModel):
     board_id: str
     workspace_id: str
+    user_id: Optional[str] = None

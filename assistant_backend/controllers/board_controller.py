@@ -34,6 +34,7 @@ async def create_board(workspace_id: str, command: BoardCommand, user: dict = De
     """Create a new board in a workspace"""
     _verify_workspace_access(workspace_id, user.get("user_id"))
     command.workspace_id = workspace_id
+    command.user_id = user.get("user_id")
     try:
         board = BoardHandler().create_board(command)
         return BoardDtoMapper.map_to_board_dto(board)
@@ -94,7 +95,7 @@ async def delete_board(workspace_id: str, board_id: str, user: dict = Depends(ge
     """Soft delete a board"""
     _verify_workspace_access(workspace_id, user.get("user_id"))
     try:
-        command = BoardDeleteCommand(board_id=board_id, workspace_id=workspace_id)
+        command = BoardDeleteCommand(board_id=board_id, workspace_id=workspace_id, user_id=user.get("user_id"))
         BoardHandler().delete_board(command)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     except HTTPException:
