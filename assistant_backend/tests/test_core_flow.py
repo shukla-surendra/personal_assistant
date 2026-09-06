@@ -74,7 +74,7 @@ def test_default_board_was_auto_created_on_signup(client, signed_up_user):
     assert resp.status_code == status.HTTP_200_OK, resp.text
     boards = resp.json()
     assert len(boards) >= 1
-    assert boards[0]["title"]
+    assert boards[0]["name"]
 
 
 def test_create_and_list_task(client, signed_up_user):

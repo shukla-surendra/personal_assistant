@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   Icon,
   useColorModeValue,
@@ -49,7 +49,8 @@ import {
   FiX,
   FiPlus,
   FiList,
-  FiBell
+  FiBell,
+  FiBox
 } from 'react-icons/fi';
 import { 
   MdOutlineDashboard,
@@ -59,6 +60,13 @@ import {
 
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import WorkspaceSelector from "./sections/WorkSpaceSelector";
+import ModuleService from "../../services/ModuleService";
+
+// Plug-and-play modules -- a module only shows up here once it's both
+// registered on the backend AND has a known frontend route. Adding a new
+// module's nav entry means adding one line to each of these two maps.
+const MODULE_ICONS = { box: FiBox };
+const MODULE_ROUTES = { inventory: "/inventory" };
 
 const Navbar = ({ isCollapsed, onToggle }) => {
   const location = useLocation();
@@ -68,6 +76,13 @@ const Navbar = ({ isCollapsed, onToggle }) => {
   const borderColor = useColorModeValue("gray.200", "gray.700");
   const hoverBg = useColorModeValue('gray.100', 'gray.700');
   const { isOpen, onToggle: onWorkspaceToggle } = useDisclosure();
+  const [enabledModules, setEnabledModules] = useState([]);
+
+  useEffect(() => {
+    ModuleService.getAll()
+      .then(res => setEnabledModules(res.data.filter(m => m.enabled && MODULE_ROUTES[m.key])))
+      .catch(() => {});
+  }, []);
 
   const handleCreateTask = () => {
     navigate('/tasks/new');
@@ -270,6 +285,37 @@ const Navbar = ({ isCollapsed, onToggle }) => {
               Chat
             </NavItem>
           </Box>
+
+          {enabledModules.length > 0 && (
+            <>
+              <Divider />
+              <Box p={2}>
+                {!isCollapsed && (
+                  <Text
+                    px={4}
+                    py={2}
+                    fontSize="xs"
+                    fontWeight="bold"
+                    color="gray.500"
+                    textTransform="uppercase"
+                  >
+                    Modules
+                  </Text>
+                )}
+                {enabledModules.map(module => (
+                  <NavItem
+                    key={module.key}
+                    icon={MODULE_ICONS[module.icon] || FiGrid}
+                    to={MODULE_ROUTES[module.key]}
+                    isActive={location.pathname === MODULE_ROUTES[module.key]}
+                    isCollapsed={isCollapsed}
+                  >
+                    {module.name}
+                  </NavItem>
+                ))}
+              </Box>
+            </>
+          )}
 
           <Divider />
 

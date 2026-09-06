@@ -100,8 +100,16 @@ try:
             ContactActivity,
             DealActivity,
             Chat,
-            ChatMessage
+            ChatMessage,
+            Epic,
+            Sprint,
+            TaskLink,
+            WorkspaceModule
         )
+        # Modules (ERP etc.) register their own tables on the same Base --
+        # this import is what makes create_all below see them.
+        from modules.registry import import_all_module_models
+        import_all_module_models()
         
         # Drop all tables first to ensure clean state
         Base.metadata.drop_all(bind=engine)

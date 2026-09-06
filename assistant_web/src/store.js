@@ -14,6 +14,8 @@ import remindersReducer from './slices/reminders';
 import databasesReducer from './slices/databases';
 import reportsReducer from './slices/reports';
 import notificationsReducer from './slices/notifications';
+import epicsReducer from './slices/epics';
+import sprintsReducer from './slices/sprints';
 
 const store = configureStore({
   reducer: {
@@ -31,7 +33,9 @@ const store = configureStore({
     reminders: remindersReducer,
     databases: databasesReducer,
     reports: reportsReducer,
-    notifications: notificationsReducer
+    notifications: notificationsReducer,
+    epics: epicsReducer,
+    sprints: sprintsReducer
   },
   devTools: true,
   middleware: (getDefaultMiddleware) =>

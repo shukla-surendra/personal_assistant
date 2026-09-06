@@ -39,8 +39,13 @@ from controllers import (
     workspace_router,
     users_router,
     queue_router,
-    reports_router
+    reports_router,
+    epic_router,
+    sprint_router,
+    task_link_router,
+    module_router
 )
+from modules.registry import ALL_MODULES
 from workers.queue_consumer import run_consumer
 from observability import setup_telemetry
 
@@ -97,6 +102,16 @@ try:
     app.include_router(users_router)
     app.include_router(queue_router)
     app.include_router(reports_router)
+    app.include_router(epic_router)
+    app.include_router(sprint_router)
+    app.include_router(task_link_router)
+    app.include_router(module_router)
+
+    # Plug-and-play modules (ERP etc.) -- each entry in ALL_MODULES brings
+    # its own router; adding a new module means editing modules/registry.py,
+    # not this file.
+    for module in ALL_MODULES:
+        app.include_router(module.router)
 
     # Configure CORS with environment-based settings
     allowed_origins = settings.ALLOWED_ORIGINS.split(",") if settings.ALLOWED_ORIGINS else []

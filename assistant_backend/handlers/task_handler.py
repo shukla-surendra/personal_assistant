@@ -66,11 +66,26 @@ class TaskHandler:
             task_id = task_cmd.task_id or str(uuid.uuid4())
             logger.debug(f"Using task_id: {task_id}")
 
+            if task_cmd.parent_task_id:
+                parent = self.db.query(Task).filter(
+                    Task.task_id == task_cmd.parent_task_id,
+                    Task.workspace_id == task_cmd.workspace_id,
+                    Task.is_deleted == False
+                ).first()
+                if not parent:
+                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Parent task not found")
+                if parent.parent_task_id:
+                    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A subtask cannot itself have subtasks")
+
             # Create task with enum values converted to strings
             task = Task(
                 task_id=task_id,
                 workspace_id=task_cmd.workspace_id,
                 board_id=task_cmd.board_id,
+                epic_id=task_cmd.epic_id or None,
+                sprint_id=task_cmd.sprint_id or None,
+                parent_task_id=task_cmd.parent_task_id or None,
+                story_points=task_cmd.story_points,
                 user_id=task_cmd.user_id,
                 title=task_cmd.title,
                 description=task_cmd.description,
@@ -98,6 +113,8 @@ class TaskHandler:
             logger.info(f"Successfully created task with ID: {task.task_id}")
             return TaskDtoMapper.map_to_task_dto_mapper(task)
 
+        except HTTPException:
+            raise
         except Exception as e:
             logger.error(f"Error creating task: {str(e)}")
             logger.error(traceback.format_exc())
@@ -125,6 +142,9 @@ class TaskHandler:
                 )
 
             task.is_deleted = True
+            # Same rule Jira enforces: deleting a parent takes its
+            # subtasks with it (one level deep, so no further recursion).
+            self.db.query(Task).filter(Task.parent_task_id == task.task_id).update({"is_deleted": True})
             self.db.commit()
             logger.info(f"Successfully deleted task: {task_cmd.task_id}")
             return {"message": "Task deleted successfully"}
@@ -177,6 +197,12 @@ class TaskHandler:
                     logger.warning(f"Invalid status: {task_cmd.status}. Keeping existing value")
             if task_cmd.board_id is not None:
                 task.board_id = task_cmd.board_id
+            if task_cmd.epic_id is not None:
+                task.epic_id = task_cmd.epic_id or None
+            if task_cmd.sprint_id is not None:
+                task.sprint_id = task_cmd.sprint_id or None
+            if task_cmd.story_points is not None:
+                task.story_points = task_cmd.story_points
             if task_cmd.order is not None:
                 task.order = task_cmd.order
             if task_cmd.completed is not None:
@@ -218,11 +244,13 @@ class TaskHandler:
             )
 
     def list_tasks(self, user_id: str, workspace_id: str = None, board_id: str = None, skip: int = 0, limit: int = 10,
-                   task_status=None, task_type='todo', order='desc', priority=None):
+                   task_status=None, task_type='todo', order='desc', priority=None,
+                   sprint_id=None, backlog_only=False, epic_id=None, parent_task_id=None):
         """List tasks with optional filtering"""
         try:
             logger.info(f"Listing tasks for user {user_id} with filters: workspace_id={workspace_id}, "
-                       f"board_id={board_id}, task_status={task_status}, task_type={task_type}, order={order}, priority={priority}")
+                       f"board_id={board_id}, task_status={task_status}, task_type={task_type}, order={order}, "
+                       f"priority={priority}, sprint_id={sprint_id}, backlog_only={backlog_only}, epic_id={epic_id}")
 
             query = self.db.query(Task).filter(
                 Task.user_id == user_id,
@@ -233,6 +261,14 @@ class TaskHandler:
                 query = query.filter(Task.workspace_id == workspace_id)
             if board_id:
                 query = query.filter(Task.board_id == board_id)
+            if backlog_only:
+                query = query.filter(Task.sprint_id.is_(None))
+            elif sprint_id:
+                query = query.filter(Task.sprint_id == sprint_id)
+            if epic_id:
+                query = query.filter(Task.epic_id == epic_id)
+            if parent_task_id:
+                query = query.filter(Task.parent_task_id == parent_task_id)
             if task_status:
                 try:
                     status_enum = TaskStatus(task_status.lower())

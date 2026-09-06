@@ -44,6 +44,9 @@ async def list_tasks(
     order: str = 'desc',
     task_type: str = None,
     board_id: str = None,
+    sprint_id: str = None,
+    backlog_only: bool = False,
+    epic_id: str = None,
     skip: int = 0,
     page_size: int = 50,
     priority: int = None
@@ -60,7 +63,10 @@ async def list_tasks(
             task_status=task_status,
             task_type=task_type,
             order=order,
-            priority=priority
+            priority=priority,
+            sprint_id=sprint_id,
+            backlog_only=backlog_only,
+            epic_id=epic_id
         )
     except HTTPException as he:
         raise he

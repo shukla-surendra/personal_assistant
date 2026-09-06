@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Drawer, DrawerOverlay, DrawerContent, DrawerCloseButton,
   DrawerHeader, DrawerBody, DrawerFooter, Box, Button, FormControl,
@@ -6,19 +6,25 @@ import {
   Badge, Tooltip, useToast, IconButton, VStack, HStack, Divider, Tag,
   TagLabel, TagCloseButton, Wrap, Select, InputGroup, InputLeftElement,
   InputRightElement, Spinner, Flex, Popover, PopoverTrigger, PopoverContent,
-  PopoverBody, PopoverArrow, Portal, MenuDivider, FormLabel, AvatarGroup,
+  PopoverBody, PopoverArrow, Portal, MenuDivider, FormLabel,
   Avatar, Progress
 } from "@chakra-ui/react";
 import { useDispatch } from "react-redux";
 import { createGeneralTask } from "../../../slices/tasks";
 import { 
   FaArrowLeft, FaSave, FaCalendarAlt, FaTag, FaClipboardList, 
-  FaUser, FaPaperclip, FaPlus, FaClock, FaUsers, FaHashtag,
+  FaUser, FaPaperclip, FaPlus, FaClock, FaHashtag,
   FaShare, FaEllipsisH, FaCheckCircle, FaRegCircle
 } from "react-icons/fa";
 import { FiMoreHorizontal, FiCheck, FiClock } from "react-icons/fi";
 import RichTextEditor from '../editor/RichTextEditor';
 import ConfigService from "../../../utils/config";
+import EpicService from "../../../services/EpicService";
+import SprintService from "../../../services/SprintService";
+import MemberService from "../../../services/MemberService";
+
+// Fibonacci-ish scale -- matches Jira's own estimation field convention.
+const STORY_POINT_OPTIONS = [1, 2, 3, 5, 8, 13, 21];
 
 // Task templates
 const TASK_TEMPLATES = [
@@ -48,13 +54,6 @@ const STATUS_CONFIG = {
   done: { color: "green", label: "Done" }
 };
 
-// Sample users for demonstration
-const sampleUsers = [
-  { id: 1, name: "John Doe", avatar: "https://bit.ly/dan-abramov" },
-  { id: 2, name: "Jane Smith", avatar: "https://bit.ly/ryan-florence" },
-  { id: 3, name: "Mike Johnson", avatar: "https://bit.ly/kent-c-dodds" },
-];
-
 export default function NewTaskDrawer(props) {
   const initialTaskState = {
     task_id: null,
@@ -63,7 +62,7 @@ export default function NewTaskDrawer(props) {
     priority: "Medium",
     status: "todo",
     due_on: "",
-    assignees: [],
+    assignee_id: null,
     labels: [],
     task_type: 'task',
     // Lets a caller (e.g. a Kanban board's "+ Add card" on a specific
@@ -80,6 +79,36 @@ export default function NewTaskDrawer(props) {
   const [isLoading, setIsLoading] = useState(false);
   const [newLabel, setNewLabel] = useState('');
   const [isAddingLabel, setIsAddingLabel] = useState(false);
+  const [boardEpics, setBoardEpics] = useState([]);
+  const [boardSprints, setBoardSprints] = useState([]);
+  const [workspaceMembers, setWorkspaceMembers] = useState([]);
+
+  useEffect(() => {
+    if (isOpen && currentTask?.board_id) {
+      EpicService.getAll(currentTask.board_id).then(res => setBoardEpics(res.data)).catch(() => {});
+      SprintService.getAll(currentTask.board_id).then(res => setBoardSprints(res.data)).catch(() => {});
+    }
+  }, [isOpen, currentTask?.board_id]);
+
+  useEffect(() => {
+    if (isOpen) {
+      const workspace_id = ConfigService.getDefaultWorkspace().workspace_id;
+      MemberService.getMembers(workspace_id)
+        .then(res => setWorkspaceMembers(res.data))
+        .catch(() => {});
+    }
+  }, [isOpen]);
+
+  const handleStoryPointsChange = (e) => {
+    const value = e.target.value;
+    setCurrentTask(prev => ({ ...prev, story_points: value === '' ? null : parseInt(value, 10) }));
+  };
+
+  const handleAssign = (memberId) => {
+    setCurrentTask(prev => ({ ...prev, assignee_id: memberId || null }));
+  };
+
+  const currentAssignee = workspaceMembers.find(m => m.user_id === currentTask?.assignee_id);
 
   // Theme colors
   const bgColor = useColorModeValue("white", "gray.800");
@@ -389,9 +418,6 @@ export default function NewTaskDrawer(props) {
                   <MenuItem icon={<Icon as={FaShare} />} py={2}>
                     Share
                   </MenuItem>
-                  <MenuItem icon={<Icon as={FaUsers} />} py={2}>
-                    Assign
-                  </MenuItem>
                   <MenuDivider />
                   <MenuItem icon={<Icon as={TASK_TEMPLATES[0].icon} />} py={2}>
                     Apply Template
@@ -487,33 +513,95 @@ export default function NewTaskDrawer(props) {
                 </HStack>
               </FormControl>
 
-              {/* Assignees */}
+              {/* Story Points */}
               <FormControl>
-                <HStack spacing={3} align="flex-start">
-                  <Icon as={FaUser} color={mutedColor} mt={2} />
-                  <VStack align="stretch" spacing={2} flex={1}>
-                    <HStack>
-                      <Text fontSize="sm" fontWeight="medium" color={textColor}>
-                        Assignees
-                      </Text>
-                      <IconButton
-                        icon={<Icon as={FaPlus} />}
-                        size="xs"
-                        variant="ghost"
-                        aria-label="Add assignee"
-                      />
-                    </HStack>
-                    <AvatarGroup size="sm" max={5}>
-                      {currentTask?.assignees?.map(user => (
-                        <Avatar
-                          key={user.id}
-                          name={user.name}
-                          src={user.avatar}
+                <HStack spacing={3}>
+                  <Icon as={FaHashtag} color={mutedColor} />
+                  <Text fontSize="sm" color={mutedColor}>Story points</Text>
+                  <Select
+                    value={currentTask?.story_points ?? ''}
+                    onChange={handleStoryPointsChange}
+                    size="sm"
+                    width="110px"
+                    variant="filled"
+                    bg={inputBg}
+                  >
+                    <option value="">None</option>
+                    {STORY_POINT_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
+                  </Select>
+                </HStack>
+              </FormControl>
+
+              {/* Epic / Sprint -- only relevant when the drawer was opened
+                  for a specific board (e.g. a Kanban column's "+" button),
+                  since both are board-scoped resources. */}
+              {currentTask?.board_id && (
+                <FormControl>
+                  <HStack spacing={3}>
+                    <Icon as={FaTag} color={mutedColor} />
+                    <VStack align="stretch" spacing={1} flex={1}>
+                      <HStack>
+                        <Text fontSize="xs" color={mutedColor} width="45px">Epic</Text>
+                        <Select
+                          name="epic_id"
+                          value={currentTask?.epic_id || ''}
+                          onChange={handleInputChange}
                           size="sm"
-                        />
+                          variant="filled"
+                          bg={inputBg}
+                        >
+                          <option value="">No epic</option>
+                          {boardEpics.map(e => <option key={e.epic_id} value={e.epic_id}>{e.title}</option>)}
+                        </Select>
+                      </HStack>
+                      <HStack>
+                        <Text fontSize="xs" color={mutedColor} width="45px">Sprint</Text>
+                        <Select
+                          name="sprint_id"
+                          value={currentTask?.sprint_id || ''}
+                          onChange={handleInputChange}
+                          size="sm"
+                          variant="filled"
+                          bg={inputBg}
+                        >
+                          <option value="">Backlog</option>
+                          {boardSprints.filter(s => s.status !== 'completed').map(s => (
+                            <option key={s.sprint_id} value={s.sprint_id}>{s.name}{s.status === 'active' ? ' (active)' : ''}</option>
+                          ))}
+                        </Select>
+                      </HStack>
+                    </VStack>
+                  </HStack>
+                </FormControl>
+              )}
+
+              {/* Assignee -- the Task model has a single assignee_id, not
+                  a list, so this is a picker, not a multi-avatar roster. */}
+              <FormControl>
+                <HStack spacing={3}>
+                  <Icon as={FaUser} color={mutedColor} />
+                  <Text fontSize="sm" fontWeight="medium" color={textColor}>Assignee</Text>
+                  <Menu>
+                    <MenuButton as={Button} size="sm" variant="outline" leftIcon={
+                      currentAssignee
+                        ? <Avatar size="2xs" name={currentAssignee.name} src={currentAssignee.avatar} />
+                        : <Icon as={FaUser} />
+                    }>
+                      {currentAssignee ? currentAssignee.name : "Unassigned"}
+                    </MenuButton>
+                    <MenuList>
+                      <MenuItem onClick={() => handleAssign(null)}>Unassigned</MenuItem>
+                      <MenuDivider />
+                      {workspaceMembers.map(member => (
+                        <MenuItem key={member.user_id} onClick={() => handleAssign(member.user_id)}>
+                          <HStack>
+                            <Avatar size="2xs" name={member.name} src={member.avatar} />
+                            <Text>{member.name}</Text>
+                          </HStack>
+                        </MenuItem>
                       ))}
-                    </AvatarGroup>
-                  </VStack>
+                    </MenuList>
+                  </Menu>
                 </HStack>
               </FormControl>
 

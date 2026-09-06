@@ -19,6 +19,10 @@ class TaskCommand(BaseModel):
     public_access: bool = False  # Combined field for public access
     slug: Optional[str] = None
     board_id: Optional[str] = None
+    epic_id: Optional[str] = None
+    sprint_id: Optional[str] = None
+    parent_task_id: Optional[str] = None
+    story_points: Optional[int] = None
     completed: bool = False
     is_deleted: bool = False
     due_on: Optional[datetime] = None
@@ -53,6 +57,12 @@ class TaskUpdateCommand(BaseModel):
     task_type: Optional[str] = None
     status: Optional[str] = None
     board_id: Optional[str] = None
+    # "" clears the assignment (moves the card to no-epic / back to
+    # backlog); None means "leave unchanged", same as every other
+    # optional field on this command.
+    epic_id: Optional[str] = None
+    sprint_id: Optional[str] = None
+    story_points: Optional[int] = None
     order: Optional[int] = None
     completed: Optional[bool] = None
     start_time: Optional[datetime] = None

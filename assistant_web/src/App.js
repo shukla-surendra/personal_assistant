@@ -45,6 +45,7 @@ import TaskPage from './pages/dashboard/TaskPage';
 import NotePage from './pages/dashboard/NotePage';
 import SettingsPage from './pages/dashboard/SettingsPage';
 import SharedNoteView from './components/shared/SharedNoteView';
+import InventoryPage from './pages/dashboard/InventoryPage';
 
 function App() {
   return (
@@ -88,6 +89,7 @@ function App() {
           <Route path="/page/:task_id" element={<TaskPage />} />
           <Route path="/note/:id" element={<NotePage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/inventory" element={<InventoryPage />} />
           <Route path="/shared/note/:noteId" element={<SharedNoteView />} />
         </Routes>
       </Router>

@@ -70,14 +70,6 @@ export const deleteNotes = createAsyncThunk(
 );
 
 
-// export const findTaskByTitle = createAsyncThunk(
-//   "tasks/findByTitle",
-//   async ({ title }) => {
-//     const res = await TaskService.findByTitle(title);
-//     return res.data;
-//   }
-// );
-
 const taskSlice = createSlice({
   name: "task",
   initialState,

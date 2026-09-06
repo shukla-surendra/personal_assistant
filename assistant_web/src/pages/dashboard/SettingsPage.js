@@ -24,12 +24,15 @@ import {
   useToast,
   Spinner,
 } from '@chakra-ui/react';
-import { FiArrowLeft, FiMoon, FiSun, FiBell, FiUser, FiGlobe } from 'react-icons/fi';
+import { FiArrowLeft, FiMoon, FiSun, FiBell, FiUser, FiGlobe, FiGrid, FiBox } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { retrieveSettings, updateSettings } from '../../slices/settings';
 import Navbar from '../../components/dashboard/Navbar';
 import Header from '../../components/dashboard/Header';
+import ModuleService from '../../services/ModuleService';
+
+const MODULE_ICONS = { box: FiBox };
 
 const SettingsPage = () => {
   const navigate = useNavigate();
@@ -55,9 +58,49 @@ const SettingsPage = () => {
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
 
+  const [modules, setModules] = useState([]);
+  const [modulesLoading, setModulesLoading] = useState(true);
+  const [togglingKey, setTogglingKey] = useState(null);
+
   useEffect(() => {
     dispatch(retrieveSettings());
+    loadModules();
   }, [dispatch]);
+
+  const loadModules = async () => {
+    try {
+      const response = await ModuleService.getAll();
+      setModules(response.data);
+    } catch (error) {
+      console.error('Error loading modules:', error);
+    } finally {
+      setModulesLoading(false);
+    }
+  };
+
+  const handleToggleModule = async (moduleKey, enabled) => {
+    setTogglingKey(moduleKey);
+    try {
+      const response = await ModuleService.toggle(moduleKey, enabled);
+      setModules(prev => prev.map(m => m.key === moduleKey ? response.data : m));
+      toast({
+        title: `${response.data.name} ${enabled ? 'enabled' : 'disabled'}`,
+        status: 'success',
+        duration: 2000,
+        isClosable: true,
+      });
+    } catch (error) {
+      toast({
+        title: "Couldn't update module",
+        description: error.response?.data?.detail || 'Please try again',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    } finally {
+      setTogglingKey(null);
+    }
+  };
 
   useEffect(() => {
     if (settings) {
@@ -153,6 +196,12 @@ const SettingsPage = () => {
               <HStack spacing={2}>
                 <FiGlobe />
                 <Text>Preferences</Text>
+              </HStack>
+            </Tab>
+            <Tab>
+              <HStack spacing={2}>
+                <FiGrid />
+                <Text>Modules</Text>
               </HStack>
             </Tab>
           </TabList>
@@ -261,6 +310,48 @@ const SettingsPage = () => {
                         <option value="GMT">GMT</option>
                       </Select>
                     </FormControl>
+                  </VStack>
+                </Box>
+              </VStack>
+            </TabPanel>
+
+            {/* Modules -- plug-and-play feature modules (ERP etc.), each
+                enabled independently per workspace. */}
+            <TabPanel>
+              <VStack spacing={6} align="stretch">
+                <Box p={6} bg={bgColor} borderRadius="lg" borderWidth="1px" borderColor={borderColor}>
+                  <VStack spacing={4} align="stretch">
+                    <Heading size="md">Modules</Heading>
+                    <Text fontSize="sm" color="gray.500">
+                      Turn on additional feature modules for this workspace. Disabled modules are
+                      completely hidden from navigation and their APIs refuse requests.
+                    </Text>
+                    {modulesLoading ? (
+                      <Spinner size="sm" />
+                    ) : (
+                      modules.map(module => {
+                        const ModuleIcon = MODULE_ICONS[module.icon] || FiGrid;
+                        return (
+                          <FormControl key={module.key} display="flex" alignItems="center" justifyContent="space-between">
+                            <HStack spacing={3}>
+                              <ModuleIcon />
+                              <Box>
+                                <FormLabel mb={0}>{module.name}</FormLabel>
+                                <Text fontSize="xs" color="gray.500">{module.description}</Text>
+                              </Box>
+                            </HStack>
+                            <Switch
+                              isChecked={module.enabled}
+                              isDisabled={togglingKey === module.key}
+                              onChange={(e) => handleToggleModule(module.key, e.target.checked)}
+                            />
+                          </FormControl>
+                        );
+                      })
+                    )}
+                    {!modulesLoading && modules.length === 0 && (
+                      <Text fontSize="sm" color="gray.400">No modules available yet.</Text>
+                    )}
                   </VStack>
                 </Box>
               </VStack>

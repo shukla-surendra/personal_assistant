@@ -24,6 +24,15 @@ const getByBoard = (boardId) => {
   return http.get(`/api/v1/workspaces/${ConfigService.getDefaultWorkspace().workspace_id}/tasks?board_id=${boardId}&page_size=200`);
 };
 
+// Backlog view -- cards on this board not yet assigned to any sprint.
+const getBacklog = (boardId) => {
+  return http.get(`/api/v1/workspaces/${ConfigService.getDefaultWorkspace().workspace_id}/tasks?board_id=${boardId}&backlog_only=true&page_size=200`);
+};
+
+const getBySprint = (boardId, sprintId) => {
+  return http.get(`/api/v1/workspaces/${ConfigService.getDefaultWorkspace().workspace_id}/tasks?board_id=${boardId}&sprint_id=${sprintId}&page_size=200`);
+};
+
 const get = task_id => {
   // For shared notes, we don't need authentication
   const isSharedNote = window.location.pathname.startsWith('/shared/note/');
@@ -58,8 +67,11 @@ const removeAll = () => {
   return http.delete(`/api/v1/workspaces/${ConfigService.getDefaultWorkspace().workspace_id}/tasks`);
 };
 
-const findByTitle = title => {
-  return http.get(`/api/v1/workspaces/${ConfigService.getDefaultWorkspace().workspace_id}/tasks ?title=${title}`);
+// Broad fetch used for "link this issue to another" pickers -- no
+// task_type filter (a link can point at any kind of item), client-side
+// filtered by the caller since the workspace's task count is small.
+const getAllForLinking = () => {
+  return http.get(`/api/v1/workspaces/${ConfigService.getDefaultWorkspace().workspace_id}/tasks?page_size=200`);
 };
 
 const getPublicNote = task_id => {
@@ -75,10 +87,12 @@ const TaskService = {
   update,
   remove,
   removeAll,
-  findByTitle,
+  getAllForLinking,
   getAllQuickNotes,
   getAllTimeBlocks,
   getByBoard,
+  getBacklog,
+  getBySprint,
   getPostBySlug,
   getPublicNote
 };

@@ -1,7 +1,6 @@
 """"""
 from typing import Optional, List
 from pydantic import BaseModel
-from utils.datetime_utils import datetime_to_str
 from adapters.orm.models.pg_models import Task, Comment, Tag
 from datetime import datetime
 
@@ -25,24 +24,19 @@ class TagDto(BaseModel):
     updated_at: datetime
 
 
-class BoardDto(BaseModel):
-    """ Board Dto """
-    board_id: str
-    name: str
-    description: Optional[str] = None
-    users: List = []
-    owner: str
-    labels: List = []
+class SubtaskDto(BaseModel):
+    task_id: str
+    title: str
     status: str
-    is_deleted: bool = False
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    completed: bool
+    assignee_id: Optional[str] = None
 
 
 class TaskDto(BaseModel):
     task_id: str
     workspace_id: str
     board_id: Optional[str]
+    parent_task_id: Optional[str] = None
     user_id: str
     title: str
     description: Optional[str]
@@ -57,6 +51,9 @@ class TaskDto(BaseModel):
     end_time: Optional[datetime]
     assignee_id: Optional[str]
     reporter_id: Optional[str]
+    epic_id: Optional[str] = None
+    sprint_id: Optional[str] = None
+    story_points: Optional[int] = None
     watchers: list
     labels: list
     meta_data: dict
@@ -67,6 +64,7 @@ class TaskDto(BaseModel):
     updated_at: datetime
     comments: List[CommentDto] = []
     tags: List[TagDto] = []
+    subtasks: List[SubtaskDto] = []
 
 
 class TimeBlockDto(BaseModel):
@@ -85,38 +83,6 @@ class TaskCreate(BaseModel):
     title: str
     description: Optional[str] = None
     status: Optional[str] = None
-
-
-class BoardDtoMapper:
-    @staticmethod
-    def map_to_board_dto_mapper(board_object):
-        # Handle dictionary input
-        if isinstance(board_object, dict):
-            return BoardDto(
-                board_id=str(board_object.get('board_id')),
-                name=str(board_object.get('name')),
-                description=board_object.get('description'),
-                users=board_object.get('users', []),
-                labels=board_object.get('labels', []),
-                status=str(board_object.get('status')),
-                owner=str(board_object.get('owner')),
-                # is_deleted=board_object.get('is_deleted', False),
-                created_at=board_object.get('created_at'),
-                updated_at=board_object.get('updated_at')
-            )
-        # Handle object input
-        return BoardDto(
-            board_id=str(board_object.board_id),
-            name=str(board_object.name),
-            description=board_object.description,
-            users=board_object.users,
-            labels=board_object.labels,
-            status=str(board_object.status.value),
-            owner=str(board_object.owner),
-            is_deleted=board_object.is_deleted,
-            created_at=datetime_to_str(board_object.created_at),
-            updated_at=datetime_to_str(board_object.updated_at)
-        )
 
 
 class CommentDtoMapper:
@@ -159,6 +125,7 @@ class TaskDtoMapper:
             task_id=str(task.task_id),
             workspace_id=str(task.workspace_id),
             board_id=str(task.board_id) if task.board_id else None,
+            parent_task_id=str(task.parent_task_id) if task.parent_task_id else None,
             user_id=str(task.user_id),
             title=task.title,
             description=task.description,
@@ -173,6 +140,9 @@ class TaskDtoMapper:
             end_time=task.end_time,
             assignee_id=str(task.assignee_id) if task.assignee_id else None,
             reporter_id=str(task.reporter_id) if task.reporter_id else None,
+            epic_id=str(task.epic_id) if task.epic_id else None,
+            sprint_id=str(task.sprint_id) if task.sprint_id else None,
+            story_points=task.story_points,
             watchers=task.watchers,
             labels=task.labels,
             meta_data=task.meta_data,
@@ -182,5 +152,15 @@ class TaskDtoMapper:
             created_at=task.created_at,
             updated_at=task.updated_at,
             comments=[CommentDtoMapper.map_to_comment_dto(comment) for comment in task.comments if not comment.is_deleted],
-            tags=[TagDtoMapper.map_to_tag_dto(tag) for tag in task.tags]
+            tags=[TagDtoMapper.map_to_tag_dto(tag) for tag in task.tags],
+            subtasks=[
+                SubtaskDto(
+                    task_id=str(sub.task_id),
+                    title=sub.title,
+                    status=sub.status,
+                    completed=sub.completed,
+                    assignee_id=str(sub.assignee_id) if sub.assignee_id else None,
+                )
+                for sub in task.subtasks if not sub.is_deleted
+            ]
         )

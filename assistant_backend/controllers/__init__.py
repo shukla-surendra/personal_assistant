@@ -17,3 +17,7 @@ from .assistant_controller import assistant_router
 from .database_controller import database_router
 from .queue_controller import queue_router
 from .reports_controller import reports_router
+from .epic_controller import epic_router
+from .sprint_controller import sprint_router
+from .task_link_controller import task_link_router
+from .module_controller import module_router

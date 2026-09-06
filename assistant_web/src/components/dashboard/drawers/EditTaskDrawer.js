@@ -6,34 +6,37 @@ import {
   Badge, Tooltip, useToast, IconButton, VStack, HStack, Divider, Tag,
   TagLabel, TagCloseButton, Wrap, Select, InputGroup, InputLeftElement,
   InputRightElement, Spinner, Flex, Popover, PopoverTrigger, PopoverContent,
-  PopoverBody, PopoverArrow, Portal, MenuDivider, FormLabel, AvatarGroup,
-  Avatar, Progress
+  PopoverBody, PopoverArrow, Portal, MenuDivider, FormLabel,
+  Avatar, Progress, Checkbox
 } from "@chakra-ui/react";
 import { useDispatch } from "react-redux";
 import { useParams, useNavigate } from 'react-router-dom';
 import { updateTask } from "../../../slices/tasks";
-import { 
-  FaArrowLeft, FaSave, FaCalendarAlt, FaTag, FaClipboardList, 
-  FaUser, FaPaperclip, FaPlus, FaClock, FaUsers, FaHashtag,
-  FaShare, FaEllipsisH, FaCheckCircle, FaRegCircle
+import {
+  FaArrowLeft, FaSave, FaCalendarAlt, FaTag, FaClipboardList,
+  FaUser, FaPaperclip, FaPlus, FaClock, FaHashtag,
+  FaShare, FaEllipsisH, FaCheckCircle, FaRegCircle, FaLink, FaTrash
 } from "react-icons/fa";
 import { FiMoreHorizontal, FiCheck, FiClock } from "react-icons/fi";
 import RichTextEditor from '../editor/RichTextEditor';
 import TaskDataService from "../../../services/taskservice";
+import TaskLinkService from "../../../services/TaskLinkService";
+import EpicService from "../../../services/EpicService";
+import SprintService from "../../../services/SprintService";
+import MemberService from "../../../services/MemberService";
+import ConfigService from "../../../utils/config";
 import { formatLocalDateTime } from "../../../utils/locale";
 
-// Sample data for demonstration
-const sampleUsers = [
-  { id: 1, name: "John Doe", avatar: "https://bit.ly/dan-abramov" },
-  { id: 2, name: "Jane Smith", avatar: "https://bit.ly/ryan-florence" },
-  { id: 3, name: "Mike Johnson", avatar: "https://bit.ly/kent-c-dodds" },
-];
+const LINK_TYPE_LABELS = {
+  blocks: "Blocks",
+  relates_to: "Relates to",
+  duplicates: "Duplicates",
+  clones: "Clones",
+};
 
-const sampleLabels = [
-  "Frontend", "Backend", "Bug", "Feature", "UI/UX", "Documentation"
-];
-
-const storyPoints = [1, 2, 3, 5, 8, 13, 21];
+// Fibonacci-ish scale -- the same convention Jira's own estimation field
+// uses, so "8" reads as a familiar relative-size number, not a day count.
+const STORY_POINT_OPTIONS = [1, 2, 3, 5, 8, 13, 21];
 
 const PRIORITY_COLORS = {
   Low: "green",
@@ -57,6 +60,16 @@ export default function EditTaskDrawer(props) {
   const [newLabel, setNewLabel] = useState('');
   const [isAddingLabel, setIsAddingLabel] = useState(false);
 
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
+  const [links, setLinks] = useState([]);
+  const [boardEpics, setBoardEpics] = useState([]);
+  const [boardSprints, setBoardSprints] = useState([]);
+  const [workspaceMembers, setWorkspaceMembers] = useState([]);
+  const [linkableTasks, setLinkableTasks] = useState([]);
+  const [isAddingLink, setIsAddingLink] = useState(false);
+  const [newLinkTargetId, setNewLinkTargetId] = useState('');
+  const [newLinkType, setNewLinkType] = useState('relates_to');
+
   // Theme colors
   const bgColor = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.600");
@@ -69,8 +82,122 @@ export default function EditTaskDrawer(props) {
   useEffect(() => {
     if (isOpen && currentTask?.task_id) {
       getTask(currentTask.task_id);
+      loadLinks(currentTask.task_id);
     }
   }, [isOpen, currentTask?.task_id]);
+
+  // Epics/sprints are board-scoped -- only relevant once we know which
+  // board (if any) this task lives on.
+  useEffect(() => {
+    if (isOpen && currentTask?.board_id) {
+      EpicService.getAll(currentTask.board_id).then(res => setBoardEpics(res.data)).catch(() => {});
+      SprintService.getAll(currentTask.board_id).then(res => setBoardSprints(res.data)).catch(() => {});
+    } else {
+      setBoardEpics([]);
+      setBoardSprints([]);
+    }
+  }, [isOpen, currentTask?.board_id]);
+
+  const handleStoryPointsChange = (e) => {
+    const value = e.target.value;
+    setCurrentTask(prev => ({ ...prev, story_points: value === '' ? null : parseInt(value, 10) }));
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      const workspace_id = ConfigService.getDefaultWorkspace().workspace_id;
+      MemberService.getMembers(workspace_id)
+        .then(res => setWorkspaceMembers(res.data))
+        .catch(() => {});
+    }
+  }, [isOpen]);
+
+  const handleAssign = (memberId) => {
+    setCurrentTask(prev => ({ ...prev, assignee_id: memberId || null }));
+  };
+
+  const currentAssignee = workspaceMembers.find(m => m.user_id === currentTask?.assignee_id);
+
+  const loadLinks = async (taskId) => {
+    try {
+      const response = await TaskLinkService.getAll(taskId);
+      setLinks(response.data);
+    } catch (error) {
+      console.error('Error loading links:', error);
+    }
+  };
+
+  const loadLinkableTasks = async () => {
+    if (linkableTasks.length > 0) return;
+    try {
+      const response = await TaskDataService.getAllForLinking();
+      setLinkableTasks(response.data);
+    } catch (error) {
+      console.error('Error loading tasks to link:', error);
+    }
+  };
+
+  const handleAddSubtask = async () => {
+    if (!newSubtaskTitle.trim() || !currentTask?.task_id) return;
+    try {
+      const response = await TaskDataService.create({
+        title: newSubtaskTitle.trim(),
+        parent_task_id: currentTask.task_id,
+        board_id: currentTask.board_id,
+      });
+      setCurrentTask(prev => ({ ...prev, subtasks: [...(prev.subtasks || []), response.data] }));
+      setNewSubtaskTitle('');
+    } catch (error) {
+      toast({ title: "Couldn't add subtask", status: "error", duration: 3000, isClosable: true });
+    }
+  };
+
+  const handleToggleSubtask = async (subtask) => {
+    const completed = !subtask.completed;
+    try {
+      await TaskDataService.update(subtask.task_id, {
+        task_id: subtask.task_id,
+        workspace_id: currentTask.workspace_id,
+        user_id: currentTask.user_id,
+        completed,
+        status: completed ? 'done' : 'todo',
+      });
+      setCurrentTask(prev => ({
+        ...prev,
+        subtasks: prev.subtasks.map(s => s.task_id === subtask.task_id ? { ...s, completed, status: completed ? 'done' : 'todo' } : s),
+      }));
+    } catch (error) {
+      toast({ title: "Couldn't update subtask", status: "error", duration: 3000, isClosable: true });
+    }
+  };
+
+  const handleAddLink = async () => {
+    if (!newLinkTargetId || !currentTask?.task_id) return;
+    try {
+      const response = await TaskLinkService.create(currentTask.task_id, {
+        target_task_id: newLinkTargetId,
+        link_type: newLinkType,
+      });
+      setLinks(prev => [...prev, response.data]);
+      setNewLinkTargetId('');
+      setIsAddingLink(false);
+    } catch (error) {
+      toast({
+        title: "Couldn't add link",
+        description: error.response?.data?.detail || 'Please try again',
+        status: "error", duration: 3000, isClosable: true,
+      });
+    }
+  };
+
+  const handleDeleteLink = async (linkId) => {
+    try {
+      await TaskLinkService.remove(currentTask.task_id, linkId);
+      setLinks(prev => prev.filter(l => l.link_id !== linkId));
+    } catch (error) {
+      toast({ title: "Couldn't remove link", status: "error", duration: 3000, isClosable: true });
+    }
+  };
 
   const getTask = async (id) => {
     setLoading(true);
@@ -198,9 +325,6 @@ export default function EditTaskDrawer(props) {
                   <MenuItem icon={<Icon as={FaShare} />} py={2}>
                     Share
                   </MenuItem>
-                  <MenuItem icon={<Icon as={FaUsers} />} py={2}>
-                    Assign
-                  </MenuItem>
                   <MenuDivider />
                   <MenuItem icon={<Icon as={FaCheckCircle} />} py={2}>
                     Mark as Complete
@@ -297,33 +421,94 @@ export default function EditTaskDrawer(props) {
                 </HStack>
               </FormControl>
 
-              {/* Assignees */}
+              {/* Story Points */}
               <FormControl>
-                <HStack spacing={3} align="flex-start">
-                  <Icon as={FaUser} color={mutedColor} mt={2} />
-                  <VStack align="stretch" spacing={2} flex={1}>
-                    <HStack>
-                      <Text fontSize="sm" fontWeight="medium" color={textColor}>
-                        Assignees
-                      </Text>
-                      <IconButton
-                        icon={<Icon as={FaPlus} />}
-                        size="xs"
-                        variant="ghost"
-                        aria-label="Add assignee"
-                      />
-                    </HStack>
-                    <AvatarGroup size="sm" max={5}>
-                      {sampleUsers.map(user => (
-                        <Avatar
-                          key={user.id}
-                          name={user.name}
-                          src={user.avatar}
+                <HStack spacing={3}>
+                  <Icon as={FaHashtag} color={mutedColor} />
+                  <Text fontSize="sm" color={mutedColor}>Story points</Text>
+                  <Select
+                    value={currentTask?.story_points ?? ''}
+                    onChange={handleStoryPointsChange}
+                    size="sm"
+                    width="110px"
+                    variant="filled"
+                    bg={inputBg}
+                  >
+                    <option value="">None</option>
+                    {STORY_POINT_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
+                  </Select>
+                </HStack>
+              </FormControl>
+
+              {/* Epic / Sprint -- only meaningful once this task lives on
+                  a board, since both are board-scoped resources. */}
+              {currentTask?.board_id && (
+                <FormControl>
+                  <HStack spacing={3}>
+                    <Icon as={FaTag} color={mutedColor} />
+                    <VStack align="stretch" spacing={1} flex={1}>
+                      <HStack>
+                        <Text fontSize="xs" color={mutedColor} width="45px">Epic</Text>
+                        <Select
+                          name="epic_id"
+                          value={currentTask?.epic_id || ''}
+                          onChange={handleInputChange}
                           size="sm"
-                        />
+                          variant="filled"
+                          bg={inputBg}
+                        >
+                          <option value="">No epic</option>
+                          {boardEpics.map(e => <option key={e.epic_id} value={e.epic_id}>{e.title}</option>)}
+                        </Select>
+                      </HStack>
+                      <HStack>
+                        <Text fontSize="xs" color={mutedColor} width="45px">Sprint</Text>
+                        <Select
+                          name="sprint_id"
+                          value={currentTask?.sprint_id || ''}
+                          onChange={handleInputChange}
+                          size="sm"
+                          variant="filled"
+                          bg={inputBg}
+                        >
+                          <option value="">Backlog</option>
+                          {boardSprints.filter(s => s.status !== 'completed').map(s => (
+                            <option key={s.sprint_id} value={s.sprint_id}>{s.name}{s.status === 'active' ? ' (active)' : ''}</option>
+                          ))}
+                        </Select>
+                      </HStack>
+                    </VStack>
+                  </HStack>
+                </FormControl>
+              )}
+
+              {/* Assignee -- the Task model has a single assignee_id, not
+                  a list, so this is a picker, not a multi-avatar roster. */}
+              <FormControl>
+                <HStack spacing={3}>
+                  <Icon as={FaUser} color={mutedColor} />
+                  <Text fontSize="sm" fontWeight="medium" color={textColor}>Assignee</Text>
+                  <Menu>
+                    <MenuButton as={Button} size="sm" variant="outline" leftIcon={
+                      currentAssignee
+                        ? <Avatar size="2xs" name={currentAssignee.name} src={currentAssignee.avatar} />
+                        : <Icon as={FaUser} />
+                    }>
+                      {currentAssignee ? currentAssignee.name : "Unassigned"}
+                    </MenuButton>
+                    <MenuList>
+                      <MenuItem onClick={() => handleAssign(null)}>Unassigned</MenuItem>
+                      <MenuDivider />
+                      {workspaceMembers.map(member => (
+                        <MenuItem key={member.user_id} onClick={() => handleAssign(member.user_id)}>
+                          <HStack>
+                            <Avatar size="2xs" name={member.name} src={member.avatar} />
+                            <Text>{member.name}</Text>
+                          </HStack>
+                        </MenuItem>
                       ))}
-                    </AvatarGroup>
-                  </VStack>
+                    </MenuList>
+                  </Menu>
                 </HStack>
               </FormControl>
 
@@ -395,6 +580,129 @@ export default function EditTaskDrawer(props) {
                         </Tag>
                       ))}
                     </Wrap>
+                  </VStack>
+                </HStack>
+              </FormControl>
+
+              {/* Subtasks */}
+              <FormControl>
+                <HStack spacing={3} align="flex-start">
+                  <Icon as={FaCheckCircle} color={mutedColor} mt={2} />
+                  <VStack align="stretch" spacing={2} flex={1}>
+                    <HStack justify="space-between">
+                      <Text fontSize="sm" fontWeight="medium" color={textColor}>
+                        Subtasks {currentTask?.subtasks?.length > 0 && (
+                          <Text as="span" color={mutedColor} fontWeight="normal">
+                            ({currentTask.subtasks.filter(s => s.completed).length}/{currentTask.subtasks.length})
+                          </Text>
+                        )}
+                      </Text>
+                    </HStack>
+                    {currentTask?.subtasks?.length > 0 && (
+                      <Progress
+                        size="xs"
+                        borderRadius="full"
+                        value={(currentTask.subtasks.filter(s => s.completed).length / currentTask.subtasks.length) * 100}
+                      />
+                    )}
+                    <VStack align="stretch" spacing={1}>
+                      {currentTask?.subtasks?.map(subtask => (
+                        <HStack key={subtask.task_id} justify="space-between">
+                          <Checkbox
+                            isChecked={subtask.completed}
+                            onChange={() => handleToggleSubtask(subtask)}
+                            size="sm"
+                          >
+                            <Text fontSize="sm" as={subtask.completed ? 's' : undefined} color={subtask.completed ? mutedColor : textColor}>
+                              {subtask.title}
+                            </Text>
+                          </Checkbox>
+                        </HStack>
+                      ))}
+                    </VStack>
+                    <InputGroup size="sm">
+                      <Input
+                        placeholder="Add a subtask"
+                        value={newSubtaskTitle}
+                        onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                        onKeyPress={(e) => { if (e.key === 'Enter') handleAddSubtask(); }}
+                      />
+                      <InputRightElement width="4.5rem">
+                        <Button h="1.75rem" size="sm" onClick={handleAddSubtask}>Add</Button>
+                      </InputRightElement>
+                    </InputGroup>
+                  </VStack>
+                </HStack>
+              </FormControl>
+
+              {/* Linked Issues */}
+              <FormControl>
+                <HStack spacing={3} align="flex-start">
+                  <Icon as={FaLink} color={mutedColor} mt={2} />
+                  <VStack align="stretch" spacing={2} flex={1}>
+                    <HStack>
+                      <Text fontSize="sm" fontWeight="medium" color={textColor}>
+                        Linked Issues
+                      </Text>
+                      <Popover
+                        isOpen={isAddingLink}
+                        onClose={() => setIsAddingLink(false)}
+                        placement="bottom-start"
+                      >
+                        <PopoverTrigger>
+                          <IconButton
+                            icon={<Icon as={FaPlus} />}
+                            size="xs"
+                            variant="ghost"
+                            aria-label="Add link"
+                            onClick={() => { setIsAddingLink(true); loadLinkableTasks(); }}
+                          />
+                        </PopoverTrigger>
+                        <Portal>
+                          <PopoverContent>
+                            <PopoverArrow />
+                            <PopoverBody p={3}>
+                              <VStack align="stretch" spacing={2}>
+                                <Select size="sm" value={newLinkType} onChange={(e) => setNewLinkType(e.target.value)}>
+                                  {Object.entries(LINK_TYPE_LABELS).map(([value, label]) => (
+                                    <option key={value} value={value}>{label}</option>
+                                  ))}
+                                </Select>
+                                <Select
+                                  size="sm"
+                                  placeholder="Select issue"
+                                  value={newLinkTargetId}
+                                  onChange={(e) => setNewLinkTargetId(e.target.value)}
+                                >
+                                  {linkableTasks
+                                    .filter(t => t.task_id !== currentTask?.task_id)
+                                    .map(t => <option key={t.task_id} value={t.task_id}>{t.title}</option>)}
+                                </Select>
+                                <Button size="sm" colorScheme="blue" onClick={handleAddLink}>Link</Button>
+                              </VStack>
+                            </PopoverBody>
+                          </PopoverContent>
+                        </Portal>
+                      </Popover>
+                    </HStack>
+                    <VStack align="stretch" spacing={1}>
+                      {links.map(link => (
+                        <HStack key={link.link_id} justify="space-between" fontSize="sm">
+                          <HStack>
+                            <Badge colorScheme="purple" fontSize="2xs">{link.display_label}</Badge>
+                            <Text noOfLines={1}>{link.related_task.title}</Text>
+                          </HStack>
+                          <IconButton
+                            icon={<Icon as={FaTrash} />}
+                            size="xs"
+                            variant="ghost"
+                            aria-label="Remove link"
+                            onClick={() => handleDeleteLink(link.link_id)}
+                          />
+                        </HStack>
+                      ))}
+                      {links.length === 0 && <Text fontSize="xs" color={mutedColor}>No linked issues.</Text>}
+                    </VStack>
                   </VStack>
                 </HStack>
               </FormControl>

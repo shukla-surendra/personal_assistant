@@ -1,4 +1,4 @@
-from sqlalchemy import (Column, String, Boolean, DateTime, ForeignKey, Integer, Enum as SQLEnum, Table, Text)
+from sqlalchemy import (Column, String, Boolean, DateTime, ForeignKey, Integer, Enum as SQLEnum, Table, Text, UniqueConstraint)
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 import uuid
@@ -107,6 +107,13 @@ class Task(Base):
     end_time = Column(DateTime, nullable=True)
     assignee_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id"), nullable=True)
     reporter_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id"), nullable=True)
+    epic_id = Column(UUID(as_uuid=True), ForeignKey("epics.epic_id", ondelete="SET NULL"), nullable=True)
+    sprint_id = Column(UUID(as_uuid=True), ForeignKey("sprints.sprint_id", ondelete="SET NULL"), nullable=True)
+    # Self-referential: a subtask points at its parent via this column.
+    # Kept to one level deep (a subtask's own parent_task_id must be null)
+    # -- same constraint Jira enforces -- checked in the handler, not here.
+    parent_task_id = Column(UUID(as_uuid=True), ForeignKey("tasks.task_id", ondelete="SET NULL"), nullable=True)
+    story_points = Column(Integer, nullable=True)
     watchers = Column(JSONB, nullable=True)
     labels = Column(JSONB, nullable=True)
     meta_data = Column(JSONB, nullable=True)
@@ -120,8 +127,33 @@ class Task(Base):
     user = relationship("User", foreign_keys=[user_id], back_populates="tasks")
     assignee = relationship("User", foreign_keys=[assignee_id], back_populates="assigned_tasks")
     reporter = relationship("User", foreign_keys=[reporter_id], back_populates="reported_tasks")
+    epic = relationship("Epic", back_populates="tasks")
+    sprint = relationship("Sprint", back_populates="tasks")
     comments = relationship("Comment", back_populates="task")
     tags = relationship("Tag", secondary=task_tags, back_populates="tasks")
+    # Soft-delete cascading (when a parent is deleted, its subtasks are
+    # too) is handled explicitly in TaskHandler.delete_task -- this app
+    # never hard-deletes a Task, so an ORM-level delete cascade would be
+    # dead weight.
+    subtasks = relationship("Task", back_populates="parent_task")
+    parent_task = relationship("Task", back_populates="subtasks", remote_side=[task_id])
+    outgoing_links = relationship("TaskLink", foreign_keys="TaskLink.source_task_id", back_populates="source_task")
+    incoming_links = relationship("TaskLink", foreign_keys="TaskLink.target_task_id", back_populates="target_task")
+
+class TaskLink(Base):
+    __tablename__ = "task_links"
+
+    link_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(UUID(as_uuid=True), ForeignKey("workspaces.workspace_id", ondelete="CASCADE"), nullable=False)
+    source_task_id = Column(UUID(as_uuid=True), ForeignKey("tasks.task_id", ondelete="CASCADE"), nullable=False)
+    target_task_id = Column(UUID(as_uuid=True), ForeignKey("tasks.task_id", ondelete="CASCADE"), nullable=False)
+    # One of: blocks, relates_to, duplicates, clones -- the inverse label
+    # shown on the target side ("is blocked by" etc.) is computed, not
+    # stored, so the same row answers both ends of the relationship.
+    link_type = Column(String, nullable=False, default="relates_to")
+    created_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC))
+    source_task = relationship("Task", foreign_keys=[source_task_id], back_populates="outgoing_links")
+    target_task = relationship("Task", foreign_keys=[target_task_id], back_populates="incoming_links")
 
 class Workspace(Base):
     __tablename__ = "workspaces"
@@ -159,6 +191,24 @@ class Workspace(Base):
     deal_activities = relationship("DealActivity", back_populates="workspace")
     chats = relationship("Chat", back_populates="workspace")
 
+class WorkspaceModule(Base):
+    """Per-workspace on/off switch for a pluggable module (see
+    modules/registry.py). A module_key with no row here is simply
+    disabled -- rows only ever get created by explicitly enabling
+    something, never by default, so a brand-new workspace starts with
+    every module off."""
+    __tablename__ = "workspace_modules"
+    __table_args__ = (UniqueConstraint("workspace_id", "module_key", name="uq_workspace_module"),)
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(UUID(as_uuid=True), ForeignKey("workspaces.workspace_id", ondelete="CASCADE"), nullable=False)
+    module_key = Column(String, nullable=False)
+    enabled = Column(Boolean, nullable=False, default=False)
+    enabled_at = Column(DateTime, nullable=True)
+    enabled_by = Column(UUID(as_uuid=True), ForeignKey("users.user_id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC))
+    updated_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC), onupdate=datetime.datetime.now(datetime.UTC))
+
 class Board(Base):
     __tablename__ = "boards"
     __table_args__ = {'extend_existing': True}
@@ -175,6 +225,46 @@ class Board(Base):
     workspace = relationship("Workspace", back_populates="boards")
     items = relationship("BoardItem", back_populates="board", cascade="all, delete-orphan")
     tasks = relationship("Task", back_populates="board")
+    epics = relationship("Epic", back_populates="board", cascade="all, delete-orphan")
+    sprints = relationship("Sprint", back_populates="board", cascade="all, delete-orphan")
+
+class Epic(Base):
+    __tablename__ = "epics"
+
+    epic_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(UUID(as_uuid=True), ForeignKey("workspaces.workspace_id", ondelete="CASCADE"), nullable=False)
+    board_id = Column(UUID(as_uuid=True), ForeignKey("boards.board_id", ondelete="CASCADE"), nullable=False)
+    title = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+    # Hex color used for the epic's swimlane tag/left-border on cards --
+    # Jira's "epic color" convention. Free-text hex rather than an enum so
+    # the frontend color picker isn't schema-constrained.
+    color = Column(String, nullable=False, default="#6554C0")
+    status = Column(String, nullable=False, default="open")  # open | closed
+    start_date = Column(DateTime, nullable=True)
+    due_date = Column(DateTime, nullable=True)
+    is_deleted = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC))
+    updated_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC), onupdate=datetime.datetime.now(datetime.UTC))
+    board = relationship("Board", back_populates="epics")
+    tasks = relationship("Task", back_populates="epic")
+
+class Sprint(Base):
+    __tablename__ = "sprints"
+
+    sprint_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(UUID(as_uuid=True), ForeignKey("workspaces.workspace_id", ondelete="CASCADE"), nullable=False)
+    board_id = Column(UUID(as_uuid=True), ForeignKey("boards.board_id", ondelete="CASCADE"), nullable=False)
+    name = Column(String, nullable=False)
+    goal = Column(String, nullable=True)
+    status = Column(String, nullable=False, default="planned")  # planned | active | completed
+    start_date = Column(DateTime, nullable=True)
+    end_date = Column(DateTime, nullable=True)
+    is_deleted = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC))
+    updated_at = Column(DateTime, default=datetime.datetime.now(datetime.UTC), onupdate=datetime.datetime.now(datetime.UTC))
+    board = relationship("Board", back_populates="sprints")
+    tasks = relationship("Task", back_populates="sprint")
 
 class BoardItem(Base):
     __tablename__ = "board_items"
