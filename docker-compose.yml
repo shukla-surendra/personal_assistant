@@ -96,4 +96,8 @@ networks:
     driver: bridge
 
 volumes:
+  # Pinned to the pre-rename name so the folder rename (personal_assistant
+  # -> gridwork) doesn't change Compose's default project-name-derived
+  # volume name and silently start a fresh, empty database.
   postgres_data:
+    name: personal_assistant_postgres_data
