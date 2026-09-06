@@ -17,6 +17,7 @@ class PageHandler:
             page = Page(
                 workspace_id=UUID(command.workspace_id),
                 title=command.title,
+                parent_page_id=UUID(command.parent_page_id) if command.parent_page_id else None,
                 properties=command.properties
             )
             self.db.add(page)
@@ -59,6 +60,8 @@ class PageHandler:
 
             if command.title is not None:
                 page.title = command.title
+            if command.parent_page_id is not None:
+                page.parent_page_id = UUID(command.parent_page_id) if command.parent_page_id else None
             if command.properties is not None:
                 page.properties = command.properties
 
@@ -82,7 +85,13 @@ class PageHandler:
             if not page:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Page not found")
 
-            # Soft delete -- same pattern Task/Board use.
+            # Soft delete -- same pattern Task/Board use. The FK's ON DELETE
+            # SET NULL never fires for a soft delete (no real DELETE
+            # happens), so child pages are promoted to top-level explicitly
+            # here -- same "unlink don't cascade" rule Company/Epic/Sprint
+            # deletion already follows, rather than leaving them nested
+            # under a page that no longer shows up anywhere.
+            self.db.query(Page).filter(Page.parent_page_id == page.page_id).update({"parent_page_id": None})
             page.is_deleted = True
             self.db.commit()
             return True

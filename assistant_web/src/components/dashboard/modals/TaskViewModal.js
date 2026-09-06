@@ -31,6 +31,8 @@ import {
   Button,
   AvatarBadge,
   useToast,
+  Checkbox,
+  Progress,
 } from "@chakra-ui/react";
 import { 
   FaCalendarAlt, 
@@ -273,6 +275,42 @@ const TaskViewModal = ({ isOpen, onClose, task, onEdit }) => {
                   )}
                 </VStack>
               </GridItem>
+
+              {/* Checklist */}
+              {task.checklist && task.checklist.length > 0 && (
+                <GridItem colSpan={2}>
+                  <VStack align="stretch" spacing={2}>
+                    <HStack justify="space-between">
+                      <HStack>
+                        <Icon as={FaClipboardList} />
+                        <Text fontWeight="medium">Checklist</Text>
+                      </HStack>
+                      <Text fontSize="sm" color="gray.500">
+                        {task.checklist.filter(i => i.done).length}/{task.checklist.length}
+                      </Text>
+                    </HStack>
+                    <Progress
+                      size="xs"
+                      borderRadius="full"
+                      colorScheme="green"
+                      value={(task.checklist.filter(i => i.done).length / task.checklist.length) * 100}
+                    />
+                    <VStack align="stretch" spacing={1}>
+                      {task.checklist.map((item) => (
+                        <Checkbox key={item.id} isChecked={item.done} isReadOnly pointerEvents="none">
+                          <Text
+                            fontSize="sm"
+                            textDecoration={item.done ? 'line-through' : 'none'}
+                            color={item.done ? 'gray.500' : undefined}
+                          >
+                            {item.text}
+                          </Text>
+                        </Checkbox>
+                      ))}
+                    </VStack>
+                  </VStack>
+                </GridItem>
+              )}
             </Grid>
 
             {/* Attachments */}

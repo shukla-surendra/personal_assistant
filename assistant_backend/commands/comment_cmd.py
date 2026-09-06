@@ -19,4 +19,11 @@ class CommentUpdateCommand(BaseModel):
 
 class CommentDeleteCommand(BaseModel):
     comment_id: str
-    workspace_id: str 
+    workspace_id: str
+
+
+class PageCommentCommand(BaseModel):
+    workspace_id: Optional[str] = None  # Set from the URL path by the controller
+    page_id: Optional[str] = None  # Set from the URL path by the controller
+    user_id: Optional[str] = None  # Set from the auth token by the controller
+    content: str 

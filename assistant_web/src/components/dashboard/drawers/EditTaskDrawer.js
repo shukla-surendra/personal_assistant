@@ -59,6 +59,7 @@ export default function EditTaskDrawer(props) {
   const toast = useToast();
   const [newLabel, setNewLabel] = useState('');
   const [isAddingLabel, setIsAddingLabel] = useState(false);
+  const [newChecklistItem, setNewChecklistItem] = useState('');
 
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
   const [links, setLinks] = useState([]);
@@ -267,6 +268,29 @@ export default function EditTaskDrawer(props) {
     setCurrentTask(prev => ({
       ...prev,
       labels: prev.labels?.filter(label => label !== labelToRemove) || []
+    }));
+  };
+
+  const handleAddChecklistItem = () => {
+    if (!newChecklistItem.trim()) return;
+    setCurrentTask(prev => ({
+      ...prev,
+      checklist: [...(prev.checklist || []), { id: `${Date.now()}`, text: newChecklistItem.trim(), done: false }]
+    }));
+    setNewChecklistItem('');
+  };
+
+  const handleToggleChecklistItem = (itemId) => {
+    setCurrentTask(prev => ({
+      ...prev,
+      checklist: (prev.checklist || []).map(item => item.id === itemId ? { ...item, done: !item.done } : item)
+    }));
+  };
+
+  const handleRemoveChecklistItem = (itemId) => {
+    setCurrentTask(prev => ({
+      ...prev,
+      checklist: (prev.checklist || []).filter(item => item.id !== itemId)
     }));
   };
 
@@ -580,6 +604,71 @@ export default function EditTaskDrawer(props) {
                         </Tag>
                       ))}
                     </Wrap>
+                  </VStack>
+                </HStack>
+              </FormControl>
+
+              {/* Checklist */}
+              <FormControl>
+                <HStack spacing={3} align="flex-start">
+                  <Icon as={FaClipboardList} color={mutedColor} mt={2} />
+                  <VStack align="stretch" spacing={2} flex={1}>
+                    <HStack justify="space-between">
+                      <Text fontSize="sm" fontWeight="medium" color={textColor}>
+                        Checklist
+                        {currentTask?.checklist?.length > 0 && (
+                          <Text as="span" color={mutedColor} fontWeight="normal" ml={2}>
+                            {currentTask.checklist.filter(i => i.done).length}/{currentTask.checklist.length}
+                          </Text>
+                        )}
+                      </Text>
+                    </HStack>
+                    {currentTask?.checklist?.length > 0 && (
+                      <Progress
+                        size="xs"
+                        borderRadius="full"
+                        colorScheme="green"
+                        value={(currentTask.checklist.filter(i => i.done).length / currentTask.checklist.length) * 100}
+                      />
+                    )}
+                    <VStack align="stretch" spacing={1}>
+                      {currentTask?.checklist?.map(item => (
+                        <HStack key={item.id} justify="space-between">
+                          <Checkbox
+                            isChecked={item.done}
+                            onChange={() => handleToggleChecklistItem(item.id)}
+                          >
+                            <Text
+                              fontSize="sm"
+                              textDecoration={item.done ? 'line-through' : 'none'}
+                              color={item.done ? mutedColor : textColor}
+                            >
+                              {item.text}
+                            </Text>
+                          </Checkbox>
+                          <IconButton
+                            icon={<Icon as={FaTrash} />}
+                            size="xs"
+                            variant="ghost"
+                            aria-label="Remove checklist item"
+                            onClick={() => handleRemoveChecklistItem(item.id)}
+                          />
+                        </HStack>
+                      ))}
+                    </VStack>
+                    <InputGroup size="sm">
+                      <Input
+                        placeholder="Add checklist item"
+                        value={newChecklistItem}
+                        onChange={(e) => setNewChecklistItem(e.target.value)}
+                        onKeyPress={(e) => { if (e.key === 'Enter') handleAddChecklistItem(); }}
+                      />
+                      <InputRightElement width="4.5rem">
+                        <Button h="1.75rem" size="sm" onClick={handleAddChecklistItem} colorScheme="blue">
+                          Add
+                        </Button>
+                      </InputRightElement>
+                    </InputGroup>
                   </VStack>
                 </HStack>
               </FormControl>

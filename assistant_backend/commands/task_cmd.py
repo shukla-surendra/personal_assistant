@@ -30,6 +30,7 @@ class TaskCommand(BaseModel):
     reporter_id: Optional[str] = None
     watchers: Optional[list] = []
     labels: Optional[list] = []
+    checklist: Optional[list] = []
     meta_data: Optional[dict] = {}
     settings: Optional[dict] = {}
 
@@ -41,13 +42,21 @@ class TaskDeleteCommand(BaseModel):
 
 
 class TaskUpdateCommand(BaseModel):
-    task_id: str
-    workspace_id: str
-    user_id: str
+    # All Optional (even though the controller always overwrites these from
+    # the URL path / auth token right after validation) -- Pydantic
+    # validates the raw request body BEFORE the controller runs, so a
+    # required field here 422s any partial update whose body doesn't
+    # happen to include it. Same bug class already fixed for
+    # ContactUpdate/DealUpdate/BoardUpdateCommand earlier this session --
+    # caught here because the new Kanban drag-and-drop only PUTs `{status}`.
+    task_id: Optional[str] = None
+    workspace_id: Optional[str] = None
+    user_id: Optional[str] = None
     assignee_id: Optional[str] = None
     reporter_id: Optional[str] = None
     watchers: Optional[list] = []
     labels: Optional[list] = []
+    checklist: Optional[list] = None
     public_access: Optional[bool] = None  # Combined field for public access
     meta_data: Optional[dict] = {}
     settings: Optional[dict] = {}

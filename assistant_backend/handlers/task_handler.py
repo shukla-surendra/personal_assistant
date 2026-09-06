@@ -137,6 +137,7 @@ class TaskHandler:
                 reporter_id=task_cmd.reporter_id,
                 watchers=task_cmd.watchers,
                 labels=task_cmd.labels,
+                checklist=task_cmd.checklist,
                 meta_data=task_cmd.meta_data,
                 settings=task_cmd.settings,
                 public_access=task_cmd.public_access,
@@ -277,6 +278,8 @@ class TaskHandler:
                 task.watchers = task_cmd.watchers
             if task_cmd.labels is not None:
                 task.labels = task_cmd.labels
+            if task_cmd.checklist is not None:
+                task.checklist = task_cmd.checklist
             if task_cmd.meta_data is not None:
                 task.meta_data = task_cmd.meta_data
             if task_cmd.settings is not None:

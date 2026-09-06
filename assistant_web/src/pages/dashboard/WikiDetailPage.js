@@ -1,13 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link as RouterLink } from 'react-router-dom';
 import {
   Box, Flex, HStack, VStack, Input, Textarea, IconButton, Icon, Text, Checkbox,
-  Divider, Menu, MenuButton, MenuList, MenuItem, MenuDivider, Button,
-  useColorModeValue, Spinner, Center, useToast,
+  Divider, Menu, MenuButton, MenuList, MenuItem, MenuDivider, Button, Avatar,
+  useColorModeValue, Spinner, Center, useToast, Breadcrumb, BreadcrumbItem, BreadcrumbLink,
 } from '@chakra-ui/react';
 import {
   FiArrowLeft, FiPlus, FiMoreVertical, FiTrash2, FiType, FiAlignLeft, FiList,
-  FiCheckSquare, FiCode, FiMinus, FiImage, FiMenu as FiGrip,
+  FiCheckSquare, FiCode, FiMinus, FiImage, FiMenu as FiGrip, FiFileText, FiMessageSquare,
 } from 'react-icons/fi';
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors,
@@ -18,6 +18,8 @@ import Navbar from '../../components/dashboard/Navbar';
 import Header from '../../components/dashboard/Header';
 import PageService from '../../services/PageService';
 import BlockService from '../../services/BlockService';
+import PageCommentService from '../../services/PageCommentService';
+import { timeAgo } from '../../utils/locale';
 
 const BLOCK_TYPES = [
   { type: 'heading', label: 'Heading', icon: FiType },
@@ -189,28 +191,75 @@ export default function WikiDetailPage() {
   const [page, setPage] = useState(null);
   const [title, setTitle] = useState('');
   const [blocks, setBlocks] = useState([]);
+  const [allPages, setAllPages] = useState([]);
+  const [comments, setComments] = useState([]);
+  const [newComment, setNewComment] = useState('');
+  const [isPostingComment, setIsPostingComment] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const pageBg = useColorModeValue('gray.50', 'gray.900');
   const mainBg = useColorModeValue('gray.50', 'gray.800');
+  const subPageHoverBg = useColorModeValue('gray.100', 'gray.700');
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   const load = useCallback(() => {
     setLoading(true);
     setError(null);
-    Promise.all([PageService.get(pageId), BlockService.getAll(pageId)])
-      .then(([pageRes, blocksRes]) => {
+    Promise.all([
+      PageService.get(pageId),
+      BlockService.getAll(pageId),
+      PageService.getAll(),
+      PageCommentService.getAll(pageId),
+    ])
+      .then(([pageRes, blocksRes, allPagesRes, commentsRes]) => {
         setPage(pageRes.data);
         setTitle(pageRes.data.title);
         setBlocks(blocksRes.data);
+        setAllPages(allPagesRes.data);
+        setComments(commentsRes.data);
       })
       .catch(() => setError('Failed to load page'))
       .finally(() => setLoading(false));
   }, [pageId]);
 
   useEffect(() => { load(); }, [load]);
+
+  const pagesById = Object.fromEntries(allPages.map(p => [p.page_id, p]));
+  const breadcrumbChain = [];
+  let walker = page?.parent_page_id ? pagesById[page.parent_page_id] : null;
+  while (walker) {
+    breadcrumbChain.unshift(walker);
+    walker = walker.parent_page_id ? pagesById[walker.parent_page_id] : null;
+  }
+  const subPages = allPages.filter(p => p.parent_page_id === pageId);
+
+  const addSubPage = () => {
+    const subTitle = window.prompt('Sub-page title');
+    if (!subTitle || !subTitle.trim()) return;
+    PageService.create({ title: subTitle.trim(), parent_page_id: pageId })
+      .then((res) => navigate(`/wiki/${res.data.page_id}`))
+      .catch(() => toast({ title: "Couldn't create sub-page", status: 'error', duration: 3000, isClosable: true }));
+  };
+
+  const postComment = () => {
+    if (!newComment.trim()) return;
+    setIsPostingComment(true);
+    PageCommentService.create(pageId, newComment.trim())
+      .then((res) => {
+        setComments((prev) => [...prev, res.data]);
+        setNewComment('');
+      })
+      .catch(() => toast({ title: "Couldn't post comment", status: 'error', duration: 3000, isClosable: true }))
+      .finally(() => setIsPostingComment(false));
+  };
+
+  const deleteComment = (commentId) => {
+    PageCommentService.remove(pageId, commentId)
+      .then(() => setComments((prev) => prev.filter(c => c.comment_id !== commentId)))
+      .catch(() => toast({ title: "Couldn't delete comment", status: 'error', duration: 3000, isClosable: true }));
+  };
 
   const saveTitle = () => {
     if (!title.trim() || title === page?.title) return;
@@ -310,7 +359,22 @@ export default function WikiDetailPage() {
         <Header onMenuToggle={() => setIsMenuCollapsed(!isMenuCollapsed)} />
         <Box as="main" p={{ base: 3, md: 4 }} minH="calc(100vh - 4rem)" bg={mainBg} borderRadius="lg" boxShadow="sm">
           <Box maxW="720px" mx="auto">
-            <IconButton icon={<FiArrowLeft />} variant="ghost" size="sm" aria-label="Back to wiki" onClick={() => navigate('/wiki')} mb={4} />
+            <HStack mb={2}>
+              <IconButton icon={<FiArrowLeft />} variant="ghost" size="sm" aria-label="Back to wiki" onClick={() => navigate('/wiki')} />
+              <Breadcrumb fontSize="sm" color="gray.500" separator="/">
+                <BreadcrumbItem>
+                  <BreadcrumbLink as={RouterLink} to="/wiki">Wiki</BreadcrumbLink>
+                </BreadcrumbItem>
+                {breadcrumbChain.map((crumb) => (
+                  <BreadcrumbItem key={crumb.page_id}>
+                    <BreadcrumbLink as={RouterLink} to={`/wiki/${crumb.page_id}`}>{crumb.title}</BreadcrumbLink>
+                  </BreadcrumbItem>
+                ))}
+                <BreadcrumbItem isCurrentPage>
+                  <Text noOfLines={1}>{page.title}</Text>
+                </BreadcrumbItem>
+              </Breadcrumb>
+            </HStack>
 
             <Input
               value={title}
@@ -352,6 +416,95 @@ export default function WikiDetailPage() {
                 ))}
               </MenuList>
             </Menu>
+
+            <Divider my={8} />
+
+            {/* Sub-pages -- Confluence-style page tree, one level shown here */}
+            <Box mb={8}>
+              <HStack justify="space-between" mb={3}>
+                <Text fontWeight="semibold" fontSize="sm" color="gray.500">
+                  SUB-PAGES {subPages.length > 0 ? `(${subPages.length})` : ''}
+                </Text>
+                <Button leftIcon={<FiPlus />} size="xs" variant="ghost" onClick={addSubPage}>
+                  Add sub-page
+                </Button>
+              </HStack>
+              {subPages.length > 0 ? (
+                <VStack align="stretch" spacing={1}>
+                  {subPages.map((sub) => (
+                    <HStack
+                      key={sub.page_id}
+                      p={2}
+                      borderRadius="md"
+                      cursor="pointer"
+                      _hover={{ bg: subPageHoverBg }}
+                      onClick={() => navigate(`/wiki/${sub.page_id}`)}
+                    >
+                      <Icon as={FiFileText} color="blue.500" />
+                      <Text fontSize="sm">{sub.title}</Text>
+                    </HStack>
+                  ))}
+                </VStack>
+              ) : (
+                <Text fontSize="sm" color="gray.500">No sub-pages yet.</Text>
+              )}
+            </Box>
+
+            <Divider mb={8} />
+
+            {/* Comments -- Confluence-style page discussion thread */}
+            <Box>
+              <HStack mb={4}>
+                <Icon as={FiMessageSquare} />
+                <Text fontWeight="semibold" fontSize="sm" color="gray.500">
+                  COMMENTS {comments.length > 0 ? `(${comments.length})` : ''}
+                </Text>
+              </HStack>
+              <VStack align="stretch" spacing={4} mb={4}>
+                {comments.map((comment) => (
+                  <HStack key={comment.comment_id} align="start" spacing={3}>
+                    <Avatar
+                      size="sm"
+                      name={comment.user ? `${comment.user.first_name} ${comment.user.last_name}` : 'User'}
+                      src={comment.user?.avatar_url}
+                    />
+                    <Box flex={1}>
+                      <HStack justify="space-between">
+                        <HStack>
+                          <Text fontSize="sm" fontWeight="semibold">
+                            {comment.user ? `${comment.user.first_name} ${comment.user.last_name}` : 'Someone'}
+                          </Text>
+                          <Text fontSize="xs" color="gray.500">{timeAgo(comment.created_at)}</Text>
+                        </HStack>
+                        <IconButton
+                          icon={<FiTrash2 />}
+                          size="xs"
+                          variant="ghost"
+                          aria-label="Delete comment"
+                          onClick={() => deleteComment(comment.comment_id)}
+                        />
+                      </HStack>
+                      <Text fontSize="sm">{comment.content}</Text>
+                    </Box>
+                  </HStack>
+                ))}
+                {comments.length === 0 && (
+                  <Text fontSize="sm" color="gray.500">No comments yet. Start the discussion.</Text>
+                )}
+              </VStack>
+              <HStack align="start">
+                <Textarea
+                  size="sm"
+                  placeholder="Write a comment..."
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  rows={2}
+                />
+                <Button size="sm" colorScheme="blue" onClick={postComment} isLoading={isPostingComment}>
+                  Post
+                </Button>
+              </HStack>
+            </Box>
           </Box>
         </Box>
       </Box>

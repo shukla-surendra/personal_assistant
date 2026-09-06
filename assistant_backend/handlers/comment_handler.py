@@ -2,8 +2,9 @@ from typing import Optional, List
 from uuid import UUID
 from adapters.orm.models.pg_models import Comment
 from adapters.orm.models.database import SessionLocal
-from commands.comment_cmd import CommentCommand, CommentUpdateCommand, CommentDeleteCommand
+from commands.comment_cmd import CommentCommand, CommentUpdateCommand, CommentDeleteCommand, PageCommentCommand
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import joinedload
 from fastapi import HTTPException
 import logging
 
@@ -24,6 +25,7 @@ class CommentHandler:
             self.db.add(comment)
             self.db.commit()
             self.db.refresh(comment)
+            _ = comment.user  # force-load before this handler's session can close
             return comment
         except SQLAlchemyError as e:
             self.db.rollback()
@@ -43,6 +45,7 @@ class CommentHandler:
 
             self.db.commit()
             self.db.refresh(comment)
+            _ = comment.user  # force-load before this handler's session can close
             return comment
         except SQLAlchemyError as e:
             self.db.rollback()
@@ -72,7 +75,7 @@ class CommentHandler:
         point; filtering by the caller's user_id here (the previous
         behavior) meant no one ever saw anyone else's comments."""
         try:
-            comments = self.db.query(Comment).filter(
+            comments = self.db.query(Comment).options(joinedload(Comment.user)).filter(
                 Comment.workspace_id == UUID(workspace_id),
                 Comment.task_id == UUID(task_id),
                 Comment.is_deleted == False
@@ -83,8 +86,39 @@ class CommentHandler:
             logger.error(f"Error listing comments: {str(e)}")
             raise HTTPException(status_code=500, detail="Failed to list comments")
 
+    def create_page_comment(self, command: PageCommentCommand) -> Comment:
+        try:
+            comment = Comment(
+                workspace_id=UUID(command.workspace_id),
+                content=command.content,
+                user_id=UUID(command.user_id),
+                entity_type="page",
+                entity_id=UUID(command.page_id),
+            )
+            self.db.add(comment)
+            self.db.commit()
+            self.db.refresh(comment)
+            _ = comment.user  # force-load before this handler's session can close
+            return comment
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            logger.error(f"Error creating page comment: {str(e)}")
+            raise HTTPException(status_code=500, detail="Failed to create page comment")
+
+    def list_entity_comments(self, workspace_id: str, entity_type: str, entity_id: str) -> List[Comment]:
+        try:
+            return self.db.query(Comment).options(joinedload(Comment.user)).filter(
+                Comment.workspace_id == UUID(workspace_id),
+                Comment.entity_type == entity_type,
+                Comment.entity_id == UUID(entity_id),
+                Comment.is_deleted == False
+            ).order_by(Comment.created_at.asc()).all()
+        except SQLAlchemyError as e:
+            logger.error(f"Error listing entity comments: {str(e)}")
+            raise HTTPException(status_code=500, detail="Failed to list comments")
+
     def get_comment(self, comment_id: str) -> Comment:
-        comment = self.db.query(Comment).filter(
+        comment = self.db.query(Comment).options(joinedload(Comment.user)).filter(
             Comment.comment_id == UUID(comment_id),
             Comment.is_deleted == False
         ).first()

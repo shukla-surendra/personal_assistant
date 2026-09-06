@@ -1,14 +1,14 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  Box, Flex, Heading, Text, HStack, VStack, Badge, IconButton,
+  Box, Flex, Heading, Text, HStack, VStack, Badge, IconButton, Avatar,
   useColorModeValue, useDisclosure, Spinner, Center, useToast, Icon,
   Tabs, TabList, TabPanels, Tab, TabPanel, Button, Select,
   Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, ModalFooter,
   FormControl, FormLabel, Input, Textarea, SimpleGrid, Tag, TagLabel, Divider,
   Menu, MenuButton, MenuList, MenuItem, Tooltip,
 } from '@chakra-ui/react';
-import { FiArrowLeft, FiPlus, FiMoreVertical, FiTrash2, FiPlay, FiCheckCircle } from 'react-icons/fi';
+import { FiArrowLeft, FiPlus, FiMoreVertical, FiTrash2, FiPlay, FiCheckCircle, FiMessageSquare, FiCheckSquare } from 'react-icons/fi';
 import { BsKanban } from 'react-icons/bs';
 import {
   DndContext, DragOverlay, closestCorners, PointerSensor, useSensor, useSensors, useDroppable,
@@ -23,19 +23,9 @@ import BoardService from '../../services/BoardService';
 import TaskService from '../../services/taskservice';
 import EpicService from '../../services/EpicService';
 import SprintService from '../../services/SprintService';
+import { labelForStatus as labelFor, PRIORITY_COLOR } from '../../utils/taskStatus';
 
 const DEFAULT_COLUMNS = ["todo", "in_progress", "review", "done"];
-
-// Covers the TaskStatus enum (constants.py) -- anything not listed here
-// still renders, just Title Cased from its raw value.
-const STATUS_LABELS = {
-  todo: "To Do", backlog: "Backlog", in_progress: "In Progress", blocked: "Blocked",
-  review: "Review", approved: "Approved", done: "Done", cancelled: "Cancelled",
-  archived: "Archived", scheduled: "Scheduled", on_hold: "On Hold",
-};
-const labelFor = (status) => STATUS_LABELS[status] || status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-
-const PRIORITY_COLOR = { urgent: 'red', high: 'orange', medium: 'yellow', low: 'green', none: 'gray' };
 const EPIC_COLORS = ["#6554C0", "#36B37E", "#00B8D9", "#FF5630", "#FFAB00", "#0052CC", "#DE350B"];
 
 function KanbanCard({ task, epic, onClick }) {
@@ -64,20 +54,66 @@ function KanbanCard({ task, epic, onClick }) {
       onClick={() => onClick(task)}
       _hover={{ boxShadow: 'md' }}
     >
+      {task.ticket_key && (
+        <Text fontSize="2xs" fontWeight="bold" color="gray.500" mb={1}>{task.ticket_key}</Text>
+      )}
       <Text fontSize="sm" fontWeight="medium" mb={2} noOfLines={3}>{task.title}</Text>
-      <HStack spacing={2} flexWrap="wrap">
+
+      {task.labels && task.labels.length > 0 && (
+        <HStack spacing={1} flexWrap="wrap" mb={2}>
+          {task.labels.map((label) => (
+            <Box key={label} h="6px" w="24px" borderRadius="full" bg="teal.400" title={label} />
+          ))}
+        </HStack>
+      )}
+
+      <HStack spacing={2} flexWrap="wrap" mb={epic || task.checklist?.length || task.comments?.length ? 2 : 0}>
         <Badge colorScheme={PRIORITY_COLOR[task.priority] || 'gray'} fontSize="2xs">{task.priority}</Badge>
         {epic && (
           <Tag size="sm" borderRadius="full" bg={epic.color} color="white" fontSize="2xs">
             <TagLabel>{epic.title}</TagLabel>
           </Tag>
         )}
-        {task.due_on && (
-          <Text fontSize="2xs" color="gray.500">
-            {new Date(task.due_on).toLocaleDateString()}
-          </Text>
-        )}
       </HStack>
+
+      <Flex justify="space-between" align="center">
+        <HStack spacing={3}>
+          {task.due_on && (
+            <HStack spacing={1}>
+              <Text
+                fontSize="2xs"
+                color={new Date(task.due_on) < new Date() && !task.completed ? 'red.500' : 'gray.500'}
+                fontWeight={new Date(task.due_on) < new Date() && !task.completed ? 'bold' : 'normal'}
+              >
+                {new Date(task.due_on).toLocaleDateString()}
+              </Text>
+            </HStack>
+          )}
+          {task.checklist && task.checklist.length > 0 && (
+            <HStack spacing={1}>
+              <Icon as={FiCheckSquare} boxSize={3} color="gray.500" />
+              <Text fontSize="2xs" color="gray.500">
+                {task.checklist.filter(i => i.done).length}/{task.checklist.length}
+              </Text>
+            </HStack>
+          )}
+          {task.comments && task.comments.length > 0 && (
+            <HStack spacing={1}>
+              <Icon as={FiMessageSquare} boxSize={3} color="gray.500" />
+              <Text fontSize="2xs" color="gray.500">{task.comments.length}</Text>
+            </HStack>
+          )}
+        </HStack>
+        {task.assignee && (
+          <Tooltip label={`${task.assignee.first_name} ${task.assignee.last_name}`}>
+            <Avatar
+              size="2xs"
+              name={`${task.assignee.first_name} ${task.assignee.last_name}`}
+              src={task.assignee.avatar_url}
+            />
+          </Tooltip>
+        )}
+      </Flex>
     </Box>
   );
 }

@@ -1,17 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Box, Heading, Text, SimpleGrid, Card, CardBody, Button, Icon, HStack, VStack,
+  Box, Heading, Text, VStack, HStack, Card, CardBody, Button, Icon,
   useColorModeValue, useDisclosure, Modal, ModalOverlay, ModalContent, ModalHeader,
-  ModalCloseButton, ModalBody, ModalFooter, Input, useToast, Spinner, Center,
+  ModalCloseButton, ModalBody, ModalFooter, Input, useToast, Spinner, Center, IconButton,
 } from '@chakra-ui/react';
-import { FiBook, FiPlus } from 'react-icons/fi';
+import { FiBook, FiPlus, FiChevronRight, FiChevronDown, FiFileText } from 'react-icons/fi';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../../components/dashboard/Navbar';
 import Header from '../../components/dashboard/Header';
 import { fetchPages, createPage } from '../../slices/pages';
 
-function NewPageModal({ isOpen, onClose }) {
+function NewPageModal({ isOpen, onClose, parentPageId }) {
   const dispatch = useDispatch();
   const toast = useToast();
   const navigate = useNavigate();
@@ -24,7 +24,7 @@ function NewPageModal({ isOpen, onClose }) {
       return;
     }
     setIsSaving(true);
-    dispatch(createPage({ title: title.trim() }))
+    dispatch(createPage({ title: title.trim(), parent_page_id: parentPageId || null }))
       .unwrap()
       .then((page) => {
         toast({ title: "Page created", status: "success", duration: 2000, isClosable: true });
@@ -40,7 +40,7 @@ function NewPageModal({ isOpen, onClose }) {
     <Modal isOpen={isOpen} onClose={onClose}>
       <ModalOverlay />
       <ModalContent>
-        <ModalHeader>New Page</ModalHeader>
+        <ModalHeader>{parentPageId ? 'New Sub-page' : 'New Page'}</ModalHeader>
         <ModalCloseButton />
         <ModalBody>
           <Input placeholder="Page title" value={title} onChange={e => setTitle(e.target.value)} autoFocus
@@ -55,11 +55,59 @@ function NewPageModal({ isOpen, onClose }) {
   );
 }
 
+function PageTreeNode({ page, childrenByParent, depth, onAddSubPage }) {
+  const navigate = useNavigate();
+  const [expanded, setExpanded] = useState(true);
+  const hoverBg = useColorModeValue('gray.50', 'gray.700');
+  const children = childrenByParent[page.page_id] || [];
+
+  return (
+    <Box>
+      <HStack
+        pl={`${depth * 24}px`}
+        py={1.5}
+        px={2}
+        borderRadius="md"
+        cursor="pointer"
+        _hover={{ bg: hoverBg }}
+        onClick={() => navigate(`/wiki/${page.page_id}`)}
+      >
+        <IconButton
+          icon={children.length > 0 ? (expanded ? <FiChevronDown /> : <FiChevronRight />) : <Box w="14px" />}
+          size="xs"
+          variant="ghost"
+          aria-label="Toggle sub-pages"
+          onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+          visibility={children.length > 0 ? 'visible' : 'hidden'}
+        />
+        <Icon as={FiFileText} color="blue.500" />
+        <Text fontSize="sm" fontWeight="medium" flex={1} noOfLines={1}>{page.title}</Text>
+        <IconButton
+          icon={<FiPlus />}
+          size="xs"
+          variant="ghost"
+          aria-label="Add sub-page"
+          onClick={(e) => { e.stopPropagation(); onAddSubPage(page.page_id); }}
+        />
+      </HStack>
+      {expanded && children.map(child => (
+        <PageTreeNode
+          key={child.page_id}
+          page={child}
+          childrenByParent={childrenByParent}
+          depth={depth + 1}
+          onAddSubPage={onAddSubPage}
+        />
+      ))}
+    </Box>
+  );
+}
+
 export default function WikiPage() {
   const [isMenuCollapsed, setIsMenuCollapsed] = useState(false);
   const newPageModal = useDisclosure();
+  const [newPageParent, setNewPageParent] = useState(null);
   const dispatch = useDispatch();
-  const navigate = useNavigate();
   const { pages, loading, error } = useSelector(state => state.pages);
   const pageBg = useColorModeValue('gray.50', 'gray.900');
   const mainBg = useColorModeValue('gray.50', 'gray.800');
@@ -69,6 +117,22 @@ export default function WikiPage() {
     dispatch(fetchPages());
   }, [dispatch]);
 
+  const childrenByParent = useMemo(() => {
+    const grouped = {};
+    for (const page of pages) {
+      const key = page.parent_page_id || 'root';
+      (grouped[key] || (grouped[key] = [])).push(page);
+    }
+    return grouped;
+  }, [pages]);
+
+  const topLevelPages = childrenByParent.root || [];
+
+  const openNewPageModal = (parentPageId = null) => {
+    setNewPageParent(parentPageId);
+    newPageModal.onOpen();
+  };
+
   return (
     <Box minH="100vh" bg={pageBg}>
       <Navbar isCollapsed={isMenuCollapsed} />
@@ -77,7 +141,7 @@ export default function WikiPage() {
         <Box as="main" p={{ base: 3, md: 4 }} minH="calc(100vh - 4rem)" bg={mainBg} borderRadius="lg" boxShadow="sm">
           <HStack justify="space-between" mb={6}>
             <Heading size="lg">Wiki</Heading>
-            <Button leftIcon={<FiPlus />} colorScheme="blue" onClick={newPageModal.onOpen}>
+            <Button leftIcon={<FiPlus />} colorScheme="blue" onClick={() => openNewPageModal(null)}>
               New Page
             </Button>
           </HStack>
@@ -93,28 +157,26 @@ export default function WikiPage() {
             </Center>
           )}
 
-          <SimpleGrid columns={{ base: 1, sm: 2, md: 3, lg: 4 }} spacing={6}>
-            {pages.map(page => (
-              <Card
-                key={page.page_id}
-                bg={cardBg}
-                cursor="pointer"
-                _hover={{ boxShadow: 'md', transform: 'translateY(-2px)' }}
-                transition="all 0.15s ease"
-                onClick={() => navigate(`/wiki/${page.page_id}`)}
-              >
-                <CardBody>
-                  <HStack>
-                    <Icon as={FiBook} color="blue.500" />
-                    <Heading size="sm" noOfLines={1}>{page.title}</Heading>
-                  </HStack>
-                </CardBody>
-              </Card>
-            ))}
-          </SimpleGrid>
+          {topLevelPages.length > 0 && (
+            <Card bg={cardBg}>
+              <CardBody>
+                <VStack align="stretch" spacing={0}>
+                  {topLevelPages.map(page => (
+                    <PageTreeNode
+                      key={page.page_id}
+                      page={page}
+                      childrenByParent={childrenByParent}
+                      depth={0}
+                      onAddSubPage={openNewPageModal}
+                    />
+                  ))}
+                </VStack>
+              </CardBody>
+            </Card>
+          )}
         </Box>
       </Box>
-      <NewPageModal isOpen={newPageModal.isOpen} onClose={newPageModal.onClose} />
+      <NewPageModal isOpen={newPageModal.isOpen} onClose={newPageModal.onClose} parentPageId={newPageParent} />
     </Box>
   );
 }

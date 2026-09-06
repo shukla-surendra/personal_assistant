@@ -3,9 +3,12 @@ from typing import List
 from modules.access import require_module_enabled
 from handlers.page_handler import PageHandler
 from handlers.workspace_handlers import WorkspaceHandler
+from handlers.comment_handler import CommentHandler
 from commands.page_cmd import PageCommand, PageUpdateCommand, PageDeleteCommand, BlockCommand, BlockUpdateCommand, BlockDeleteCommand
+from commands.comment_cmd import PageCommentCommand, CommentDeleteCommand
 from dto.page_dto import PageDto, BlockDto
 from dto.page_dto import PageDtoMapper, BlockDtoMapper
+from dto.comment_dto import CommentDto, CommentDtoMapper
 from config import logger
 
 router = APIRouter(prefix="/api/v1/workspaces/{workspace_id}/pages", tags=["pages"])
@@ -144,4 +147,48 @@ async def list_blocks(workspace_id: str, page_id: str, user: dict = Depends(gate
         raise
     except Exception as e:
         logger.error(f"Error listing blocks: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Page comments -- Confluence-style page discussions. Reuses the Comment
+# model's entity_type/entity_id columns (already present, previously only
+# ever populated for task comments via task_id) instead of a new table.
+@router.post("/{page_id}/comments", response_model=CommentDto, status_code=status.HTTP_201_CREATED)
+async def create_page_comment(workspace_id: str, page_id: str, command: PageCommentCommand, user: dict = Depends(gate)):
+    _verify_workspace_access(workspace_id, user.get("user_id"))
+    command.workspace_id = workspace_id
+    command.page_id = page_id
+    command.user_id = user.get("user_id")
+    try:
+        comment = CommentHandler().create_page_comment(command)
+        return CommentDtoMapper.map_to_comment_dto(comment)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating page comment: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{page_id}/comments", response_model=List[CommentDto])
+async def list_page_comments(workspace_id: str, page_id: str, user: dict = Depends(gate)):
+    _verify_workspace_access(workspace_id, user.get("user_id"))
+    try:
+        comments = CommentHandler().list_entity_comments(workspace_id, "page", page_id)
+        return [CommentDtoMapper.map_to_comment_dto(comment) for comment in comments]
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error listing page comments: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/{page_id}/comments/{comment_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_page_comment(workspace_id: str, page_id: str, comment_id: str, user: dict = Depends(gate)):
+    _verify_workspace_access(workspace_id, user.get("user_id"))
+    try:
+        CommentHandler().delete_comment(CommentDeleteCommand(comment_id=comment_id, workspace_id=workspace_id))
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting page comment: {e}")
         raise HTTPException(status_code=500, detail=str(e))

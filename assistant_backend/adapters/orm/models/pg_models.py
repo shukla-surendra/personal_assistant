@@ -119,6 +119,11 @@ class Task(Base):
     # Combined with Board.key it renders as "ENG-42" (see TaskDtoMapper).
     # Null when the task has no board -- boardless tasks/notes don't get a key.
     task_number = Column(Integer, nullable=True)
+    # Trello-style checklist: [{"id": ..., "text": ..., "done": bool}, ...].
+    # A plain JSONB list rather than a child table -- same tradeoff already
+    # made for labels/watchers/tags-as-strings on this model, and a
+    # checklist never needs to be queried/filtered independently of its task.
+    checklist = Column(JSONB, nullable=True)
     story_points = Column(Integer, nullable=True)
     watchers = Column(JSONB, nullable=True)
     labels = Column(JSONB, nullable=True)
@@ -366,6 +371,11 @@ class Page(Base):
 
     page_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     workspace_id = Column(UUID(as_uuid=True), ForeignKey("workspaces.workspace_id"), nullable=False)
+    # Confluence-style page tree -- null for a top-level page. ON DELETE
+    # SET NULL so deleting a parent promotes its children to top-level
+    # rather than orphaning/cascading (same "unlink don't cascade" rule
+    # used for Epic/Sprint/Company deletion elsewhere in this app).
+    parent_page_id = Column(UUID(as_uuid=True), ForeignKey("pages.page_id", ondelete="SET NULL"), nullable=True)
     title = Column(String, nullable=False)
     content = Column(JSONB, nullable=True)
     properties = Column(JSONB, nullable=True)
@@ -375,6 +385,7 @@ class Page(Base):
 
     workspace = relationship("Workspace", back_populates="pages")
     blocks = relationship("Block", back_populates="page")
+    parent = relationship("Page", remote_side=[page_id], backref="children")
 
 class Block(Base):
     __tablename__ = "blocks"

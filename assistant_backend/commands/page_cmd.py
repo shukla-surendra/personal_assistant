@@ -5,12 +5,16 @@ from typing import Optional
 class PageCommand(BaseModel):
     workspace_id: Optional[str] = None  # Set from the URL path by the controller
     title: str
+    parent_page_id: Optional[str] = None
     properties: Optional[dict] = {}
 
 
 class PageUpdateCommand(BaseModel):
     page_id: Optional[str] = None  # Set from the URL path by the controller
     title: Optional[str] = None
+    # "" clears the parent (promotes to top-level); None means "leave
+    # unchanged" -- same convention TaskUpdateCommand uses for epic_id.
+    parent_page_id: Optional[str] = None
     properties: Optional[dict] = None
 
 

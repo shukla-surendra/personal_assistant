@@ -1,5 +1,5 @@
 """"""
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from pydantic import BaseModel
 from adapters.orm.models.pg_models import Task, Comment, Tag
 from datetime import datetime
@@ -51,6 +51,8 @@ class TaskDto(BaseModel):
     end_time: Optional[datetime]
     assignee_id: Optional[str]
     reporter_id: Optional[str]
+    assignee: Optional[Dict[str, Any]] = None
+    reporter: Optional[Dict[str, Any]] = None
     epic_id: Optional[str] = None
     sprint_id: Optional[str] = None
     task_number: Optional[int] = None
@@ -58,6 +60,7 @@ class TaskDto(BaseModel):
     story_points: Optional[int] = None
     watchers: list
     labels: list
+    checklist: list = []
     meta_data: dict
     settings: dict
     public_access: bool
@@ -142,6 +145,18 @@ class TaskDtoMapper:
             end_time=task.end_time,
             assignee_id=str(task.assignee_id) if task.assignee_id else None,
             reporter_id=str(task.reporter_id) if task.reporter_id else None,
+            assignee={
+                'user_id': str(task.assignee.user_id),
+                'first_name': task.assignee.first_name,
+                'last_name': task.assignee.last_name,
+                'avatar_url': task.assignee.avatar_url,
+            } if task.assignee_id and task.assignee else None,
+            reporter={
+                'user_id': str(task.reporter.user_id),
+                'first_name': task.reporter.first_name,
+                'last_name': task.reporter.last_name,
+                'avatar_url': task.reporter.avatar_url,
+            } if task.reporter_id and task.reporter else None,
             epic_id=str(task.epic_id) if task.epic_id else None,
             sprint_id=str(task.sprint_id) if task.sprint_id else None,
             task_number=task.task_number,
@@ -149,6 +164,7 @@ class TaskDtoMapper:
             story_points=task.story_points,
             watchers=task.watchers,
             labels=task.labels,
+            checklist=task.checklist or [],
             meta_data=task.meta_data,
             settings=task.settings,
             public_access=task.public_access,

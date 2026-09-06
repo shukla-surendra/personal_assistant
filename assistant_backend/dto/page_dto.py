@@ -13,6 +13,7 @@ class PageDto(BaseModel):
     page_id: str
     workspace_id: str
     title: str
+    parent_page_id: Optional[str] = None
     properties: Optional[Dict[str, Any]] = None
 
 class PageDtoMapper:
@@ -29,6 +30,7 @@ class PageDtoMapper:
             page_id=str(page.page_id),
             workspace_id=str(page.workspace_id),
             title=page.title,
+            parent_page_id=str(page.parent_page_id) if page.parent_page_id else None,
             properties=page.properties
         )
 
