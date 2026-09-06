@@ -158,6 +158,7 @@ class PostgreSQLAdapter(StorageAdapter):
                     'otp': result.otp,
                     'otp_time': result.otp_time,
                     'avatar_url': result.avatar_url,
+                    'bio': result.bio,
                     'created_at': result.created_at,
                     'updated_at': result.updated_at
                 }

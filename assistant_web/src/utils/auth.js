@@ -91,6 +91,7 @@ class AuthService {
 			...(userData.last_name !== undefined && { last_name: userData.last_name }),
 			...(userData.role !== undefined && { role: userData.role }),
 			...(userData.avatar_url !== undefined && { avatar_url: userData.avatar_url }),
+			...(userData.bio !== undefined && { bio: userData.bio }),
 		};
 		localStorage.setItem('user_info', JSON.stringify(merged));
 		return merged;

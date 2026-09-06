@@ -38,9 +38,16 @@ async def list_modules(workspace_id: str, user: dict = Depends(get_auth_details)
     db = SessionLocal()
     try:
         rows = db.query(WorkspaceModule).filter(WorkspaceModule.workspace_id == workspace_id).all()
-        enabled_keys = {row.module_key for row in rows if row.enabled}
+        state_by_key = {row.module_key: row.enabled for row in rows}
         return [
-            ModuleDto(key=m.key, name=m.name, description=m.description, icon=m.icon, enabled=m.key in enabled_keys)
+            ModuleDto(
+                key=m.key, name=m.name, description=m.description, icon=m.icon,
+                # No row yet -- same "never toggled" fallback the
+                # enforcement gate uses (modules/access.py) -- otherwise
+                # this list would show a module as off while its routes
+                # (correctly) still accept requests.
+                enabled=state_by_key.get(m.key, m.default_enabled),
+            )
             for m in ALL_MODULES
         ]
     except HTTPException:

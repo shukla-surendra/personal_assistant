@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
-from authorization.auth import get_auth_details
+from modules.access import require_module_enabled
 from handlers.database_handler import DatabaseHandler
 from handlers.workspace_handlers import WorkspaceHandler
 from commands.database_cmd import DatabaseCommand, DatabaseUpdateCommand, DatabaseDeleteCommand, DatabaseEntryCommand, DatabaseEntryUpdateCommand, DatabaseEntryDeleteCommand
@@ -10,6 +10,10 @@ from config import logger
 
 router = APIRouter(prefix="/api/v1/workspaces/{workspace_id}/databases", tags=["databases"])
 
+# Already a live, always-on feature before the module registry existed --
+# default_enabled=True so no existing workspace loses it silently.
+gate = require_module_enabled("database", default_enabled=True)
+
 
 def _verify_workspace_access(workspace_id: str, user_id: str):
     """Same gate board_controller.py/page_controller.py use."""
@@ -17,7 +21,7 @@ def _verify_workspace_access(workspace_id: str, user_id: str):
 
 
 @router.post("/", response_model=DatabaseDto, status_code=status.HTTP_201_CREATED)
-async def create_database(workspace_id: str, command: DatabaseCommand, user: dict = Depends(get_auth_details)):
+async def create_database(workspace_id: str, command: DatabaseCommand, user: dict = Depends(gate)):
     _verify_workspace_access(workspace_id, user.get("user_id"))
     command.workspace_id = workspace_id
     try:
@@ -31,7 +35,7 @@ async def create_database(workspace_id: str, command: DatabaseCommand, user: dic
 
 
 @router.put("/{database_id}", response_model=DatabaseDto)
-async def update_database(workspace_id: str, database_id: str, command: DatabaseUpdateCommand, user: dict = Depends(get_auth_details)):
+async def update_database(workspace_id: str, database_id: str, command: DatabaseUpdateCommand, user: dict = Depends(gate)):
     _verify_workspace_access(workspace_id, user.get("user_id"))
     command.database_id = database_id
     try:
@@ -45,7 +49,7 @@ async def update_database(workspace_id: str, database_id: str, command: Database
 
 
 @router.delete("/{database_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_database(workspace_id: str, database_id: str, user: dict = Depends(get_auth_details)):
+async def delete_database(workspace_id: str, database_id: str, user: dict = Depends(gate)):
     _verify_workspace_access(workspace_id, user.get("user_id"))
     try:
         command = DatabaseDeleteCommand(database_id=database_id, workspace_id=workspace_id)
@@ -58,7 +62,7 @@ async def delete_database(workspace_id: str, database_id: str, user: dict = Depe
 
 
 @router.get("/{database_id}", response_model=DatabaseDto)
-async def get_database(workspace_id: str, database_id: str, user: dict = Depends(get_auth_details)):
+async def get_database(workspace_id: str, database_id: str, user: dict = Depends(gate)):
     _verify_workspace_access(workspace_id, user.get("user_id"))
     try:
         database = DatabaseHandler().get_database(database_id)
@@ -73,7 +77,7 @@ async def get_database(workspace_id: str, database_id: str, user: dict = Depends
 
 
 @router.get("/", response_model=List[DatabaseDto])
-async def list_databases(workspace_id: str, user: dict = Depends(get_auth_details)):
+async def list_databases(workspace_id: str, user: dict = Depends(gate)):
     _verify_workspace_access(workspace_id, user.get("user_id"))
     try:
         databases = DatabaseHandler().list_databases(workspace_id)
@@ -87,7 +91,7 @@ async def list_databases(workspace_id: str, user: dict = Depends(get_auth_detail
 
 # Database Entry endpoints
 @router.post("/{database_id}/entries", response_model=DatabaseEntryDto, status_code=status.HTTP_201_CREATED)
-async def create_database_entry(workspace_id: str, database_id: str, command: DatabaseEntryCommand, user: dict = Depends(get_auth_details)):
+async def create_database_entry(workspace_id: str, database_id: str, command: DatabaseEntryCommand, user: dict = Depends(gate)):
     _verify_workspace_access(workspace_id, user.get("user_id"))
     command.database_id = database_id
     try:
@@ -101,7 +105,7 @@ async def create_database_entry(workspace_id: str, database_id: str, command: Da
 
 
 @router.put("/{database_id}/entries/{entry_id}", response_model=DatabaseEntryDto)
-async def update_database_entry(workspace_id: str, database_id: str, entry_id: str, command: DatabaseEntryUpdateCommand, user: dict = Depends(get_auth_details)):
+async def update_database_entry(workspace_id: str, database_id: str, entry_id: str, command: DatabaseEntryUpdateCommand, user: dict = Depends(gate)):
     _verify_workspace_access(workspace_id, user.get("user_id"))
     command.entry_id = entry_id
     try:
@@ -115,7 +119,7 @@ async def update_database_entry(workspace_id: str, database_id: str, entry_id: s
 
 
 @router.delete("/{database_id}/entries/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_database_entry(workspace_id: str, database_id: str, entry_id: str, user: dict = Depends(get_auth_details)):
+async def delete_database_entry(workspace_id: str, database_id: str, entry_id: str, user: dict = Depends(gate)):
     _verify_workspace_access(workspace_id, user.get("user_id"))
     try:
         command = DatabaseEntryDeleteCommand(entry_id=entry_id, database_id=database_id)
@@ -128,7 +132,7 @@ async def delete_database_entry(workspace_id: str, database_id: str, entry_id: s
 
 
 @router.get("/{database_id}/entries", response_model=List[DatabaseEntryDto])
-async def list_database_entries(workspace_id: str, database_id: str, user: dict = Depends(get_auth_details)):
+async def list_database_entries(workspace_id: str, database_id: str, user: dict = Depends(gate)):
     _verify_workspace_access(workspace_id, user.get("user_id"))
     try:
         entries = DatabaseHandler().list_database_entries(database_id)

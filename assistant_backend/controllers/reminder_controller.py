@@ -6,12 +6,16 @@ from commands.reminder_cmd import ReminderCommand, ReminderUpdateCommand, Remind
 from adapters.orm.models.pg_models import Reminder
 from dto.reminder_dto import ReminderDto
 from dto.reminder_dto import ReminderDtoMapper
-from authorization.auth import get_auth_details
+from modules.access import require_module_enabled
 
 router = APIRouter(prefix="/api/v1/workspaces/{workspace_id}/reminders", tags=["reminders"])
 
+# Already a live, always-on feature before the module registry existed --
+# default_enabled=True so no existing workspace loses it silently.
+gate = require_module_enabled("reminders", default_enabled=True)
+
 @router.post("/", response_model=ReminderDto, status_code=status.HTTP_201_CREATED)
-async def create_reminder(command: ReminderCommand, workspace_id: str, user: dict = Depends(get_auth_details)):
+async def create_reminder(command: ReminderCommand, workspace_id: str, user: dict = Depends(gate)):
     handler = ReminderHandler()
     command.workspace_id = workspace_id
     command.user_id = user.get("user_id")
@@ -22,7 +26,7 @@ async def create_reminder(command: ReminderCommand, workspace_id: str, user: dic
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.put("/{reminder_id}", response_model=ReminderDto)
-async def update_reminder(reminder_id: str, command: ReminderUpdateCommand, workspace_id: str, user: dict = Depends(get_auth_details)):
+async def update_reminder(reminder_id: str, command: ReminderUpdateCommand, workspace_id: str, user: dict = Depends(gate)):
     handler = ReminderHandler()
     command.reminder_id = reminder_id
     command.workspace_id = workspace_id
@@ -34,7 +38,7 @@ async def update_reminder(reminder_id: str, command: ReminderUpdateCommand, work
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.delete("/{reminder_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_reminder(reminder_id: str, workspace_id: str, user: dict = Depends(get_auth_details)):
+async def delete_reminder(reminder_id: str, workspace_id: str, user: dict = Depends(gate)):
     handler = ReminderHandler()
     try:
         command = ReminderDeleteCommand(reminder_id=reminder_id, workspace_id=workspace_id, user_id=user.get("user_id"))
@@ -43,7 +47,7 @@ async def delete_reminder(reminder_id: str, workspace_id: str, user: dict = Depe
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/{reminder_id}", response_model=ReminderDto)
-async def get_reminder(reminder_id: str, workspace_id: str, user: dict = Depends(get_auth_details)):
+async def get_reminder(reminder_id: str, workspace_id: str, user: dict = Depends(gate)):
     handler = ReminderHandler()
     try:
         reminder = handler.get_reminder(reminder_id, workspace_id, user.get("user_id"))
@@ -52,7 +56,7 @@ async def get_reminder(reminder_id: str, workspace_id: str, user: dict = Depends
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/", response_model=List[ReminderDto])
-async def list_reminders(workspace_id: str, user: dict = Depends(get_auth_details)):
+async def list_reminders(workspace_id: str, user: dict = Depends(gate)):
     handler = ReminderHandler()
     try:
         reminders = handler.list_reminders(workspace_id, user.get("user_id"))

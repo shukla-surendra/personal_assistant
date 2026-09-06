@@ -12,9 +12,16 @@ class UserDeleteCommand(BaseModel):
     user_id: Optional[str]
 
 class UserUpdateCommand(BaseModel):
-    first_name: Optional[str]
-    last_name: Optional[str]
-    password: Optional[str]
+    user_id: Optional[str] = None  # Set from the URL path by the controller
+    # `Optional[str]` alone does NOT make a Pydantic field optional -- it
+    # still has to be present in the request body unless it also has a
+    # `= None` default. Without these defaults, every partial profile
+    # update (e.g. just first_name) was rejected with a 422 demanding
+    # last_name and password too.
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    bio: Optional[str] = None
+    password: Optional[str] = None
 
 class LoginCommand(BaseModel):
     email: str

@@ -28,6 +28,7 @@ import { FiArrowLeft, FiMoon, FiSun, FiBell, FiUser, FiGlobe, FiGrid, FiBox } fr
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { retrieveSettings, updateSettings } from '../../slices/settings';
+import { updateProfile } from '../../slices/auth';
 import Navbar from '../../components/dashboard/Navbar';
 import Header from '../../components/dashboard/Header';
 import ModuleService from '../../services/ModuleService';
@@ -43,6 +44,7 @@ const SettingsPage = () => {
   const mainBg = useColorModeValue('gray.50', 'gray.800');
   const { colorMode, toggleColorMode } = useColorMode();
   const { settings } = useSelector((state) => state.settings);
+  const { user } = useSelector((state) => state.auth);
   const [localSettings, setLocalSettings] = useState({
     email_notifications: true,
     task_reminders: true,
@@ -50,10 +52,13 @@ const SettingsPage = () => {
     language: 'en',
     timezone: 'UTC',
     theme: colorMode,
-    name: '',
-    email: '',
-    bio: '',
   });
+  // Profile fields live on the User record, not UserSettings -- saved
+  // through a separate PUT /users/{id} call (see handleSave), which is
+  // also why email isn't editable here: there's no backend support for
+  // changing it yet, so it's shown read-only rather than accepting an
+  // edit that would silently never save.
+  const [profileForm, setProfileForm] = useState({ first_name: '', last_name: '', bio: '' });
 
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
@@ -111,13 +116,31 @@ const SettingsPage = () => {
     }
   }, [settings]);
 
+  useEffect(() => {
+    if (user) {
+      setProfileForm({
+        first_name: user.first_name || '',
+        last_name: user.last_name || '',
+        bio: user.bio || '',
+      });
+    }
+  }, [user]);
+
   const handleSettingChange = (key, value) => {
     setLocalSettings(prev => ({ ...prev, [key]: value }));
   };
 
+  const handleProfileChange = (key, value) => {
+    setProfileForm(prev => ({ ...prev, [key]: value }));
+  };
+
   const handleSave = async () => {
     try {
-      await dispatch(updateSettings(localSettings)).unwrap();
+      const updates = [dispatch(updateSettings(localSettings)).unwrap()];
+      if (user?.user_id) {
+        updates.push(dispatch(updateProfile({ userId: user.user_id, data: profileForm })).unwrap());
+      }
+      await Promise.all(updates);
       toast({
         title: 'Success',
         description: 'Settings updated successfully',
@@ -128,7 +151,7 @@ const SettingsPage = () => {
     } catch (error) {
       toast({
         title: 'Error',
-        description: error.message || 'Failed to update settings',
+        description: typeof error === 'string' ? error : (error.message || 'Failed to update settings'),
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -213,25 +236,34 @@ const SettingsPage = () => {
                 <Box p={6} bg={bgColor} borderRadius="lg" borderWidth="1px" borderColor={borderColor}>
                   <VStack spacing={4} align="stretch">
                     <Heading size="md">Profile Information</Heading>
-                    <FormControl>
-                      <FormLabel>Name</FormLabel>
-                      <Input
-                        value={localSettings.name}
-                        onChange={(e) => handleSettingChange('name', e.target.value)}
-                      />
-                    </FormControl>
+                    <HStack spacing={4} align="flex-start">
+                      <FormControl>
+                        <FormLabel>First Name</FormLabel>
+                        <Input
+                          value={profileForm.first_name}
+                          onChange={(e) => handleProfileChange('first_name', e.target.value)}
+                        />
+                      </FormControl>
+                      <FormControl>
+                        <FormLabel>Last Name</FormLabel>
+                        <Input
+                          value={profileForm.last_name}
+                          onChange={(e) => handleProfileChange('last_name', e.target.value)}
+                        />
+                      </FormControl>
+                    </HStack>
                     <FormControl>
                       <FormLabel>Email</FormLabel>
-                      <Input
-                        value={localSettings.email}
-                        onChange={(e) => handleSettingChange('email', e.target.value)}
-                      />
+                      <Input value={user?.email || ''} isReadOnly isDisabled />
+                      <Text fontSize="xs" color="gray.500" mt={1}>
+                        Email changes aren't supported yet.
+                      </Text>
                     </FormControl>
                     <FormControl>
                       <FormLabel>Bio</FormLabel>
                       <Textarea
-                        value={localSettings.bio}
-                        onChange={(e) => handleSettingChange('bio', e.target.value)}
+                        value={profileForm.bio}
+                        onChange={(e) => handleProfileChange('bio', e.target.value)}
                       />
                     </FormControl>
                   </VStack>

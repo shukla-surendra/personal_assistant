@@ -1,12 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException
 from handlers.reports_handler import ReportsHandler
-from authorization.auth import get_auth_details
+from modules.access import require_module_enabled
 
 router = APIRouter(prefix="/api/v1/workspaces/{workspace_id}/reports", tags=["reports"])
 
+# Already a live, always-on feature before the module registry existed --
+# default_enabled=True so no existing workspace loses it silently.
+gate = require_module_enabled("reports", default_enabled=True)
+
 
 @router.get("/summary")
-async def get_reports_summary(workspace_id: str, user: dict = Depends(get_auth_details)):
+async def get_reports_summary(workspace_id: str, user: dict = Depends(gate)):
     """Task Completion, Time Distribution, Performance Trends, and
     Schedule Analysis in one response -- all computed live from the real
     tasks table, nothing mocked."""

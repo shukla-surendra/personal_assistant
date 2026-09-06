@@ -8,18 +8,22 @@ from commands.chat_cmd import (
 )
 from dto.chat_dto import ChatDto, ChatMessageDto
 from dto.chat_dto import ChatDtoMapper, ChatMessageDtoMapper
-from authorization.auth import get_auth_details
+from modules.access import require_module_enabled
 import logging
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/workspaces/{workspace_id}/chats", tags=["chats"])
 
+# Already a live, always-on feature before the module registry existed --
+# default_enabled=True so no existing workspace loses it silently.
+gate = require_module_enabled("chat", default_enabled=True)
+
 @router.post("/", response_model=ChatDto, status_code=status.HTTP_201_CREATED)
 async def create_chat(
     workspace_id: str,
     command: ChatCommand,
-    current_user: dict = Depends(get_auth_details)
+    current_user: dict = Depends(gate)
 ):
     """Create a new chat"""
     handler = ChatHandler()
@@ -35,7 +39,7 @@ async def create_chat(
 @router.get("/", response_model=List[ChatDto])
 async def get_chats(
     workspace_id: str,
-    current_user: dict = Depends(get_auth_details)
+    current_user: dict = Depends(gate)
 ):
     """Get all chats for a workspace"""
     handler = ChatHandler()
@@ -50,7 +54,7 @@ async def get_chats(
 async def get_chat(
     workspace_id: str,
     chat_id: str,
-    current_user: dict = Depends(get_auth_details)
+    current_user: dict = Depends(gate)
 ):
     """Get a specific chat"""
     handler = ChatHandler()
@@ -66,7 +70,7 @@ async def update_chat(
     workspace_id: str,
     chat_id: str,
     command: ChatUpdateCommand,
-    current_user: dict = Depends(get_auth_details)
+    current_user: dict = Depends(gate)
 ):
     """Update a chat"""
     handler = ChatHandler()
@@ -82,7 +86,7 @@ async def update_chat(
 async def delete_chat(
     workspace_id: str,
     chat_id: str,
-    current_user: dict = Depends(get_auth_details)
+    current_user: dict = Depends(gate)
 ):
     """Delete a chat"""
     handler = ChatHandler()
@@ -98,7 +102,7 @@ async def create_message(
     workspace_id: str,
     chat_id: str,
     command: ChatMessageCommand,
-    current_user: dict = Depends(get_auth_details)
+    current_user: dict = Depends(gate)
 ):
     """Create a new message in a chat"""
     handler = ChatHandler()
@@ -114,7 +118,7 @@ async def create_message(
 async def get_messages(
     workspace_id: str,
     chat_id: str,
-    current_user: dict = Depends(get_auth_details)
+    current_user: dict = Depends(gate)
 ):
     """Get all messages in a chat"""
     handler = ChatHandler()
@@ -131,7 +135,7 @@ async def update_message(
     chat_id: str,
     message_id: str,
     command: ChatMessageUpdateCommand,
-    current_user: dict = Depends(get_auth_details)
+    current_user: dict = Depends(gate)
 ):
     """Update a message"""
     handler = ChatHandler()
@@ -149,7 +153,7 @@ async def delete_message(
     workspace_id: str,
     chat_id: str,
     message_id: str,
-    current_user: dict = Depends(get_auth_details)
+    current_user: dict = Depends(gate)
 ):
     """Delete a message"""
     handler = ChatHandler()
@@ -164,7 +168,7 @@ async def delete_message(
 async def create_completion(
     workspace_id: str,
     chat_id: str,
-    current_user: dict = Depends(get_auth_details)
+    current_user: dict = Depends(gate)
 ):
     """Get an AI completion for a chat, using its persisted message history.
     Call POST /{chat_id}/messages with the new user turn first."""

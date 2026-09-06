@@ -77,12 +77,21 @@ const Navbar = ({ isCollapsed, onToggle }) => {
   const hoverBg = useColorModeValue('gray.100', 'gray.700');
   const { isOpen, onToggle: onWorkspaceToggle } = useDisclosure();
   const [enabledModules, setEnabledModules] = useState([]);
+  const [moduleState, setModuleState] = useState({});
 
   useEffect(() => {
     ModuleService.getAll()
-      .then(res => setEnabledModules(res.data.filter(m => m.enabled && MODULE_ROUTES[m.key])))
+      .then(res => {
+        setEnabledModules(res.data.filter(m => m.enabled && MODULE_ROUTES[m.key]));
+        setModuleState(Object.fromEntries(res.data.map(m => [m.key, m.enabled])));
+      })
       .catch(() => {});
   }, []);
+
+  // Default-on features (Wiki, CRM, ...) stay visible until the fetch
+  // above actually confirms they were switched off, so there's no flash
+  // of missing nav items on every page load while it's in flight.
+  const isFeatureVisible = (key) => moduleState[key] !== false;
 
   const handleCreateTask = () => {
     navigate('/tasks/new');
@@ -207,14 +216,16 @@ const Navbar = ({ isCollapsed, onToggle }) => {
             >
               Time Block
             </NavItem>
-            <NavItem
-              icon={FiBell}
-              to="/reminders"
-              isActive={location.pathname === '/reminders'}
-              isCollapsed={isCollapsed}
-            >
-              Reminders
-            </NavItem>
+            {isFeatureVisible('reminders') && (
+              <NavItem
+                icon={FiBell}
+                to="/reminders"
+                isActive={location.pathname === '/reminders'}
+                isCollapsed={isCollapsed}
+              >
+                Reminders
+              </NavItem>
+            )}
           </Box>
 
           <Divider />
@@ -234,22 +245,26 @@ const Navbar = ({ isCollapsed, onToggle }) => {
                 Knowledge
               </Text>
             )}
-            <NavItem
-              icon={AiOutlineBook}
-              to="/wiki"
-              isActive={location.pathname === '/wiki'}
-              isCollapsed={isCollapsed}
-            >
-              Wiki
-            </NavItem>
-            <NavItem
-              icon={FiDatabase}
-              to="/database"
-              isActive={location.pathname === '/database'}
-              isCollapsed={isCollapsed}
-            >
-              Database
-            </NavItem>
+            {isFeatureVisible('wiki') && (
+              <NavItem
+                icon={AiOutlineBook}
+                to="/wiki"
+                isActive={location.pathname === '/wiki'}
+                isCollapsed={isCollapsed}
+              >
+                Wiki
+              </NavItem>
+            )}
+            {isFeatureVisible('database') && (
+              <NavItem
+                icon={FiDatabase}
+                to="/database"
+                isActive={location.pathname === '/database'}
+                isCollapsed={isCollapsed}
+              >
+                Database
+              </NavItem>
+            )}
           </Box>
 
           <Divider />
@@ -268,22 +283,26 @@ const Navbar = ({ isCollapsed, onToggle }) => {
                 Collaboration
               </Text>
             )}
-            <NavItem
-              icon={BsPersonLinesFill}
-              to="/crm"
-              isActive={location.pathname === '/crm'}
-              isCollapsed={isCollapsed}
-            >
-              CRM
-            </NavItem>
-            <NavItem
-              icon={BsChatDots}
-              to="/chat"
-              isActive={location.pathname === '/chat'}
-              isCollapsed={isCollapsed}
-            >
-              Chat
-            </NavItem>
+            {isFeatureVisible('crm') && (
+              <NavItem
+                icon={BsPersonLinesFill}
+                to="/crm"
+                isActive={location.pathname === '/crm'}
+                isCollapsed={isCollapsed}
+              >
+                CRM
+              </NavItem>
+            )}
+            {isFeatureVisible('chat') && (
+              <NavItem
+                icon={BsChatDots}
+                to="/chat"
+                isActive={location.pathname === '/chat'}
+                isCollapsed={isCollapsed}
+              >
+                Chat
+              </NavItem>
+            )}
           </Box>
 
           {enabledModules.length > 0 && (
@@ -407,14 +426,16 @@ const Navbar = ({ isCollapsed, onToggle }) => {
             >
               Members
             </NavItem>
-            <NavItem
-              icon={FiBarChart2}
-              to="/reports"
-              isActive={location.pathname === '/reports'}
-              isCollapsed={isCollapsed}
-            >
-              Reports
-            </NavItem>
+            {isFeatureVisible('reports') && (
+              <NavItem
+                icon={FiBarChart2}
+                to="/reports"
+                isActive={location.pathname === '/reports'}
+                isCollapsed={isCollapsed}
+              >
+                Reports
+              </NavItem>
+            )}
             <NavItem
               icon={FiSettings}
               to="/settings"

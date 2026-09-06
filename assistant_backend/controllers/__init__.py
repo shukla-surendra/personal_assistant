@@ -20,4 +20,10 @@ from .reports_controller import reports_router
 from .epic_controller import epic_router
 from .sprint_controller import sprint_router
 from .task_link_controller import task_link_router
-from .module_controller import module_router
+# module_controller is deliberately NOT imported here: it imports
+# modules.registry, which imports several of the controllers above --
+# routing that through this barrel file would be a circular import (this
+# __init__ importing module_controller importing modules.registry
+# importing this package again to reach crm_controller etc., before
+# ALL_MODULES has even been defined). main.py imports module_router
+# directly from controllers.module_controller instead.

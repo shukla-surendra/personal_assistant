@@ -49,13 +49,20 @@ class UserHandler:
                 update_data['first_name'] = user_cmd.first_name
             if user_cmd.last_name:
                 update_data['last_name'] = user_cmd.last_name
+            if user_cmd.bio is not None:
+                update_data['bio'] = user_cmd.bio
 
             if update_data:
                 updated_user = self.storage.update_user(user_cmd.user_id, update_data)
                 if not updated_user:
                     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update user")
-                return updated_user
-            return user
+                # Map through the DTO rather than returning the storage
+                # adapter's raw dict -- that dict includes password_hash,
+                # which this route has no response_model to filter out.
+                return UserDtoMapper.map_to_user_dto_mapper(updated_user)
+            return UserDtoMapper.map_to_user_dto_mapper(user)
+        except HTTPException:
+            raise
         except Exception as e:
             logger.error(f"Error updating user: {e}")
             raise HTTPException(status_code=500, detail="Failed to update user")

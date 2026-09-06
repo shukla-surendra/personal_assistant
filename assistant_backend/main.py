@@ -25,26 +25,22 @@ from controllers import (
     board_router,
     timeblock_router,
     settings_router,
-    page_router,
-    database_router,
-    template_router,
     comment_router,
-    reminder_router,
-    notification_router,
     activity_router,
     public_router,
-    crm_router,
-    chat_router,
     assistant_router,
     workspace_router,
     users_router,
     queue_router,
-    reports_router,
     epic_router,
     sprint_router,
     task_link_router,
-    module_router
 )
+# Not part of the controllers/__init__.py barrel -- see that file for why
+# (module_controller -> modules.registry -> controllers barrel would be a
+# circular import). page_router/database_router/etc. are likewise not
+# imported here: they're mounted once each, below, via ALL_MODULES.
+from controllers.module_controller import module_router
 from modules.registry import ALL_MODULES
 from workers.queue_consumer import run_consumer
 from observability import setup_telemetry
@@ -87,29 +83,23 @@ try:
     app.include_router(board_router)
     app.include_router(timeblock_router)
     app.include_router(settings_router)
-    app.include_router(page_router)
-    app.include_router(database_router)
-    app.include_router(template_router)
     app.include_router(comment_router)
-    app.include_router(reminder_router)
-    app.include_router(notification_router)
     app.include_router(activity_router)
     app.include_router(public_router)
-    app.include_router(crm_router)
-    app.include_router(chat_router)
     app.include_router(assistant_router)
     app.include_router(workspace_router)
     app.include_router(users_router)
     app.include_router(queue_router)
-    app.include_router(reports_router)
     app.include_router(epic_router)
     app.include_router(sprint_router)
     app.include_router(task_link_router)
     app.include_router(module_router)
 
-    # Plug-and-play modules (ERP etc.) -- each entry in ALL_MODULES brings
-    # its own router; adding a new module means editing modules/registry.py,
-    # not this file.
+    # Plug-and-play modules -- both brand-new ones (Inventory) and
+    # pre-existing features adopted into the registry (CRM, Wiki,
+    # Database, Chat, Reports, Reminders, Notifications, Templates).
+    # Each entry in ALL_MODULES brings its own router; adding a new
+    # module means editing modules/registry.py, not this file.
     for module in ALL_MODULES:
         app.include_router(module.router)
 

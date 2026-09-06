@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
-from authorization.auth import get_auth_details
+from modules.access import require_module_enabled
 from handlers.page_handler import PageHandler
 from handlers.workspace_handlers import WorkspaceHandler
 from commands.page_cmd import PageCommand, PageUpdateCommand, PageDeleteCommand, BlockCommand, BlockUpdateCommand, BlockDeleteCommand
@@ -9,6 +9,10 @@ from dto.page_dto import PageDtoMapper, BlockDtoMapper
 from config import logger
 
 router = APIRouter(prefix="/api/v1/workspaces/{workspace_id}/pages", tags=["pages"])
+
+# Already a live, always-on feature before the module registry existed --
+# default_enabled=True so no existing workspace loses it silently.
+gate = require_module_enabled("wiki", default_enabled=True)
 
 page_router = router
 
@@ -20,7 +24,7 @@ def _verify_workspace_access(workspace_id: str, user_id: str):
 
 
 @router.post("/", response_model=PageDto, status_code=status.HTTP_201_CREATED)
-async def create_page(workspace_id: str, command: PageCommand, user: dict = Depends(get_auth_details)):
+async def create_page(workspace_id: str, command: PageCommand, user: dict = Depends(gate)):
     _verify_workspace_access(workspace_id, user.get("user_id"))
     command.workspace_id = workspace_id
     try:
@@ -34,7 +38,7 @@ async def create_page(workspace_id: str, command: PageCommand, user: dict = Depe
 
 
 @router.put("/{page_id}", response_model=PageDto)
-async def update_page(workspace_id: str, page_id: str, command: PageUpdateCommand, user: dict = Depends(get_auth_details)):
+async def update_page(workspace_id: str, page_id: str, command: PageUpdateCommand, user: dict = Depends(gate)):
     _verify_workspace_access(workspace_id, user.get("user_id"))
     command.page_id = page_id
     try:
@@ -48,7 +52,7 @@ async def update_page(workspace_id: str, page_id: str, command: PageUpdateComman
 
 
 @router.delete("/{page_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_page(workspace_id: str, page_id: str, user: dict = Depends(get_auth_details)):
+async def delete_page(workspace_id: str, page_id: str, user: dict = Depends(gate)):
     _verify_workspace_access(workspace_id, user.get("user_id"))
     try:
         command = PageDeleteCommand(page_id=page_id, workspace_id=workspace_id)
@@ -61,7 +65,7 @@ async def delete_page(workspace_id: str, page_id: str, user: dict = Depends(get_
 
 
 @router.get("/{page_id}", response_model=PageDto)
-async def get_page(workspace_id: str, page_id: str, user: dict = Depends(get_auth_details)):
+async def get_page(workspace_id: str, page_id: str, user: dict = Depends(gate)):
     _verify_workspace_access(workspace_id, user.get("user_id"))
     try:
         page = PageHandler().get_page(page_id)
@@ -76,7 +80,7 @@ async def get_page(workspace_id: str, page_id: str, user: dict = Depends(get_aut
 
 
 @router.get("/", response_model=List[PageDto])
-async def list_pages(workspace_id: str, user: dict = Depends(get_auth_details)):
+async def list_pages(workspace_id: str, user: dict = Depends(gate)):
     _verify_workspace_access(workspace_id, user.get("user_id"))
     try:
         pages = PageHandler().list_pages(workspace_id)
@@ -90,7 +94,7 @@ async def list_pages(workspace_id: str, user: dict = Depends(get_auth_details)):
 
 # Block endpoints
 @router.post("/{page_id}/blocks", response_model=BlockDto, status_code=status.HTTP_201_CREATED)
-async def create_block(workspace_id: str, page_id: str, command: BlockCommand, user: dict = Depends(get_auth_details)):
+async def create_block(workspace_id: str, page_id: str, command: BlockCommand, user: dict = Depends(gate)):
     _verify_workspace_access(workspace_id, user.get("user_id"))
     command.page_id = page_id
     try:
@@ -104,7 +108,7 @@ async def create_block(workspace_id: str, page_id: str, command: BlockCommand, u
 
 
 @router.put("/{page_id}/blocks/{block_id}", response_model=BlockDto)
-async def update_block(workspace_id: str, page_id: str, block_id: str, command: BlockUpdateCommand, user: dict = Depends(get_auth_details)):
+async def update_block(workspace_id: str, page_id: str, block_id: str, command: BlockUpdateCommand, user: dict = Depends(gate)):
     _verify_workspace_access(workspace_id, user.get("user_id"))
     command.block_id = block_id
     try:
@@ -118,7 +122,7 @@ async def update_block(workspace_id: str, page_id: str, block_id: str, command: 
 
 
 @router.delete("/{page_id}/blocks/{block_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_block(workspace_id: str, page_id: str, block_id: str, user: dict = Depends(get_auth_details)):
+async def delete_block(workspace_id: str, page_id: str, block_id: str, user: dict = Depends(gate)):
     _verify_workspace_access(workspace_id, user.get("user_id"))
     try:
         command = BlockDeleteCommand(block_id=block_id, page_id=page_id)
@@ -131,7 +135,7 @@ async def delete_block(workspace_id: str, page_id: str, block_id: str, user: dic
 
 
 @router.get("/{page_id}/blocks", response_model=List[BlockDto])
-async def list_blocks(workspace_id: str, page_id: str, user: dict = Depends(get_auth_details)):
+async def list_blocks(workspace_id: str, page_id: str, user: dict = Depends(gate)):
     _verify_workspace_access(workspace_id, user.get("user_id"))
     try:
         blocks = PageHandler().list_blocks(page_id)
